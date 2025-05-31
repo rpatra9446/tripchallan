@@ -877,7 +877,7 @@ export default function SuperAdminDashboard({ user: initialUser }: SuperAdminDas
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex">
+          <nav className="-mb-px flex overflow-x-auto whitespace-nowrap">
             <button
               onClick={() => setActiveTab("admins")}
               className={`py-4 px-6 ${
@@ -1263,7 +1263,8 @@ export default function SuperAdminDashboard({ user: initialUser }: SuperAdminDas
                       <Tabs
                         value={statsTab}
                         onChange={handleStatsTabChange}
-                        variant="fullWidth"
+                        variant="scrollable"
+                        scrollButtons="auto"
                         sx={{ mb: 2 }}
                       >
                         <Tab label={`All Users (${usersList.length})`} icon={<PeopleIcon />} />
