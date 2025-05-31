@@ -4,10 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // directUrl is optional in deployment environments
-  // directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -30,30 +28,30 @@ model User {
   operatorPermissions  OperatorPermissions?
   verifiedSeals        Seal[]               @relation("SealVerifiedBy")
   createdSessions      Session[]            @relation("SessionCreatedBy")
-  createdVehicles      Vehicle[]            @relation("VehicleCreatedBy")
   company              Company?             @relation(fields: [companyId], references: [id])
   createdBy            User?                @relation("UserCreatedBy", fields: [createdById], references: [id])
   createdUsers         User[]               @relation("UserCreatedBy")
+  createdVehicles      Vehicle[]            @relation("VehicleCreatedBy")
 
   @@map("users")
 }
 
 model Company {
-  id        String    @id @default(uuid())
-  name      String
-  email     String    @unique
-  address   String?
-  phone     String?
-  companyType String?  @default("--Others--")
-  gstin     String?
-  logo      String?
-  documents String[]
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  sessions  Session[]
-  employees User[]
-  vehicles  Vehicle[]
+  id          String    @id @default(uuid())
+  name        String
+  email       String    @unique
+  address     String?
+  phone       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  companyType String?   @default("--Others--")
+  documents   String[]
+  gstin       String?
+  isActive    Boolean   @default(true)
+  logo        String?
+  sessions    Session[]
+  employees   User[]
+  vehicles    Vehicle[]
 
   @@map("companies")
 }
@@ -97,8 +95,8 @@ model Seal {
   verifiedById    String?
   status          String?
   statusComment   String?
-  statusUpdatedAt DateTime?
   statusEvidence  Json?
+  statusUpdatedAt DateTime?
   session         Session   @relation(fields: [sessionId], references: [id])
   verifiedBy      User?     @relation("SealVerifiedBy", fields: [verifiedById], references: [id])
 
@@ -110,9 +108,9 @@ model Comment {
   sessionId String
   userId    String
   message   String
+  createdAt DateTime       @default(now())
   imageUrl  String?
   urgency   CommentUrgency @default(NA)
-  createdAt DateTime       @default(now())
   session   Session        @relation(fields: [sessionId], references: [id])
   user      User           @relation(fields: [userId], references: [id])
 
@@ -150,19 +148,19 @@ model OperatorPermissions {
 }
 
 model Vehicle {
-  id                   String        @id @default(uuid())
-  numberPlate          String        @unique
-  model                String?
-  manufacturer         String?
-  yearOfMake           Int?
+  id                      String        @id @default(uuid())
+  numberPlate             String        @unique
+  model                   String?
+  manufacturer            String?
+  yearOfMake              Int?
+  status                  VehicleStatus @default(ACTIVE)
+  companyId               String
+  createdById             String
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
   registrationCertificate String?
-  status               VehicleStatus @default(ACTIVE)
-  companyId            String
-  createdById          String
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
-  company              Company       @relation(fields: [companyId], references: [id])
-  createdBy            User          @relation("VehicleCreatedBy", fields: [createdById], references: [id])
+  company                 Company       @relation(fields: [companyId], references: [id])
+  createdBy               User          @relation("VehicleCreatedBy", fields: [createdById], references: [id])
 
   @@map("vehicles")
 }
