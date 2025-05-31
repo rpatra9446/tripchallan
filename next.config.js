@@ -3,9 +3,8 @@ const nextConfig = {
   // Enable experimental features
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000"],
+      allowedOrigins: ["localhost:3000", "localhost:3001"],
     },
-    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
   },
   
   // Temporarily disable TypeScript checking
@@ -65,14 +64,6 @@ const nextConfig = {
       },
     ],
   },
-  
-  // Increase maximum file upload size (default is 4MB)
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: '10mb',
-  }
 };
 
 module.exports = nextConfig;
