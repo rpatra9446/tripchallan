@@ -53,7 +53,7 @@ export const useTransformLogs = (logs: ActivityLog[] | null | undefined) => {
               : undefined,
             createdAt: log.createdAt || new Date().toISOString(),
             userAgent: log.userAgent || undefined,
-            targetResourceType: log.targetResourceType || " - "
+            targetResourceType: log.targetResourceType === "USER_LIST" ? "Resources" : (log.targetResourceType || " - ")
           };
         } catch (itemError) {
           console.error("Error processing log item:", itemError);

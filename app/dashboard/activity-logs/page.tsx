@@ -387,7 +387,9 @@ export default function ActivityLogsPage() {
               >
                 <MenuItem value="">All Resources</MenuItem>
                 {availableResourceTypes.map(type => (
-                  <MenuItem key={type} value={type}>{type}</MenuItem>
+                  <MenuItem key={type} value={type}>
+                    {type === "USER_LIST" ? "Resources" : type}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
