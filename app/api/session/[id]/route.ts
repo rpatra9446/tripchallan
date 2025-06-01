@@ -257,8 +257,8 @@ async function handler(
     });
 
     // Explicitly ensure source and destination use the correct fields
-    enhancedSessionData.source = sessionData.source || (tripDetails as any)?.source;
-    enhancedSessionData.destination = sessionData.destination || (tripDetails as any)?.destination;
+    enhancedSessionData.source = sessionData.source || (tripDetails as any)?.source || (tripDetails as any)?.loadingSite;
+    enhancedSessionData.destination = sessionData.destination || (tripDetails as any)?.destination || (tripDetails as any)?.receiverPartyName;
 
     // Check authorization based on user role
     const userRole = session?.user.role;

@@ -1962,7 +1962,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' || 
+                                 (typeof seal.method === 'string' && (
+                                   seal.method.toLowerCase().includes('scan') || 
+                                   seal.method.toLowerCase().includes('digital') || 
+                                   seal.method.toLowerCase().includes('qr') || 
+                                   seal.method.toLowerCase().includes('barcode')
+                                 )) ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
@@ -2119,7 +2125,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' || 
+                                 (typeof seal.method === 'string' && (
+                                   seal.method.toLowerCase().includes('scan') || 
+                                   seal.method.toLowerCase().includes('digital') || 
+                                   seal.method.toLowerCase().includes('qr') || 
+                                   seal.method.toLowerCase().includes('barcode')
+                                 )) ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
@@ -2247,7 +2259,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{operatorSeal.id}</TableCell>
                               <TableCell>
                         <Chip 
-                          label={operatorSeal.method === 'digital' || operatorSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          label={operatorSeal.method === 'digital' || operatorSeal.method === 'digitally scanned' || 
+                                 (typeof operatorSeal.method === 'string' && (
+                                   operatorSeal.method.toLowerCase().includes('scan') || 
+                                   operatorSeal.method.toLowerCase().includes('digital') || 
+                                   operatorSeal.method.toLowerCase().includes('qr') || 
+                                   operatorSeal.method.toLowerCase().includes('barcode')
+                                 )) ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
@@ -2260,7 +2278,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <TableCell>{matchingGuardSeal.id}</TableCell>
                           <TableCell>
                             <Chip 
-                              label={matchingGuardSeal.method === 'digital' || matchingGuardSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                              label={matchingGuardSeal.method === 'digital' || matchingGuardSeal.method === 'digitally scanned' || 
+                                     (typeof matchingGuardSeal.method === 'string' && (
+                                       matchingGuardSeal.method.toLowerCase().includes('scan') || 
+                                       matchingGuardSeal.method.toLowerCase().includes('digital') || 
+                                       matchingGuardSeal.method.toLowerCase().includes('qr') || 
+                                       matchingGuardSeal.method.toLowerCase().includes('barcode')
+                                     )) ? "Digitally Scanned" : "Manual Entry"}
                               color="primary" 
                               size="small"
                             />
@@ -2307,7 +2331,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{guardSeal.id}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={guardSeal.method === 'digital' || guardSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          label={guardSeal.method === 'digital' || guardSeal.method === 'digitally scanned' || 
+                                 (typeof guardSeal.method === 'string' && (
+                                   guardSeal.method.toLowerCase().includes('scan') || 
+                                   guardSeal.method.toLowerCase().includes('digital') || 
+                                   guardSeal.method.toLowerCase().includes('qr') || 
+                                   guardSeal.method.toLowerCase().includes('barcode')
+                                 )) ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
@@ -2443,7 +2473,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <>
                           <TableCell>
                             <Chip 
-                              label={operatorSeal.method === 'digital' || operatorSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                              label={operatorSeal.method === 'digital' || operatorSeal.method === 'digitally scanned' || 
+                                     (typeof operatorSeal.method === 'string' && (
+                                       operatorSeal.method.toLowerCase().includes('scan') || 
+                                       operatorSeal.method.toLowerCase().includes('digital') || 
+                                       operatorSeal.method.toLowerCase().includes('qr') || 
+                                       operatorSeal.method.toLowerCase().includes('barcode')
+                                     )) ? "Digitally Scanned" : "Manual Entry"}
                               color="primary" 
                               size="small"
                             />
@@ -2480,7 +2516,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <>
                           <TableCell>
                             <Chip 
-                              label={guardSeal.method === 'digital' || guardSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                              label={guardSeal.method === 'digital' || guardSeal.method === 'digitally scanned' || 
+                                     (typeof guardSeal.method === 'string' && (
+                                       guardSeal.method.toLowerCase().includes('scan') || 
+                                       guardSeal.method.toLowerCase().includes('digital') || 
+                                       guardSeal.method.toLowerCase().includes('qr') || 
+                                       guardSeal.method.toLowerCase().includes('barcode')
+                                     )) ? "Digitally Scanned" : "Manual Entry"}
                               color="primary" 
                               size="small"
                             />
@@ -2577,7 +2619,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' || 
+                                 (typeof seal.method === 'string' && (
+                                   seal.method.toLowerCase().includes('scan') || 
+                                   seal.method.toLowerCase().includes('digital') || 
+                                   seal.method.toLowerCase().includes('qr') || 
+                                   seal.method.toLowerCase().includes('barcode')
+                                 )) ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
@@ -3790,7 +3838,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Box display="flex" alignItems="center" mb={1}>
                       <LocationOn color="primary" sx={{ mr: 1 }} />
                       <Typography variant="body1">
-                        <strong>Source:</strong> {session.tripDetails?.source || session.source}
+                        <strong>Source:</strong> {session.source || session.tripDetails?.source || "N/A"}
                       </Typography>
                     </Box>
                   </Box>
@@ -3798,7 +3846,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Box display="flex" alignItems="center" mb={1}>
                       <LocationOn color="primary" sx={{ mr: 1 }} />
                       <Typography variant="body1">
-                        <strong>Destination:</strong> {session.tripDetails?.destination || session.destination}
+                        <strong>Destination:</strong> {session.destination || session.tripDetails?.destination || "N/A"}
                       </Typography>
                     </Box>
                   </Box>
@@ -4087,26 +4135,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 );
               })}
               
-              {/* Add missing fields if they aren't already displayed */}
-              {!Object.keys(session.tripDetails).includes('loadingSite') && session.tripDetails.source && (
-                <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
-                  <Typography variant="body1">
-                    <strong>Loading Site:</strong> {session.tripDetails.source}
-                  </Typography>
-                </Box>
-              )}
+              {/* Add Loading Site field */}
+              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                <Typography variant="body1">
+                  <strong>Loading Site:</strong> {session.tripDetails.loadingSite || "N/A"}
+                </Typography>
+              </Box>
               
               {/* Add Cargo Type field */}
               <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                 <Typography variant="body1">
-                  <strong>Cargo Type:</strong> {session.tripDetails.cargoType || session.tripDetails.materialName || "N/A"}
+                  <strong>Cargo Type:</strong> {session.tripDetails.cargoType || "N/A"}
                 </Typography>
               </Box>
               
               {/* Add Number of Packages field */}
               <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                 <Typography variant="body1">
-                  <strong>Number of Packages:</strong> {session.tripDetails.numberOfPackages || "N/A"}
+                  <strong>Number of Packages:</strong> {typeof session.tripDetails.numberOfPackages !== 'undefined' && session.tripDetails.numberOfPackages !== null ? session.tripDetails.numberOfPackages : "N/A"}
                 </Typography>
               </Box>
             </Box>
@@ -4142,7 +4188,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' || 
+                                 (typeof seal.method === 'string' && (
+                                   seal.method.toLowerCase().includes('scan') || 
+                                   seal.method.toLowerCase().includes('digital') || 
+                                   seal.method.toLowerCase().includes('qr') || 
+                                   seal.method.toLowerCase().includes('barcode')
+                                 )) ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
