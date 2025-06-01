@@ -97,7 +97,6 @@ export default function CompanyDashboard({ user, initialTab }: CompanyDashboardP
       let statusParam = "";
       if (sessionStatusFilter !== "all") {
         const statusMap: Record<string, string> = {
-          "pending": SessionStatus.PENDING,
           "in_progress": SessionStatus.IN_PROGRESS,
           "completed": SessionStatus.COMPLETED
         };
@@ -424,7 +423,6 @@ export default function CompanyDashboard({ user, initialTab }: CompanyDashboardP
                   scrollButtons="auto"
                 >
                   <Tab label="All" value="all" />
-                  <Tab label="Pending" value="pending" />
                   <Tab label="In Progress" value="in_progress" />
                   <Tab label="Completed" value="completed" />
                 </Tabs>
