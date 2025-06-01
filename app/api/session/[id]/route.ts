@@ -149,18 +149,56 @@ async function handler(
     );
 
     // Extract trip details and other info from found logs
-    let tripDetails = {};
+    let tripDetails: Record<string, any> = {};
     let images = {};
     let timestamps = {};
     let qrCodes = {};
     
+    // First check if the session data has the trip details fields directly
+    if (sessionData) {
+      // Create tripDetails from the session fields
+      tripDetails = {
+        transporterName: sessionData.transporterName,
+        materialName: sessionData.materialName,
+        vehicleNumber: sessionData.vehicleNumber,
+        gpsImeiNumber: sessionData.gpsImeiNumber,
+        driverName: sessionData.driverName,
+        driverContactNumber: sessionData.driverContactNumber,
+        loaderName: sessionData.loaderName,
+        challanRoyaltyNumber: sessionData.challanRoyaltyNumber,
+        doNumber: sessionData.doNumber,
+        freight: sessionData.freight,
+        qualityOfMaterials: sessionData.qualityOfMaterials,
+        tpNumber: sessionData.tpNumber,
+        grossWeight: sessionData.grossWeight,
+        tareWeight: sessionData.tareWeight,
+        netMaterialWeight: sessionData.netMaterialWeight,
+        loaderMobileNumber: sessionData.loaderMobileNumber,
+        loadingSite: sessionData.loadingSite,
+        receiverPartyName: sessionData.receiverPartyName,
+        source: sessionData.source,
+        destination: sessionData.destination,
+        cargoType: sessionData.cargoType,
+        numberOfPackages: sessionData.numberOfPackages,
+      };
+    }
+    
+    // Still check activity logs for any missing data (for backward compatibility)
     // Get trip details if available
     if (tripDetailsLog?.details) {
       const details = tripDetailsLog.details as ActivityLogDetails;
       
-      // Extract trip details
+      // Extract trip details - only add fields that are missing in the session
       if (details.tripDetails) {
-        tripDetails = details.tripDetails;
+        const logTripDetails = details.tripDetails as Record<string, unknown>;
+        
+        // Merge with existing tripDetails, keeping session data as priority
+        Object.keys(logTripDetails).forEach(key => {
+          if (!tripDetails[key]) {
+            tripDetails[key] = logTripDetails[key];
+          }
+        });
+        
         console.log("[API DEBUG] Found trip details:", Object.keys(details.tripDetails));
         
         // Ensure source and destination from tripDetails are properly carried over

@@ -556,17 +556,10 @@ export const POST = withAuth(
       
       // Extract only the fields that exist in the Session model
       const sessionData = {
-        source: formData.get('loadingSite') as string, 
-        destination: formData.get('receiverPartyName') as string,
+        source: formData.get('source') as string || formData.get('loadingSite') as string,
+        destination: formData.get('destination') as string || formData.get('receiverPartyName') as string,
         createdById: userId as string,
-      };
-
-      // Get timestamps data
-      const loadingDetailsTimestamps = formData.get('loadingDetailsTimestamps');
-      const imagesFormTimestamps = formData.get('imagesFormTimestamps');
-
-      // Extract all form data for storing in activity log
-      const tripDetails = {
+        // Add all trip details fields directly to the session
         transporterName: formData.get('transporterName') as string,
         materialName: formData.get('materialName') as string,
         receiverPartyName: formData.get('receiverPartyName') as string,
@@ -577,14 +570,21 @@ export const POST = withAuth(
         loaderName: formData.get('loaderName') as string,
         challanRoyaltyNumber: formData.get('challanRoyaltyNumber') as string,
         doNumber: formData.get('doNumber') as string,
-        freight: parseFloat(formData.get('freight') as string) || 0,
+        freight: parseFloat(formData.get('freight') as string) || null,
         qualityOfMaterials: formData.get('qualityOfMaterials') as string,
         tpNumber: formData.get('tpNumber') as string,
-        grossWeight: parseFloat(formData.get('grossWeight') as string) || 0,
-        tareWeight: parseFloat(formData.get('tareWeight') as string) || 0,
-        netMaterialWeight: parseFloat(formData.get('netMaterialWeight') as string) || 0,
+        grossWeight: parseFloat(formData.get('grossWeight') as string) || null,
+        tareWeight: parseFloat(formData.get('tareWeight') as string) || null,
+        netMaterialWeight: parseFloat(formData.get('netMaterialWeight') as string) || null,
         loaderMobileNumber: formData.get('loaderMobileNumber') as string,
+        loadingSite: formData.get('loadingSite') as string,
+        cargoType: formData.get('cargoType') as string,
+        numberOfPackages: formData.get('numberOfPackages') as string,
       };
+
+      // Get timestamps data
+      const loadingDetailsTimestamps = formData.get('loadingDetailsTimestamps');
+      const imagesFormTimestamps = formData.get('imagesFormTimestamps');
 
       // Extract seal tag data
       const sealTagIdsJson = formData.get('sealTagIds') as string;
@@ -909,7 +909,7 @@ export const POST = withAuth(
                 targetResourceType: "session",
                 details: {
                   tripDetails: {
-                    ...tripDetails,
+                    ...sessionData,
                   },
                   images: {
                     gpsImeiPicture: gpsImeiPicture ? `/api/images/${newSession.id}/gpsImei` : null,

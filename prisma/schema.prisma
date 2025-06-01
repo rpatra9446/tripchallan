@@ -71,17 +71,37 @@ model CoinTransaction {
 }
 
 model Session {
-  id          String        @id @default(uuid())
-  createdAt   DateTime      @default(now())
-  createdById String
-  companyId   String
-  source      String
-  destination String
-  status      SessionStatus @default(PENDING)
-  comments    Comment[]
-  seal        Seal?
-  company     Company       @relation(fields: [companyId], references: [id])
-  createdBy   User          @relation("SessionCreatedBy", fields: [createdById], references: [id])
+  id                   String        @id @default(uuid())
+  createdAt            DateTime      @default(now())
+  createdById          String
+  companyId            String
+  source               String
+  destination          String
+  status               SessionStatus @default(PENDING)
+  transporterName      String?
+  materialName         String?
+  vehicleNumber        String?
+  gpsImeiNumber        String?
+  driverName           String?
+  driverContactNumber  String?
+  loaderName           String?
+  challanRoyaltyNumber String?
+  doNumber             String?
+  freight              Float?
+  qualityOfMaterials   String?
+  tpNumber             String?
+  grossWeight          Float?
+  tareWeight           Float?
+  netMaterialWeight    Float?
+  loaderMobileNumber   String?
+  loadingSite          String?
+  receiverPartyName    String?
+  cargoType            String?
+  numberOfPackages     String?
+  comments             Comment[]
+  seal                 Seal?
+  company              Company       @relation(fields: [companyId], references: [id])
+  createdBy            User          @relation("SessionCreatedBy", fields: [createdById], references: [id])
 
   @@map("sessions")
 }
