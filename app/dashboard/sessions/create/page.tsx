@@ -662,18 +662,21 @@ export default function CreateSessionPage() {
   // Now update the handleAddSealTagWithImage function to use this check
   // Add a handler for adding seal tags with images
   const handleAddSealTagWithImage = async (tagId: string, imageFile: File) => {
-    // Check if tag is already in the list
-    if (sealTags.sealTagIds.includes(tagId)) {
-      setError("Tag ID already used in this session");
+    // Trim the tag ID to ensure consistent comparison
+    const trimmedTagId = tagId.trim();
+    
+    // Check if tag is already in the list (case insensitive)
+    if (sealTags.sealTagIds.some(id => id.toLowerCase() === trimmedTagId.toLowerCase())) {
+      setError(`Tag ID "${trimmedTagId}" already used in this session`);
       setTimeout(() => setError(""), 3000);
       return;
     }
     
     // Check if tag has been used in any other session
     setError("Verifying seal tag...");
-    const exists = await checkSealTagExistence(tagId);
+    const exists = await checkSealTagExistence(trimmedTagId);
     if (exists) {
-      setError("Invalid Seal Tag scanned - this tag has already been used in another session");
+      setError(`Invalid Seal Tag "${trimmedTagId}" - this tag has already been used in another session`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -682,30 +685,33 @@ export default function CreateSessionPage() {
     setError("");
     
     setSealTags(prev => ({
-        ...prev,
-      sealTagIds: [...prev.sealTagIds, tagId],
+      ...prev,
+      sealTagIds: [...prev.sealTagIds, trimmedTagId],
       sealTagImages: {
         ...prev.sealTagImages,
-        [tagId]: imageFile
+        [trimmedTagId]: imageFile
       },
       sealTagMethods: {
         ...prev.sealTagMethods,
-        [tagId]: 'digitally scanned'
+        [trimmedTagId]: 'digitally scanned'
       },
-        timestamps: {
-          ...prev.timestamps,
-        [tagId]: new Date().toISOString()
-        }
-      }));
+      timestamps: {
+        ...prev.timestamps,
+        [trimmedTagId]: new Date().toISOString()
+      }
+    }));
   };
 
   // Update handleAddSealTag for manual entries to require an image and check for existence
   const handleAddSealTag = async () => {
     if (!sealTags.manualSealTagId) return;
     
-    // Check if tag is already in the list
-    if (sealTags.sealTagIds.includes(sealTags.manualSealTagId)) {
-      setError("Tag ID already used in this session");
+    // Trim the tag ID to ensure consistent comparison
+    const trimmedTagId = sealTags.manualSealTagId.trim();
+    
+    // Check if tag is already in the list (case insensitive)
+    if (sealTags.sealTagIds.some(id => id.toLowerCase() === trimmedTagId.toLowerCase())) {
+      setError(`Tag ID "${trimmedTagId}" already used in this session`);
       setTimeout(() => setError(""), 3000);
       return;
     }
@@ -721,9 +727,9 @@ export default function CreateSessionPage() {
     
     // Check if tag has been used in any other session
     setError("Verifying seal tag...");
-    const exists = await checkSealTagExistence(sealTags.manualSealTagId);
+    const exists = await checkSealTagExistence(trimmedTagId);
     if (exists) {
-      setError("Invalid Seal Tag entered - this tag has already been used in another session");
+      setError(`Invalid Seal Tag "${trimmedTagId}" - this tag has already been used in another session`);
       setTimeout(() => setError(""), 5000);
       return;
     }
@@ -733,19 +739,19 @@ export default function CreateSessionPage() {
     
     setSealTags(prev => ({
       ...prev,
-      sealTagIds: [...prev.sealTagIds, prev.manualSealTagId],
+      sealTagIds: [...prev.sealTagIds, trimmedTagId],
       sealTagImages: {
         ...prev.sealTagImages,
-        [prev.manualSealTagId]: manualEntryImage
+        [trimmedTagId]: manualEntryImage
       },
       sealTagMethods: {
         ...prev.sealTagMethods,
-        [prev.manualSealTagId]: 'manually entered'
+        [trimmedTagId]: 'manually entered'
       },
       manualSealTagId: "",
       timestamps: {
         ...prev.timestamps,
-        [prev.manualSealTagId]: new Date().toISOString()
+        [trimmedTagId]: new Date().toISOString()
       }
     }));
 
@@ -1901,14 +1907,17 @@ export default function CreateSessionPage() {
                 </Typography>
                   <ClientSideQrScanner
                     onScanWithImage={(data, imageFile) => {
-                      // Check if already scanned
-                      if (sealTags.sealTagIds.includes(data)) {
-                        setError("Tag ID already used");
+                      // Trim the tag ID to ensure consistent comparison
+                      const trimmedData = data.trim();
+                      
+                      // Check if already scanned (case insensitive)
+                      if (sealTags.sealTagIds.some(id => id.toLowerCase() === trimmedData.toLowerCase())) {
+                        setError(`Tag ID "${trimmedData}" already used in this session`);
                         setTimeout(() => setError(""), 3000);
                         return;
                       }
                       
-                      handleAddSealTagWithImage(data, imageFile);
+                      handleAddSealTagWithImage(trimmedData, imageFile);
                     }}
                     buttonText="Scan QR Code"
                     scannerTitle="Scan Seal Tag"
