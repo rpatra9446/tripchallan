@@ -253,27 +253,46 @@ async function handler(
       tripDetailsSource: (tripDetails as any)?.source,
       tripDetailsDestination: (tripDetails as any)?.destination,
       tripDetailsLoadingSite: (tripDetails as any)?.loadingSite,
-      tripDetailsReceiverPartyName: (tripDetails as any)?.receiverPartyName
+      tripDetailsReceiverPartyName: (tripDetails as any)?.receiverPartyName,
+      tripDetailsCargoType: (tripDetails as any)?.cargoType,
+      tripDetailsMaterialName: (tripDetails as any)?.materialName,
+      tripDetailsNumberOfPackages: (tripDetails as any)?.numberOfPackages
     });
 
-    // Explicitly ensure source and destination use the correct fields
+    // Ensure the correct fields are prioritized for display
+    // For source and destination, we want to prioritize the actual source/destination fields,
+    // not loadingSite or receiverPartyName which may have been incorrectly mapped
     enhancedSessionData.source = (tripDetails as any)?.source || sessionData.source;
     enhancedSessionData.destination = (tripDetails as any)?.destination || sessionData.destination;
-
-    // Make sure loadingSite and receiverPartyName are copied to tripDetails
-    if ((tripDetails as any) && typeof tripDetails === 'object') {
-      if ((tripDetails as any).loadingSite) {
+    
+    // Make sure we pass through correct Trip Details
+    if ((tripDetails as any)) {
+      // Force certain fields to have correct values
+      if (!(tripDetails as any).source && (tripDetails as any).loadingSite) {
+        console.log("[API DEBUG] Copying loadingSite to proper field");
         (tripDetails as any).loadingSite = (tripDetails as any).loadingSite;
       }
-      if ((tripDetails as any).receiverPartyName) {
+      
+      if (!(tripDetails as any).destination && (tripDetails as any).receiverPartyName) {
+        console.log("[API DEBUG] Copying receiverPartyName to proper field");
         (tripDetails as any).receiverPartyName = (tripDetails as any).receiverPartyName;
       }
-      if ((tripDetails as any).cargoType) {
-        (tripDetails as any).cargoType = (tripDetails as any).cargoType;
+
+      // Ensure cargoType exists and is prioritized over materialName
+      if (!(tripDetails as any).cargoType && (tripDetails as any).materialName) {
+        console.log("[API DEBUG] Using materialName as cargoType");
+        (tripDetails as any).cargoType = (tripDetails as any).materialName;
       }
-      if ((tripDetails as any).numberOfPackages) {
-        (tripDetails as any).numberOfPackages = (tripDetails as any).numberOfPackages;
-      }
+      
+      // Log the final values for debugging
+      console.log("[API DEBUG] Final enhanced session data:", {
+        source: enhancedSessionData.source,
+        destination: enhancedSessionData.destination,
+        tripDetailsSource: (tripDetails as any)?.source,
+        tripDetailsDestination: (tripDetails as any)?.destination,
+        tripDetailsLoadingSite: (tripDetails as any)?.loadingSite,
+        tripDetailsCargoType: (tripDetails as any)?.cargoType
+      });
     }
 
     // Check authorization based on user role

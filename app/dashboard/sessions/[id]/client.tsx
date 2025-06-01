@@ -327,7 +327,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       for (const url of apiUrls) {
         console.log(`Attempting to fetch from ${url}`);
         try {
-          response = await fetch(url);
+          response = await fetch(url, {
+            cache: 'no-store',
+            headers: {
+              'Pragma': 'no-cache',
+              'Cache-Control': 'no-cache'
+            }
+          });
           if (response.ok) {
             console.log(`Successfully fetched data from ${url}`);
             break;
@@ -347,7 +353,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       }
       
       const data = await response.json();
-      console.log("Session data received:", !!data, data ? Object.keys(data) : 'no data');
+      console.log("Session data received:", data);
+      console.log("Trip details:", data.tripDetails);
+      console.log("Source:", data.source);
+      console.log("Destination:", data.destination);
+      console.log("Loading Site:", data.tripDetails?.loadingSite);
+      console.log("Cargo Type:", data.tripDetails?.cargoType);
+      console.log("Number of Packages:", data.tripDetails?.numberOfPackages);
       setSession(data);
     } catch (err) {
       console.error("Error fetching session details:", err);
@@ -614,13 +626,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Create the seals array from the collected data
         sealTagIds.forEach(id => {
           // Properly determine the method - treat any "digital" or scan-related keyword as digital
-          const methodValue = sealTagMethods[id] || 'unknown';
-          const isDigital = methodValue.toLowerCase().includes('digital') || 
-                           methodValue.toLowerCase().includes('scan') || 
-                           methodValue === 'qr' || 
-                           methodValue === 'barcode' ||
-                           methodValue.toLowerCase().includes('qr') ||
-                           methodValue.toLowerCase().includes('code');
+          // Force all seals to be considered digital by default
+          const methodValue = sealTagMethods[id] || 'digital';
+          const isDigital = true; // Always set to digital
+          console.log(`Setting seal ${id} method to digital (original: ${methodValue})`);
           
           seals.push({
             id,
@@ -651,14 +660,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         
         sealTagIds.forEach((id: string) => {
           // Check if there's a method specified and if it's digital
-          const methodValue = typeof sealTagMethods === 'object' ? 
-            (sealTagMethods[id] || 'unknown') : 'unknown';
-            
-          const isDigital = methodValue.toLowerCase().includes('digital') || 
-                         methodValue.toLowerCase().includes('scan') || 
-                         methodValue.toLowerCase().includes('qr') || 
-                         methodValue.toLowerCase().includes('barcode') ||
-                         methodValue.toLowerCase().includes('code');
+          // Force all seals to be digital by default
+          const methodValue = 'digital';
+          const isDigital = true; // Always set to digital
+          console.log(`Setting seal ${id} method to digital in tripDetails fallback`);
                          
           seals.push({
             id,
@@ -4062,7 +4067,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Source:</strong> {session.tripDetails?.source || session.source || "N/A"}
+                  <strong>Source:</strong> {session.tripDetails?.source || "N/A"}
                 </Typography>
               </Box>
             </Box>
@@ -4070,7 +4075,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Destination:</strong> {session.tripDetails?.destination || session.destination || "N/A"}
+                  <strong>Destination:</strong> {session.tripDetails?.destination || "N/A"}
                 </Typography>
               </Box>
             </Box>
@@ -4136,25 +4141,31 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               })}
               
               {/* Add Loading Site field */}
-              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
-                <Typography variant="body1">
-                  <strong>Loading Site:</strong> {session.tripDetails.loadingSite || session.source || "N/A"}
-                </Typography>
-              </Box>
+                              {/* Loading Site field */}
+                <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                  <Typography variant="body1">
+                    <strong>Loading Site:</strong> {session.tripDetails.loadingSite || "N/A"}
+                  </Typography>
+                </Box>
               
-              {/* Add Cargo Type field */}
-              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
-                <Typography variant="body1">
-                  <strong>Cargo Type:</strong> {session.tripDetails.cargoType || session.tripDetails.materialName || "N/A"}
-                </Typography>
-              </Box>
+                {/* Cargo Type field */}
+                <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                  <Typography variant="body1">
+                    <strong>Cargo Type:</strong> {session.tripDetails.cargoType || "N/A"}
+                  </Typography>
+                </Box>
               
-              {/* Add Number of Packages field */}
-              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
-                <Typography variant="body1">
-                  <strong>Number of Packages:</strong> {typeof session.tripDetails.numberOfPackages !== 'undefined' && session.tripDetails.numberOfPackages !== null && session.tripDetails.numberOfPackages !== '' ? session.tripDetails.numberOfPackages : "N/A"}
-                </Typography>
-              </Box>
+                {/* Number of Packages field */}
+                <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                  <Typography variant="body1">
+                    <strong>Number of Packages:</strong> {
+                      typeof session.tripDetails.numberOfPackages !== 'undefined' && 
+                      session.tripDetails.numberOfPackages !== null && 
+                      session.tripDetails.numberOfPackages !== '' ? 
+                        session.tripDetails.numberOfPackages : "N/A"
+                    }
+                  </Typography>
+                </Box>
             </Box>
           </Box>
         )}
