@@ -62,6 +62,8 @@ type LoadingDetailsForm = {
   gpsImeiPicture: File | null;
   cargoType: string;
   loadingSite: string;
+  source: string; // Added source location
+  destination: string; // Added destination location
   loaderName: string;
   challanRoyaltyNumber: string;
   doNumber: string;
@@ -261,6 +263,8 @@ export default function CreateSessionPage() {
     gpsImeiPicture: null,
     cargoType: "--Others--",
     loadingSite: "",
+    source: "", // Added source location
+    destination: "", // Added destination location
     loaderName: "",
     challanRoyaltyNumber: "",
     doNumber: "",
@@ -857,6 +861,12 @@ export default function CreateSessionPage() {
       
       if (!loadingDetails.loadingSite.trim()) {
         newErrors.loadingSite = "Loading site is required";
+      }
+      if (!loadingDetails.source.trim()) {
+        newErrors.source = "Source location is required";
+      }
+      if (!loadingDetails.destination.trim()) {
+        newErrors.destination = "Destination location is required";
       }
     } else if (step === 1) {
       // Use the specialized validation for seal tags
@@ -1715,6 +1725,32 @@ export default function CreateSessionPage() {
                   required
                   error={!!validationErrors.loadingSite}
                   helperText={validationErrors.loadingSite}
+                />
+              </Box>
+              
+              <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+                <TextField
+                  fullWidth
+                  label="Source"
+                  name="source"
+                  value={loadingDetails.source}
+                  onChange={handleLoadingDetailsChange}
+                  required
+                  error={!!validationErrors.source}
+                  helperText={validationErrors.source}
+                />
+              </Box>
+              
+              <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+                <TextField
+                  fullWidth
+                  label="Destination"
+                  name="destination"
+                  value={loadingDetails.destination}
+                  onChange={handleLoadingDetailsChange}
+                  required
+                  error={!!validationErrors.destination}
+                  helperText={validationErrors.destination}
                 />
               </Box>
               

@@ -58,7 +58,8 @@ import {
   Close,
   QrCode,
   InfoOutlined,
-  Refresh
+  Refresh,
+  Person
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
@@ -1848,7 +1849,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small"
-                          label={seal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                          label={seal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                           color={seal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
@@ -2005,7 +2006,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small"
-                          label={seal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                          label={seal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                           color={seal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
@@ -2133,7 +2134,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               <TableCell>
                         <Chip 
                           size="small"
-                          label={operatorSeal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                          label={operatorSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                           color={operatorSeal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
@@ -2146,7 +2147,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <TableCell>
                             <Chip 
                               size="small"
-                              label={matchingGuardSeal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                              label={matchingGuardSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                               color={matchingGuardSeal.method === 'digital' ? 'info' : 'default'}
                             />
                           </TableCell>
@@ -2193,7 +2194,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small"
-                          label={guardSeal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                          label={guardSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                           color={guardSeal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
@@ -2329,7 +2330,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <TableCell>
                             <Chip 
                               size="small"
-                              label={operatorSeal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                              label={operatorSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                               color={operatorSeal.method === 'digital' ? 'info' : 'default'}
                             />
                           </TableCell>
@@ -2366,7 +2367,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <TableCell>
                             <Chip 
                               size="small"
-                              label={guardSeal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                              label={guardSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                               color={guardSeal.method === 'digital' ? 'info' : 'default'}
                             />
                           </TableCell>
@@ -3237,7 +3238,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={seal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                          label={seal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
                           color={seal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
@@ -3703,6 +3704,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </Typography>
                     </Box>
                   </Box>
+                  <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                    <Box display="flex" alignItems="center" mb={1}>
+                      <Person color="primary" sx={{ mr: 1 }} />
+                      <Typography variant="body1">
+                        <strong>Operator Created:</strong> {session.createdBy?.name || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
 
@@ -3916,6 +3925,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <BusinessCenter color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
                   <strong>Company:</strong> {session.company?.name || "N/A"}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+              <Box display="flex" alignItems="center" mb={1}>
+                <Person color="primary" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Operator Created:</strong> {session.createdBy?.name || "N/A"}
                 </Typography>
               </Box>
             </Box>
