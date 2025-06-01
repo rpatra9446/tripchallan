@@ -1265,7 +1265,8 @@ export default function SuperAdminDashboard({ user: initialUser }: SuperAdminDas
                         onChange={handleStatsTabChange}
                         variant="scrollable"
                         scrollButtons="auto"
-                        sx={{ mb: 2 }}
+                        allowScrollButtonsMobile
+                        sx={{ mb: 2, maxWidth: '100%', overflowX: 'auto' }}
                       >
                         <Tab label={`All Users (${usersList.length})`} icon={<PeopleIcon />} />
                         <Tab label={`Companies (${companiesList.length})`} icon={<BusinessIcon />} />

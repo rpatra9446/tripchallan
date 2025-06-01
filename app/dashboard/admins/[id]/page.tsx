@@ -652,8 +652,15 @@ export default function AdminDetailsPage({ params }: AdminDetailsPageProps) {
       </div>
       
       <Box sx={{ width: '100%', mb: 4 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', overflowX: 'auto' }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ maxWidth: '100%' }}
+          >
             <Tab label={`Companies Created (${admin.stats.totalCompanies})`} />
             <Tab label={`Employees (${admin.stats.totalEmployees})`} />
             <Tab label={`Sessions (${admin.stats.totalSessions || 0})`} />
@@ -661,7 +668,7 @@ export default function AdminDetailsPage({ params }: AdminDetailsPageProps) {
         </Box>
         
         <Box hidden={tabValue !== 0} sx={{ pt: 3 }}>
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto', maxWidth: '100%' }}>
             <Table>
               <TableHead>
                 <TableRow>
@@ -690,7 +697,7 @@ export default function AdminDetailsPage({ params }: AdminDetailsPageProps) {
         </Box>
         
         <Box hidden={tabValue !== 1} sx={{ pt: 3 }}>
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto', maxWidth: '100%' }}>
             <Table>
               <TableHead>
                 <TableRow>
@@ -751,7 +758,7 @@ export default function AdminDetailsPage({ params }: AdminDetailsPageProps) {
               <CircularProgress />
             </Box>
           ) : (
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} sx={{ overflowX: 'auto', maxWidth: '100%' }}>
               <Table>
                 <TableHead>
                   <TableRow>
