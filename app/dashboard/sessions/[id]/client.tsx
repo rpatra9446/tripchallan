@@ -3332,8 +3332,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                                                        label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"} 
-                                                      color={seal.method === 'digital' || seal.method === 'digitally scanned' ? 'info' : 'default'}
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' || seal.method === 'qr' || seal.method === 'barcode' ? "Digitally Scanned" : "Manual Entry"} 
+                          color={seal.method === 'digital' || seal.method === 'digitally scanned' || seal.method === 'qr' || seal.method === 'barcode' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell>
@@ -3994,7 +3994,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Source:</strong> {session.tripDetails?.source || session.source}
+                  <strong>Source:</strong> {session.source || session.tripDetails?.source || "N/A"}
                 </Typography>
               </Box>
             </Box>
@@ -4002,7 +4002,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Destination:</strong> {session.tripDetails?.destination || session.destination}
+                  <strong>Destination:</strong> {session.destination || session.tripDetails?.destination || "N/A"}
                 </Typography>
               </Box>
             </Box>
@@ -4066,6 +4066,29 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </Box>
                 );
               })}
+              
+              {/* Add missing fields if they aren't already displayed */}
+              {!Object.keys(session.tripDetails).includes('loadingSite') && session.tripDetails.source && (
+                <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                  <Typography variant="body1">
+                    <strong>Loading Site:</strong> {session.tripDetails.source}
+                  </Typography>
+                </Box>
+              )}
+              
+              {/* Add Cargo Type field */}
+              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                <Typography variant="body1">
+                  <strong>Cargo Type:</strong> {session.tripDetails.materialName || "N/A"}
+                </Typography>
+              </Box>
+              
+              {/* Add Number of Packages field */}
+              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                <Typography variant="body1">
+                  <strong>Number of Packages:</strong> N/A
+                </Typography>
+              </Box>
             </Box>
           </Box>
         )}
