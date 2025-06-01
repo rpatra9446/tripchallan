@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, IconButton, Alert, Box } from '@mui/material';
 import { Close, Cameraswitch } from '@mui/icons-material';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -107,9 +107,10 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [isScanning, setIsScanning] = useState(false);
   
-  const scannerRef = React.useRef<any>(null);
-  const videoRef = React.useRef<HTMLVideoElement | null>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const scannerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastScannedRef = useRef<{ text: string; timestamp: number } | null>(null);
   const scannerContainerId = "html5-qrcode-scanner";
   
   React.useEffect(() => {
@@ -138,25 +139,28 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
         console.log('Available cameras:', devices);
         
         if (devices && devices.length) {
-          // Sort cameras to prioritize back camera (environment facing)
+          // Sort cameras to prioritize rear/back cameras
           const sortedDevices = sortCamerasByFacingMode(devices);
           setCameras(sortedDevices);
           
-          // Start with the first camera (usually back camera after sorting)
-          await startScanner(scanner, sortedDevices[0].id);
+          // Start with the first camera (should be a rear camera if available)
+          if (sortedDevices.length > 0) {
+            const cameraId = sortedDevices[0].id;
+            startScanner(scanner, cameraId);
+          } else {
+            setError("No suitable camera found. Please make sure your camera is connected and you've granted permission to use it.");
+          }
         } else {
-          console.warn('No cameras found or permission denied');
           setError("No camera found. Please make sure your camera is connected and you've granted permission to use it.");
         }
       } catch (err) {
         console.error('Error initializing scanner:', err);
-        setError("Could not access camera. Please ensure camera permissions are granted.");
+        setError("Failed to initialize scanner. Please make sure you've granted camera permissions and try again.");
       }
     };
     
-    // Sort cameras to prioritize back cameras on mobile
     const sortCamerasByFacingMode = (cameras: Array<{ id: string; label: string }>) => {
-      return [...cameras].sort((a, b) => {
+      return cameras.sort((a, b) => {
         const aLabel = a.label.toLowerCase();
         const bLabel = b.label.toLowerCase();
         
@@ -197,6 +201,22 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
           },
           (decodedText: string) => {
             console.log('QR code scanned:', decodedText);
+            
+            // Add debounce logic to prevent multiple scans in quick succession
+            const now = Date.now();
+            const lastScanned = lastScannedRef.current;
+            
+            // If same code was scanned in the last 3 seconds, ignore it
+            if (lastScanned && 
+                lastScanned.text === decodedText && 
+                now - lastScanned.timestamp < 3000) {
+              console.log('Ignoring duplicate scan within debounce period');
+              return;
+            }
+            
+            // Update the last scanned reference
+            lastScannedRef.current = { text: decodedText, timestamp: now };
+            
             // Capture the image from the video feed
             if (onScanWithImage) {
               captureFrame(decodedText);

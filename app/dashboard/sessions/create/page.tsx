@@ -37,7 +37,8 @@ import {
   QrCode,
   Download,
   Close,
-  Delete
+  Delete,
+  CloudUpload
 } from "@mui/icons-material";
 import Link from "next/link";
 import { EmployeeSubrole } from "@/prisma/enums";
@@ -661,6 +662,13 @@ export default function CreateSessionPage() {
   // Now update the handleAddSealTagWithImage function to use this check
   // Add a handler for adding seal tags with images
   const handleAddSealTagWithImage = async (tagId: string, imageFile: File) => {
+    // Check if we've reached the maximum number of allowed seal tags
+    if (sealTags.sealTagIds.length >= 40) {
+      setError("Maximum of 40 seal tags allowed");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+    
     // Check if tag is already in the list
     if (sealTags.sealTagIds.includes(tagId)) {
       setError("Tag ID already used in this session");
@@ -701,6 +709,13 @@ export default function CreateSessionPage() {
   // Update handleAddSealTag for manual entries to require an image and check for existence
   const handleAddSealTag = async () => {
     if (!sealTags.manualSealTagId) return;
+    
+    // Check if we've reached the maximum number of allowed seal tags
+    if (sealTags.sealTagIds.length >= 40) {
+      setError("Maximum of 40 seal tags allowed");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
     
     // Check if tag is already in the list
     if (sealTags.sealTagIds.includes(sealTags.manualSealTagId)) {
@@ -1949,22 +1964,53 @@ export default function CreateSessionPage() {
                   />
                   
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<PhotoCamera />}
-                  sx={{ height: '56px' }}
-                >
-                      {manualEntryImage ? 'Change Image' : 'Upload Image'}
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
+                {!manualEntryImage ? (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<PhotoCamera />}
+                      sx={{ height: '56px' }}
+                    >
+                      Take Photo
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        capture="environment"
                         onChange={handleManualSealTagImageChange}
-                  />
-                </Button>
-                    
-                    {renderImagePreview(manualEntryImage)}
+                      />
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<CloudUpload />}
+                      sx={{ height: '56px' }}
+                    >
+                      Upload
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={handleManualSealTagImageChange}
+                      />
+                    </Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ maxWidth: '150px', maxHeight: '150px', overflow: 'hidden', borderRadius: '4px' }}>
+                      {renderImagePreview(manualEntryImage)}
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={() => setManualEntryImage(null)}
+                    >
+                      Remove Image
+                    </Button>
+                  </Box>
+                )}
                   </Box>
                   
                   {validationErrors.manualEntryImage && (
