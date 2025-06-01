@@ -266,8 +266,34 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   
   // Utility functions needed before other definitions
   const getFieldLabel = useCallback((key: string): string => {
-    // Convert camelCase to Title Case with spaces
-    return key.replace(/([A-Z])/g, ' $1')
+    // Define custom labels for specific fields
+    const customLabels: Record<string, string> = {
+      'transporterName': 'Transporter Name',
+      'materialName': 'Material Name',
+      'vehicleNumber': 'Vehicle Number',
+      'gpsImeiNumber': 'GPS/IMEI Number',
+      'driverName': 'Driver Name',
+      'driverContactNumber': 'Driver Contact Number',
+      'loaderName': 'Loader Name',
+      'challanRoyaltyNumber': 'Challan Royalty Number',
+      'doNumber': 'DO Number',
+      'freight': 'Freight',
+      'qualityOfMaterials': 'Quality of Materials',
+      'tpNumber': 'TP Number',
+      'grossWeight': 'Gross Weight',
+      'tareWeight': 'Tare Weight',
+      'netMaterialWeight': 'Net Material Weight',
+      'loaderMobileNumber': 'Loader Mobile Number',
+      'loadingSite': 'Loading Site',
+      'receiverPartyName': 'Receiver Party Name',
+      'source': 'Source',
+      'destination': 'Destination',
+      'cargoType': 'Cargo Type',
+      'numberOfPackages': 'Number of Packages'
+    };
+    
+    // Return custom label if exists, otherwise convert camelCase to Title Case
+    return customLabels[key] || key.replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase());
   }, []);
 
@@ -507,10 +533,17 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       
       console.log("Found tag seals in sessionSeals:", tagSeals.length);
       
-      tagSeals.forEach(seal => {
+                tagSeals.forEach(seal => {
+        // Properly determine the method - treat any "digital" or scan-related keyword as digital
+        const methodValue = seal.method || 'unknown';
+        const isDigital = methodValue.toLowerCase().includes('digital') || 
+                         methodValue.toLowerCase().includes('scan') || 
+                         methodValue === 'qr' || 
+                         methodValue === 'barcode';
+                         
         seals.push({
           id: seal.barcode,
-          method: seal.method || 'manual',
+          method: isDigital ? 'digital' : 'manual',
           image: null, // Images not available in this data structure
           timestamp: seal.createdAt
         });
@@ -1154,24 +1187,32 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   };
 
   // Handle file uploads
+  // Define type-safe image type keys
+  type GuardImageKey = keyof typeof guardImages;
+  type PreviewImageKey = keyof typeof imagePreviews;
+  
   const handleImageUpload = async (imageType: string, file: File | FileList | null) => {
     if (!file) return;
 
     try {
+      // Type assertion to ensure type safety
+      const imageTypeKey = imageType as GuardImageKey;
+      const previewTypeKey = imageType as PreviewImageKey;
+      
       // Handle single file uploads
       if (file instanceof File) {
         const processedFile = await resizeAndCompressImage(file, 800, 800, 0.6, 2);
         
         setGuardImages(prev => ({
           ...prev,
-          [imageType]: processedFile
+          [imageTypeKey]: processedFile
         }));
         
         // Create preview URL
         const previewUrl = URL.createObjectURL(processedFile);
         setImagePreviews(prev => ({
           ...prev,
-          [imageType]: previewUrl
+          [previewTypeKey]: previewUrl
         }));
         
         // Mark as "verified" for progress tracking
@@ -1186,7 +1227,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         
         // For vehicle images, enforce a maximum of 10 images
         if (imageType === 'vehicleImages') {
-          const currentImages = guardImages[imageType] as File[] || [];
+          const currentImages = (guardImages[imageTypeKey] as File[] | undefined) || [];
           const currentCount = currentImages.length;
           const maxNewImages = Math.max(0, 10 - currentCount);
           
@@ -1207,14 +1248,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
           setGuardImages(prev => ({
             ...prev,
-            [imageType]: [...(prev[imageType] as File[] || []), ...processedFiles]
+            [imageTypeKey]: [...((prev[imageTypeKey] as File[] | undefined) || []), ...processedFiles]
           }));
           
           // Create preview URLs
           const previewUrls = processedFiles.map(f => URL.createObjectURL(f));
           setImagePreviews(prev => ({
             ...prev,
-            [imageType]: [...(prev[imageType] as string[] || []), ...previewUrls]
+            [previewTypeKey]: [...((prev[previewTypeKey] as string[] | undefined) || []), ...previewUrls]
           }));
         } else {
           // For other image types, still compress but without the strict limit
@@ -1222,14 +1263,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
           setGuardImages(prev => ({
             ...prev,
-            [imageType]: [...(prev[imageType] as File[] || []), ...processedFiles]
+            [imageTypeKey]: [...((prev[imageTypeKey] as File[] | undefined) || []), ...processedFiles]
           }));
           
           // Create preview URLs
           const previewUrls = processedFiles.map(f => URL.createObjectURL(f));
           setImagePreviews(prev => ({
             ...prev,
-            [imageType]: [...(prev[imageType] as string[] || []), ...previewUrls]
+            [previewTypeKey]: [...((prev[previewTypeKey] as string[] | undefined) || []), ...previewUrls]
           }));
         }
         
@@ -3999,9 +4040,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              {/* Ensure all required fields are displayed, even if some have to be taken from different sources */}
               {Object.entries(session.tripDetails).map(([key, value]) => {
-                // Skip empty values and certain fields that shouldn't be displayed
-                if (!value || key === 'source' || key === 'destination') {
+                // Skip source and destination as they're already shown in Basic Information
+                if (key === 'source' || key === 'destination') {
+                  return null;
+                }
+                
+                // Skip null/undefined values
+                if (value === null || value === undefined) {
                   return null;
                 }
                 
@@ -4239,9 +4286,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         component="img" 
                         src={image} 
                         alt={`Vehicle ${index + 1}`} 
+                        loading="lazy"
+                        onError={(e) => {
+                          console.error("Failed to load image:", image);
+                          // Apply fallback image or styling on error
+                          e.currentTarget.style.background = '#f0f0f0';
+                          e.currentTarget.style.display = 'flex';
+                          e.currentTarget.style.alignItems = 'center';
+                          e.currentTarget.style.justifyContent = 'center';
+                          e.currentTarget.style.color = '#666';
+                          e.currentTarget.style.fontSize = '12px';
+                          e.currentTarget.innerText = 'Image not available';
+                        }}
                         sx={{ 
                           width: '100%', 
-                          maxHeight: '200px', 
+                          height: '200px', 
                           objectFit: 'cover', 
                           borderRadius: '4px',
                           cursor: 'pointer',
