@@ -126,6 +126,8 @@ type SessionType = {
     loaderMobileNumber?: string;
     loadingSite?: string;
     receiverPartyName?: string;
+    source?: string;
+    destination?: string;
   };
   images?: {
     gpsImeiPicture?: string;
@@ -1892,9 +1894,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </TableCell>
                       <TableCell>
                         <Chip 
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          color="primary" 
                           size="small"
-                          label={seal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                          color={seal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell>{new Date(seal.timestamp).toLocaleString()}</TableCell>
@@ -2049,9 +2051,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip 
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          color="primary" 
                           size="small"
-                          label={seal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                          color={seal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell>{new Date(seal.timestamp).toLocaleString()}</TableCell>
@@ -2177,9 +2179,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{operatorSeal.id}</TableCell>
                               <TableCell>
                         <Chip 
+                          label={operatorSeal.method === 'digital' || operatorSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          color="primary" 
                           size="small"
-                          label={operatorSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                          color={operatorSeal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell sx={{ borderRight: '1px solid rgba(224, 224, 224, 1)' }}>
@@ -2190,9 +2192,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <TableCell>{matchingGuardSeal.id}</TableCell>
                           <TableCell>
                             <Chip 
+                              label={matchingGuardSeal.method === 'digital' || matchingGuardSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                              color="primary" 
                               size="small"
-                              label={matchingGuardSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                              color={matchingGuardSeal.method === 'digital' ? 'info' : 'default'}
                             />
                           </TableCell>
                           <TableCell>
@@ -2237,9 +2239,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{guardSeal.id}</TableCell>
                       <TableCell>
                         <Chip 
+                          label={guardSeal.method === 'digital' || guardSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                          color="primary" 
                           size="small"
-                          label={guardSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                          color={guardSeal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell>
@@ -2373,9 +2375,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <>
                           <TableCell>
                             <Chip 
+                              label={operatorSeal.method === 'digital' || operatorSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                              color="primary" 
                               size="small"
-                              label={operatorSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                              color={operatorSeal.method === 'digital' ? 'info' : 'default'}
                             />
                           </TableCell>
                           <TableCell>
@@ -2410,9 +2412,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <>
                           <TableCell>
                             <Chip 
+                              label={guardSeal.method === 'digital' || guardSeal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
+                              color="primary" 
                               size="small"
-                              label={guardSeal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                              color={guardSeal.method === 'digital' ? 'info' : 'default'}
                             />
                           </TableCell>
                           <TableCell>
@@ -2507,7 +2509,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method === 'digital' ? "Scanned" : "Manual Entry"}
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
@@ -3720,7 +3722,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Box display="flex" alignItems="center" mb={1}>
                       <LocationOn color="primary" sx={{ mr: 1 }} />
                       <Typography variant="body1">
-                        <strong>Source:</strong> {session.source}
+                        <strong>Source:</strong> {session.tripDetails?.source || session.source}
                       </Typography>
                     </Box>
                   </Box>
@@ -3728,7 +3730,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Box display="flex" alignItems="center" mb={1}>
                       <LocationOn color="primary" sx={{ mr: 1 }} />
                       <Typography variant="body1">
-                        <strong>Destination:</strong> {session.destination}
+                        <strong>Destination:</strong> {session.tripDetails?.destination || session.destination}
                       </Typography>
                     </Box>
                   </Box>
@@ -3944,7 +3946,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Source:</strong> {session.source}
+                  <strong>Source:</strong> {session.tripDetails?.source || session.source}
                 </Typography>
               </Box>
             </Box>
@@ -3952,7 +3954,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Destination:</strong> {session.destination}
+                  <strong>Destination:</strong> {session.tripDetails?.destination || session.destination}
                 </Typography>
               </Box>
             </Box>
@@ -3990,15 +3992,26 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              {Object.entries(session.tripDetails).map(([key, value]) => (
-                value && (
+              {Object.entries(session.tripDetails).map(([key, value]) => {
+                // Skip empty values and certain fields that shouldn't be displayed
+                if (!value || key === 'source' || key === 'destination') {
+                  return null;
+                }
+                
+                // Format specific fields
+                let displayValue = String(value);
+                if (key === 'freight' || key === 'grossWeight' || key === 'tareWeight' || key === 'netMaterialWeight') {
+                  displayValue = `${displayValue} kg`;
+                }
+                
+                return (
                   <Box key={key} sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                     <Typography variant="body1">
-                      <strong>{getFieldLabel(key)}:</strong> {String(value)}
+                      <strong>{getFieldLabel(key)}:</strong> {displayValue}
                     </Typography>
                   </Box>
-                )
-              ))}
+                );
+              })}
             </Box>
           </Box>
         )}
@@ -4032,7 +4045,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method === 'digital' ? "Scanned" : "Manual Entry"}
+                          label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"}
                           color="primary" 
                           size="small"
                         />
