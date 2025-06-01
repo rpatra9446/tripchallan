@@ -4067,7 +4067,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               {/* Ensure all required fields are displayed, even if some have to be taken from different sources */}
               {Object.entries(session.tripDetails).map(([key, value]) => {
                 // Skip source and destination as they're already shown in Basic Information
-                if (key === 'source' || key === 'destination') {
+                if (key === 'source' || key === 'destination' || 
+                    key === 'loadingSite' || key === 'cargoType' || 
+                    key === 'numberOfPackages') {
                   return null;
                 }
                 
@@ -4091,7 +4093,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 );
               })}
               
-              {/* Trip details fields are now rendered in the Object.entries mapping above */}
+              {/* Explicitly add the critical fields that need to be displayed */}
+              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                <Typography variant="body1">
+                  <strong>Loading Site:</strong> {session.tripDetails.loadingSite || "N/A"}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                <Typography variant="body1">
+                  <strong>Cargo Type:</strong> {session.tripDetails.cargoType || session.tripDetails.materialName || "N/A"}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                <Typography variant="body1">
+                  <strong>Number of Packages:</strong> {session.tripDetails.numberOfPackages || "N/A"}
+                </Typography>
+              </Box>
             </Box>
           </Box>
         )}

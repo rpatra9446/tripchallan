@@ -259,14 +259,17 @@ async function handler(
       tripDetailsNumberOfPackages: (tripDetails as any)?.numberOfPackages
     });
 
-    // Use the source and destination from session data directly
-    // DO NOT use loadingSite or receiverPartyName as substitutes
-    enhancedSessionData.source = sessionData.source;
-    enhancedSessionData.destination = sessionData.destination;
-    
-    // Ensure tripDetails maintains its original values
+    // Ensure source and destination values are properly set
+    // Source and destination should come from tripDetails.source and tripDetails.destination
+    // which are the values entered by the OPERATOR
     if (tripDetails && typeof tripDetails === 'object') {
-      // No modifications to tripDetails
+      if ((tripDetails as any).source) {
+        enhancedSessionData.source = (tripDetails as any).source;
+      }
+      
+      if ((tripDetails as any).destination) {
+        enhancedSessionData.destination = (tripDetails as any).destination;
+      }
     }
 
     console.log("[API DEBUG] Final enhanced session data:", {
