@@ -662,13 +662,6 @@ export default function CreateSessionPage() {
   // Now update the handleAddSealTagWithImage function to use this check
   // Add a handler for adding seal tags with images
   const handleAddSealTagWithImage = async (tagId: string, imageFile: File) => {
-    // Check if we've reached the maximum number of allowed seal tags
-    if (sealTags.sealTagIds.length >= 40) {
-      setError("Maximum of 40 seal tags allowed");
-      setTimeout(() => setError(""), 3000);
-      return;
-    }
-    
     // Check if tag is already in the list
     if (sealTags.sealTagIds.includes(tagId)) {
       setError("Tag ID already used in this session");
@@ -709,13 +702,6 @@ export default function CreateSessionPage() {
   // Update handleAddSealTag for manual entries to require an image and check for existence
   const handleAddSealTag = async () => {
     if (!sealTags.manualSealTagId) return;
-    
-    // Check if we've reached the maximum number of allowed seal tags
-    if (sealTags.sealTagIds.length >= 40) {
-      setError("Maximum of 40 seal tags allowed");
-      setTimeout(() => setError(""), 3000);
-      return;
-    }
     
     // Check if tag is already in the list
     if (sealTags.sealTagIds.includes(sealTags.manualSealTagId)) {
@@ -821,10 +807,6 @@ export default function CreateSessionPage() {
     
       if (sealTags.sealTagIds.length === 0) {
         newErrors.sealTagIds = "At least one seal tag ID is required";
-      }
-      
-      if (sealTags.sealTagIds.length > 40) {
-        newErrors.sealTagIds = "Maximum of 40 seal tags allowed";
       }
       
     // Check for minimum number of tags (minimum 20 required)
