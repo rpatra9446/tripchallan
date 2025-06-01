@@ -161,7 +161,7 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-async function resizeImage(file: File, maxWidth = 1280, maxHeight = 1280, quality = 0.8/*, maxSizeInMB = 2*/): Promise<File> {
+async function resizeImage(file: File, maxWidth = 800, maxHeight = 800, quality = 0.6): Promise<File> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -204,21 +204,20 @@ async function resizeImage(file: File, maxWidth = 1280, maxHeight = 1280, qualit
             return;
           }
           
-          // // Check if the size is still too large
-          // if (blob.size > maxSizeInMB * 1024 * 1024) { // This line and the block below should be commented
-          //   // If still too large, try with lower quality
-          //   if (quality > 0.4) {
-          //     resizeImage(file, maxWidth, maxHeight, quality - 0.1 /*, maxSizeInMB*/) // maxSizeInMB commented
-          //       .then(resolve)
-          //       .catch(reject);
-          //   } else {
-          //     // Reduce dimensions further if quality reduction isn't enough
-          //     resizeImage(file, Math.round(maxWidth * 0.7), Math.round(maxHeight * 0.7), 0.6 /*, maxSizeInMB*/) // maxSizeInMB commented
-          //       .then(resolve)
-          //       .catch(reject);
-          //   }
-          //   return;
-          // }
+          // Check if the size is still too large (> 2MB)
+          if (blob.size > 2 * 1024 * 1024) {
+            // If still too large, try with lower quality and smaller dimensions
+            if (quality > 0.3) {
+              const newWidth = Math.round(width * 0.8);
+              const newHeight = Math.round(height * 0.8);
+              const newQuality = quality - 0.1;
+              
+              resizeImage(file, newWidth, newHeight, newQuality)
+                .then(resolve)
+                .catch(reject);
+              return;
+            }
+          }
           
           // Convert blob to file
           const resizedFile = new File([blob], file.name, {
@@ -577,7 +576,7 @@ export default function CreateSessionPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: keyof ImagesForm | 'registrationCertificateDoc' | 'driverLicenseDoc') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: keyof ImagesForm | 'registrationCertificateDoc' | 'driverLicenseDoc') => {
     if (!e.target.files?.length) return;
     
     if (fieldName === 'vehicleImages' || fieldName === 'additionalImages') {
@@ -585,46 +584,74 @@ export default function CreateSessionPage() {
       const filesArray = Array.from(e.target.files);
       
       if (filesArray.length > 0) {
+        try {
+          // Process and resize each image
+          const processedFiles = await Promise.all(
+            filesArray.map(file => resizeImage(file))
+          );
+          
+          setImagesForm(prev => ({
+            ...prev,
+            [fieldName]: [...prev[fieldName] as File[], ...processedFiles],
+            timestamps: {
+              ...prev.timestamps,
+              [fieldName]: new Date().toISOString()
+            }
+          }));
+        } catch (error) {
+          console.error("Error processing images:", error);
+          setError("Failed to process some images. Please try with smaller images.");
+        }
+      }
+    } else if (fieldName === 'registrationCertificateDoc') {
+      try {
+        const file = e.target.files[0];
+        const processedFile = await resizeImage(file);
+        
+        setLoadingDetails(prev => ({
+          ...prev,
+          registrationCertificateDoc: processedFile,
+          timestamps: {
+            ...prev.timestamps,
+            registrationCertificateDoc: new Date().toISOString()
+          }
+        }));
+      } catch (error) {
+        console.error("Error processing registration certificate:", error);
+      }
+    } else if (fieldName === 'driverLicenseDoc') {
+      try {
+        const file = e.target.files[0];
+        const processedFile = await resizeImage(file);
+        
+        setDriverDetails(prev => ({
+          ...prev,
+          driverLicenseDoc: processedFile,
+          timestamps: {
+            ...prev.timestamps,
+            driverLicenseDoc: new Date().toISOString()
+          }
+        }));
+      } catch (error) {
+        console.error("Error processing driver license:", error);
+      }
+    } else {
+      // Handle other single file uploads (non-array fields)
+      try {
+        const file = e.target.files[0];
+        const processedFile = await resizeImage(file);
+        
         setImagesForm(prev => ({
           ...prev,
-          [fieldName]: [...prev[fieldName] as File[], ...filesArray],
+          [fieldName]: processedFile,
           timestamps: {
             ...prev.timestamps,
             [fieldName]: new Date().toISOString()
           }
         }));
+      } catch (error) {
+        console.error(`Error processing image for ${fieldName}:`, error);
       }
-    } else if (fieldName === 'registrationCertificateDoc') {
-      const file = e.target.files[0];
-      setLoadingDetails(prev => ({
-        ...prev,
-        registrationCertificateDoc: file,
-        timestamps: {
-          ...prev.timestamps,
-          registrationCertificateDoc: new Date().toISOString()
-        }
-      }));
-    } else if (fieldName === 'driverLicenseDoc') {
-      const file = e.target.files[0];
-      setDriverDetails(prev => ({
-        ...prev,
-        driverLicenseDoc: file,
-        timestamps: {
-          ...prev.timestamps,
-          driverLicenseDoc: new Date().toISOString()
-        }
-      }));
-    } else {
-      // Handle other single file uploads (non-array fields)
-      const file = e.target.files[0];
-      setImagesForm(prev => ({
-        ...prev,
-        [fieldName]: file,
-        timestamps: {
-          ...prev.timestamps,
-          [fieldName]: new Date().toISOString()
-        }
-      }));
     }
     
     // Clear validation error when file is uploaded
@@ -791,19 +818,26 @@ export default function CreateSessionPage() {
   const [manualEntryImage, setManualEntryImage] = useState<File | null>(null);
 
   // Handle image upload for manual seal tag entries
-  const handleManualSealTagImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleManualSealTagImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
     
-    const file = e.target.files[0];
-    setManualEntryImage(file);
-    
-    // Clear validation error when file is uploaded
-    if (validationErrors.manualEntryImage) {
-      setValidationErrors(prev => {
-        const newErrors = {...prev};
-        delete newErrors.manualEntryImage;
-        return newErrors;
-      });
+    try {
+      const file = e.target.files[0];
+      const processedFile = await resizeImage(file);
+      setManualEntryImage(processedFile);
+      
+      // Clear validation error when file is uploaded
+      if (validationErrors.manualEntryImage) {
+        setValidationErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors.manualEntryImage;
+          return newErrors;
+        });
+      }
+    } catch (error) {
+      console.error("Error processing seal tag image:", error);
+      setError("Failed to process image. Please try with a smaller image.");
+      setTimeout(() => setError(""), 3000);
     }
   };
 
@@ -2354,25 +2388,62 @@ export default function CreateSessionPage() {
                 <Typography variant="subtitle1" gutterBottom>
                   Upload Vehicle Number Plate
                 </Typography>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<PhotoCamera />}
-                  fullWidth
-                  sx={{ height: '56px' }}
-                >
-                  {imagesForm.vehicleNumberPlatePicture ? 'Change Image' : 'Upload Image'}
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'vehicleNumberPlatePicture')}
-                  />
-                </Button>
-                {imagesForm.vehicleNumberPlatePicture && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    {imagesForm.vehicleNumberPlatePicture.name}
-                  </Typography>
+                {!imagesForm.vehicleNumberPlatePicture ? (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<PhotoCamera />}
+                      sx={{ height: '56px', flex: 1 }}
+                    >
+                      Take Photo
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => handleFileChange(e, 'vehicleNumberPlatePicture')}
+                      />
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<CloudUpload />}
+                      sx={{ height: '56px', flex: 1 }}
+                    >
+                      Upload
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, 'vehicleNumberPlatePicture')}
+                      />
+                    </Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ maxWidth: '200px', maxHeight: '150px', overflow: 'hidden', borderRadius: '4px' }}>
+                      {renderImagePreview(imagesForm.vehicleNumberPlatePicture)}
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {imagesForm.vehicleNumberPlatePicture.name}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<Delete />}
+                        onClick={() => {
+                          setImagesForm(prev => ({
+                            ...prev,
+                            vehicleNumberPlatePicture: null
+                          }));
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  </Box>
                 )}
                 {validationErrors.vehicleNumberPlatePicture && (
                   <FormHelperText error>{validationErrors.vehicleNumberPlatePicture}</FormHelperText>
@@ -2383,27 +2454,91 @@ export default function CreateSessionPage() {
                 <Typography variant="subtitle1" gutterBottom>
                   Upload Vehicle Images
                 </Typography>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<PhotoCamera />}
-                  fullWidth
-                  sx={{ height: '56px' }}
-                >
-                  Upload Images (Multiple)
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => handleFileChange(e, 'vehicleImages')}
-                  />
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<PhotoCamera />}
+                    sx={{ height: '56px', flex: 1 }}
+                  >
+                    Take Photo
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => handleFileChange(e, 'vehicleImages')}
+                    />
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ height: '56px', flex: 1 }}
+                  >
+                    Upload Images
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleFileChange(e, 'vehicleImages')}
+                    />
+                  </Button>
+                </Box>
+                
                 {imagesForm.vehicleImages.length > 0 && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    {imagesForm.vehicleImages.length} image(s) selected
-                  </Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" gutterBottom>
+                      {imagesForm.vehicleImages.length} image(s) selected
+                    </Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexWrap: 'wrap', 
+                      gap: 1,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      p: 1,
+                      border: '1px solid #eee',
+                      borderRadius: '4px'
+                    }}>
+                      {imagesForm.vehicleImages.map((file, index) => (
+                        <Box 
+                          key={`${file.name}-${index}`} 
+                          sx={{ 
+                            position: 'relative',
+                            width: '80px', 
+                            height: '80px',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {renderImagePreview(file)}
+                          <IconButton
+                            size="small"
+                            sx={{ 
+                              position: 'absolute', 
+                              top: 0, 
+                              right: 0, 
+                              bgcolor: 'rgba(255,255,255,0.7)',
+                              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' }
+                            }}
+                            onClick={() => {
+                              setImagesForm(prev => ({
+                                ...prev,
+                                vehicleImages: prev.vehicleImages.filter((_, i) => i !== index)
+                              }));
+                            }}
+                          >
+                            <Delete fontSize="small" color="error" />
+                          </IconButton>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
                 )}
+                
                 {validationErrors.vehicleImages && (
                   <FormHelperText error>{validationErrors.vehicleImages}</FormHelperText>
                 )}
