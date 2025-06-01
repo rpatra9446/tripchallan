@@ -245,6 +245,21 @@ async function handler(
       activityLogs: filteredVerificationLogs
     };
 
+    // Debug logging to see the exact structure
+    console.log("[API DEBUG] Session data structure:", {
+      id: sessionData.id,
+      source: sessionData.source,
+      destination: sessionData.destination,
+      tripDetailsSource: (tripDetails as any)?.source,
+      tripDetailsDestination: (tripDetails as any)?.destination,
+      tripDetailsLoadingSite: (tripDetails as any)?.loadingSite,
+      tripDetailsReceiverPartyName: (tripDetails as any)?.receiverPartyName
+    });
+
+    // Explicitly ensure source and destination use the correct fields
+    enhancedSessionData.source = sessionData.source || (tripDetails as any)?.source;
+    enhancedSessionData.destination = sessionData.destination || (tripDetails as any)?.destination;
+
     // Check authorization based on user role
     const userRole = session?.user.role;
     const userId = session?.user.id;

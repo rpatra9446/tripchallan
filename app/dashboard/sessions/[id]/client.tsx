@@ -128,6 +128,10 @@ type SessionType = {
     receiverPartyName?: string;
     source?: string;
     destination?: string;
+    cargoType?: string;
+    numberOfPackages?: string | number;
+    sealTagIds?: string[] | string;
+    sealTagMethods?: Record<string, string>;
   };
   images?: {
     gpsImeiPicture?: string;
@@ -538,8 +542,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         const methodValue = seal.method || 'unknown';
         const isDigital = methodValue.toLowerCase().includes('digital') || 
                          methodValue.toLowerCase().includes('scan') || 
-                         methodValue === 'qr' || 
-                         methodValue === 'barcode';
+                         methodValue.toLowerCase().includes('qr') || 
+                         methodValue.toLowerCase().includes('barcode') ||
+                         methodValue.toLowerCase().includes('code');
                          
         seals.push({
           id: seal.barcode,
@@ -613,7 +618,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           const isDigital = methodValue.toLowerCase().includes('digital') || 
                            methodValue.toLowerCase().includes('scan') || 
                            methodValue === 'qr' || 
-                           methodValue === 'barcode';
+                           methodValue === 'barcode' ||
+                           methodValue.toLowerCase().includes('qr') ||
+                           methodValue.toLowerCase().includes('code');
           
           seals.push({
             id,
@@ -638,11 +645,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           tripDetails.sealTagIds : 
           (typeof tripDetails.sealTagIds === 'string' ? 
             JSON.parse(tripDetails.sealTagIds) : []);
+            
+        // Check if there's a methods object
+        const sealTagMethods = tripDetails.sealTagMethods || {};
         
         sealTagIds.forEach((id: string) => {
+          // Check if there's a method specified and if it's digital
+          const methodValue = typeof sealTagMethods === 'object' ? 
+            (sealTagMethods[id] || 'unknown') : 'unknown';
+            
+          const isDigital = methodValue.toLowerCase().includes('digital') || 
+                         methodValue.toLowerCase().includes('scan') || 
+                         methodValue.toLowerCase().includes('qr') || 
+                         methodValue.toLowerCase().includes('barcode') ||
+                         methodValue.toLowerCase().includes('code');
+                         
           seals.push({
             id,
-            method: 'manual',
+            method: isDigital ? 'digital' : 'manual',
             image: null,
             timestamp: session.createdAt
           });
@@ -4079,14 +4099,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               {/* Add Cargo Type field */}
               <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                 <Typography variant="body1">
-                  <strong>Cargo Type:</strong> {session.tripDetails.materialName || "N/A"}
+                  <strong>Cargo Type:</strong> {session.tripDetails.cargoType || session.tripDetails.materialName || "N/A"}
                 </Typography>
               </Box>
               
               {/* Add Number of Packages field */}
               <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                 <Typography variant="body1">
-                  <strong>Number of Packages:</strong> N/A
+                  <strong>Number of Packages:</strong> {session.tripDetails.numberOfPackages || "N/A"}
                 </Typography>
               </Box>
             </Box>
