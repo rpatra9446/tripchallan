@@ -162,6 +162,16 @@ async function handler(
       if (details.tripDetails) {
         tripDetails = details.tripDetails;
         console.log("[API DEBUG] Found trip details:", Object.keys(details.tripDetails));
+        
+        // Ensure source and destination from tripDetails are properly carried over
+        if (tripDetails && typeof tripDetails === 'object') {
+          console.log("[API DEBUG] Trip details source and destination:", {
+            source: (tripDetails as any).source,
+            destination: (tripDetails as any).destination,
+            loadingSite: (tripDetails as any).loadingSite,
+            receiverPartyName: (tripDetails as any).receiverPartyName,
+          });
+        }
       }
       
       // Extract timestamps

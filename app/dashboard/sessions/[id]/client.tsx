@@ -575,9 +575,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         
         // Create the seals array from the collected data
         sealTagIds.forEach(id => {
+          // Properly determine the method - treat any "digital" or scan-related keyword as digital
+          const methodValue = sealTagMethods[id] || 'unknown';
+          const isDigital = methodValue.toLowerCase().includes('digital') || 
+                           methodValue.toLowerCase().includes('scan') || 
+                           methodValue === 'qr' || 
+                           methodValue === 'barcode';
+          
           seals.push({
             id,
-            method: sealTagMethods[id] || 'unknown',
+            method: isDigital ? 'digital' : 'manual',
             image: sealTagImages[id] || null,
             timestamp: sealTagLog.createdAt || session.createdAt
           });
@@ -3284,8 +3291,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={seal.method === 'digital' ? 'Digitally Scanned' : 'Manual'} 
-                          color={seal.method === 'digital' ? 'info' : 'default'}
+                                                        label={seal.method === 'digital' || seal.method === 'digitally scanned' ? "Digitally Scanned" : "Manual Entry"} 
+                                                      color={seal.method === 'digital' || seal.method === 'digitally scanned' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell>
