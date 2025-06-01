@@ -46,6 +46,7 @@ import { SessionUpdateContext } from "@/app/dashboard/layout";
 import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
 import SimpleQrScanner from "@/app/components/SimpleQrScanner";
 import { toast } from "react-hot-toast";
+import { resizeAndCompressImage, processMultipleImages } from "@/lib/imageUtils";
 
 type CompanyType = {
   id: string;
@@ -580,33 +581,66 @@ export default function CreateSessionPage() {
     if (!e.target.files?.length) return;
     
     if (fieldName === 'vehicleImages' || fieldName === 'additionalImages') {
-      // Filter out files that are too large
+      // Handle multiple image uploads with compression and file limit
       const filesArray = Array.from(e.target.files);
       
       if (filesArray.length > 0) {
         try {
-          // Process and resize each image
-          const processedFiles = await Promise.all(
-            filesArray.map(file => resizeImage(file))
-          );
-          
-          setImagesForm(prev => ({
-            ...prev,
-            [fieldName]: [...prev[fieldName] as File[], ...processedFiles],
-            timestamps: {
-              ...prev.timestamps,
-              [fieldName]: new Date().toISOString()
+          // If it's vehicle images, enforce the 10 image limit including existing images
+          if (fieldName === 'vehicleImages') {
+            const currentCount = imagesForm.vehicleImages.length;
+            const maxNewImages = Math.max(0, 10 - currentCount);
+            
+            if (maxNewImages <= 0) {
+              toast.error("Maximum of 10 vehicle images allowed");
+              return;
             }
-          }));
+            
+            if (filesArray.length > maxNewImages) {
+              toast("Only " + maxNewImages + " more image(s) can be added (maximum 10 total)", { 
+                icon: '⚠️',
+                style: {
+                  background: '#FFF3CD',
+                  color: '#856404'
+                }
+              });
+            }
+            
+            // Process and compress the allowed number of images
+            const limitedFiles = filesArray.slice(0, maxNewImages);
+            const processedFiles = await processMultipleImages(limitedFiles, maxNewImages, 2);
+            
+            setImagesForm(prev => ({
+              ...prev,
+              [fieldName]: [...prev[fieldName] as File[], ...processedFiles],
+              timestamps: {
+                ...prev.timestamps,
+                [fieldName]: new Date().toISOString()
+              }
+            }));
+          } else {
+            // For other multi-image fields, still process but without strict limit
+            const processedFiles = await processMultipleImages(filesArray);
+            
+            setImagesForm(prev => ({
+              ...prev,
+              [fieldName]: [...prev[fieldName] as File[], ...processedFiles],
+              timestamps: {
+                ...prev.timestamps,
+                [fieldName]: new Date().toISOString()
+              }
+            }));
+          }
         } catch (error) {
           console.error("Error processing images:", error);
           setError("Failed to process some images. Please try with smaller images.");
+          setTimeout(() => setError(""), 5000);
         }
       }
     } else if (fieldName === 'registrationCertificateDoc') {
       try {
         const file = e.target.files[0];
-        const processedFile = await resizeImage(file);
+        const processedFile = await resizeAndCompressImage(file);
         
         setLoadingDetails(prev => ({
           ...prev,
@@ -618,11 +652,12 @@ export default function CreateSessionPage() {
         }));
       } catch (error) {
         console.error("Error processing registration certificate:", error);
+        toast.error("Failed to process image. Please try with a smaller image.");
       }
     } else if (fieldName === 'driverLicenseDoc') {
       try {
         const file = e.target.files[0];
-        const processedFile = await resizeImage(file);
+        const processedFile = await resizeAndCompressImage(file);
         
         setDriverDetails(prev => ({
           ...prev,
@@ -634,12 +669,13 @@ export default function CreateSessionPage() {
         }));
       } catch (error) {
         console.error("Error processing driver license:", error);
+        toast.error("Failed to process image. Please try with a smaller image.");
       }
     } else {
       // Handle other single file uploads (non-array fields)
       try {
         const file = e.target.files[0];
-        const processedFile = await resizeImage(file);
+        const processedFile = await resizeAndCompressImage(file);
         
         setImagesForm(prev => ({
           ...prev,
@@ -651,6 +687,7 @@ export default function CreateSessionPage() {
         }));
       } catch (error) {
         console.error(`Error processing image for ${fieldName}:`, error);
+        toast.error("Failed to process image. Please try with a smaller image.");
       }
     }
     

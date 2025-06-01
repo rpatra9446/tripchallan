@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "react-hot-toast";
+import { resizeAndCompressImage } from "@/lib/imageUtils";
 import { 
   Box, 
   Typography, 
@@ -28,7 +30,11 @@ import {
   Photo, 
   Close,
   PhotoCamera,
-  Flag
+  Flag,
+  DeleteOutline,
+  Warning,
+  Error,
+  Info
 } from "@mui/icons-material";
 import { UserRole } from "@/prisma/enums";
 
@@ -103,20 +109,27 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
   }, [sessionId, fetchComments]);
 
   // Handle image selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) {
       return;
     }
 
-    const file = e.target.files[0];
-    setSelectedImage(file);
+    try {
+      const file = e.target.files[0];
+      // Compress the image before setting it
+      const compressedImage = await resizeAndCompressImage(file);
+      setSelectedImage(compressedImage);
 
-    // Create and set image preview URL
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+      // Create and set image preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(compressedImage);
+    } catch (error) {
+      console.error("Error processing image:", error);
+      toast.error("Failed to process image. Please try with a smaller image.");
+    }
   };
 
   // Remove selected image

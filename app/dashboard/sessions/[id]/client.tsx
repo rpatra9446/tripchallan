@@ -67,6 +67,7 @@ import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
 import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
 import { toast } from "react-hot-toast";
+import { processMultipleImages, resizeAndCompressImage } from "@/lib/imageUtils";
 
 // Types
 type SealType = {
@@ -1144,51 +1145,94 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   };
 
   // Handle file uploads
-  const handleImageUpload = (imageType: string, file: File | FileList | null) => {
+  const handleImageUpload = async (imageType: string, file: File | FileList | null) => {
     if (!file) return;
 
-    // Handle single file uploads
-    if (file instanceof File) {
-      setGuardImages(prev => ({
-        ...prev,
-        [imageType]: file
-      }));
-      
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreviews(prev => ({
-        ...prev,
-        [imageType]: previewUrl
-      }));
-      
-      // Mark as "verified" for progress tracking
-      setImageVerificationStatus(prev => ({
-        ...prev,
-        [imageType]: true
-      }));
-      
-    } 
-    // Handle multiple file uploads
-    else if (file instanceof FileList) {
-      const fileArray = Array.from(file);
-      
-      setGuardImages(prev => ({
-        ...prev,
-        [imageType]: [...(prev[imageType as keyof typeof prev] as File[] || []), ...fileArray]
-      }));
-      
-      // Create preview URLs
-      const previewUrls = fileArray.map(f => URL.createObjectURL(f));
-      setImagePreviews(prev => ({
-        ...prev,
-        [imageType]: [...(prev[imageType as keyof typeof prev] as string[] || []), ...previewUrls]
-      }));
-      
-      // Mark as "verified" for progress tracking
-      setImageVerificationStatus(prev => ({
-        ...prev,
-        [imageType]: true
-      }));
+    try {
+      // Handle single file uploads
+      if (file instanceof File) {
+        const processedFile = await resizeAndCompressImage(file, 800, 800, 0.6, 2);
+        
+        setGuardImages(prev => ({
+          ...prev,
+          [imageType]: processedFile
+        }));
+        
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(processedFile);
+        setImagePreviews(prev => ({
+          ...prev,
+          [imageType]: previewUrl
+        }));
+        
+        // Mark as "verified" for progress tracking
+        setImageVerificationStatus(prev => ({
+          ...prev,
+          [imageType]: true
+        }));
+      } 
+      // Handle multiple file uploads
+      else if (file instanceof FileList) {
+        const fileArray = Array.from(file);
+        
+        // For vehicle images, enforce a maximum of 10 images
+        if (imageType === 'vehicleImages') {
+          const currentImages = guardImages[imageType] as File[] || [];
+          const currentCount = currentImages.length;
+          const maxNewImages = Math.max(0, 10 - currentCount);
+          
+          if (maxNewImages <= 0) {
+            toast.error("Maximum of 10 vehicle images allowed");
+            return;
+          }
+          
+          if (fileArray.length > maxNewImages) {
+            toast("Only " + maxNewImages + " more image(s) can be added (maximum 10 total)", {
+              icon: '⚠️'
+            });
+          }
+          
+          // Process and compress the allowed number of images
+          const limitedFiles = fileArray.slice(0, maxNewImages);
+          const processedFiles = await processMultipleImages(limitedFiles, maxNewImages, 2);
+          
+          setGuardImages(prev => ({
+            ...prev,
+            [imageType]: [...(prev[imageType] as File[] || []), ...processedFiles]
+          }));
+          
+          // Create preview URLs
+          const previewUrls = processedFiles.map(f => URL.createObjectURL(f));
+          setImagePreviews(prev => ({
+            ...prev,
+            [imageType]: [...(prev[imageType] as string[] || []), ...previewUrls]
+          }));
+        } else {
+          // For other image types, still compress but without the strict limit
+          const processedFiles = await processMultipleImages(fileArray);
+          
+          setGuardImages(prev => ({
+            ...prev,
+            [imageType]: [...(prev[imageType] as File[] || []), ...processedFiles]
+          }));
+          
+          // Create preview URLs
+          const previewUrls = processedFiles.map(f => URL.createObjectURL(f));
+          setImagePreviews(prev => ({
+            ...prev,
+            [imageType]: [...(prev[imageType] as string[] || []), ...previewUrls]
+          }));
+        }
+        
+        // Mark as "verified" for progress tracking
+        setImageVerificationStatus(prev => ({
+          ...prev,
+          [imageType]: true
+        }));
+      }
+    } catch (error) {
+      console.error("Error processing images:", error);
+      toast.error("Failed to process images. Please try with smaller images.");
     }
   };
 
