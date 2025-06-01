@@ -3838,7 +3838,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Box display="flex" alignItems="center" mb={1}>
                       <LocationOn color="primary" sx={{ mr: 1 }} />
                       <Typography variant="body1">
-                        <strong>Source:</strong> {session.source || session.tripDetails?.source || "N/A"}
+                        <strong>Source:</strong> {session.tripDetails?.source || session.source || "N/A"}
                       </Typography>
                     </Box>
                   </Box>
@@ -3846,7 +3846,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Box display="flex" alignItems="center" mb={1}>
                       <LocationOn color="primary" sx={{ mr: 1 }} />
                       <Typography variant="body1">
-                        <strong>Destination:</strong> {session.destination || session.tripDetails?.destination || "N/A"}
+                        <strong>Destination:</strong> {session.tripDetails?.destination || session.destination || "N/A"}
                       </Typography>
                     </Box>
                   </Box>
@@ -4062,7 +4062,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Source:</strong> {session.source || session.tripDetails?.source || "N/A"}
+                  <strong>Source:</strong> {session.tripDetails?.source || session.source || "N/A"}
                 </Typography>
               </Box>
             </Box>
@@ -4070,7 +4070,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
-                  <strong>Destination:</strong> {session.destination || session.tripDetails?.destination || "N/A"}
+                  <strong>Destination:</strong> {session.tripDetails?.destination || session.destination || "N/A"}
                 </Typography>
               </Box>
             </Box>
@@ -4138,21 +4138,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               {/* Add Loading Site field */}
               <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                 <Typography variant="body1">
-                  <strong>Loading Site:</strong> {session.tripDetails.loadingSite || "N/A"}
+                  <strong>Loading Site:</strong> {session.tripDetails.loadingSite || session.source || "N/A"}
                 </Typography>
               </Box>
               
               {/* Add Cargo Type field */}
               <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                 <Typography variant="body1">
-                  <strong>Cargo Type:</strong> {session.tripDetails.cargoType || "N/A"}
+                  <strong>Cargo Type:</strong> {session.tripDetails.cargoType || session.tripDetails.materialName || "N/A"}
                 </Typography>
               </Box>
               
               {/* Add Number of Packages field */}
               <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                 <Typography variant="body1">
-                  <strong>Number of Packages:</strong> {typeof session.tripDetails.numberOfPackages !== 'undefined' && session.tripDetails.numberOfPackages !== null ? session.tripDetails.numberOfPackages : "N/A"}
+                  <strong>Number of Packages:</strong> {typeof session.tripDetails.numberOfPackages !== 'undefined' && session.tripDetails.numberOfPackages !== null && session.tripDetails.numberOfPackages !== '' ? session.tripDetails.numberOfPackages : "N/A"}
                 </Typography>
               </Box>
             </Box>

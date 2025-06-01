@@ -257,8 +257,24 @@ async function handler(
     });
 
     // Explicitly ensure source and destination use the correct fields
-    enhancedSessionData.source = sessionData.source || (tripDetails as any)?.source || (tripDetails as any)?.loadingSite;
-    enhancedSessionData.destination = sessionData.destination || (tripDetails as any)?.destination || (tripDetails as any)?.receiverPartyName;
+    enhancedSessionData.source = (tripDetails as any)?.source || sessionData.source;
+    enhancedSessionData.destination = (tripDetails as any)?.destination || sessionData.destination;
+
+    // Make sure loadingSite and receiverPartyName are copied to tripDetails
+    if ((tripDetails as any) && typeof tripDetails === 'object') {
+      if ((tripDetails as any).loadingSite) {
+        (tripDetails as any).loadingSite = (tripDetails as any).loadingSite;
+      }
+      if ((tripDetails as any).receiverPartyName) {
+        (tripDetails as any).receiverPartyName = (tripDetails as any).receiverPartyName;
+      }
+      if ((tripDetails as any).cargoType) {
+        (tripDetails as any).cargoType = (tripDetails as any).cargoType;
+      }
+      if ((tripDetails as any).numberOfPackages) {
+        (tripDetails as any).numberOfPackages = (tripDetails as any).numberOfPackages;
+      }
+    }
 
     // Check authorization based on user role
     const userRole = session?.user.role;
