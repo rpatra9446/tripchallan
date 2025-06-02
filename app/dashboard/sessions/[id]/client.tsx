@@ -574,7 +574,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
           return {
             id: seal.barcode,
-            method: seal.method || 'manually entered', // Use original method from sessionSeals data
+            method: seal.method, // Use ONLY the original method from database with no fallback
             image: imageUrl,
             imageData: imageUrl,
             timestamp: seal.createdAt
@@ -636,7 +636,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         
         return {
           id: tag.barcode,
-          method: tag.method || (tag.barcode.includes('manual') ? 'manually entered' : 'digitally scanned'), // Use stored method or infer from barcode
+          method: tag.method, // Use ONLY the stored method with no fallback
           image: tagImage, // For backward compatibility
           imageData: tagImage, // The image URL for display
           timestamp: tag.createdAt || session.createdAt
@@ -675,7 +675,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       
       return {
         id,
-        method: sealTagMethods[id] || (id.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned'),
+        method: sealTagMethods[id], // Use ONLY the stored method with no fallback
         image: imageUrl,
         imageData: imageUrl,
         timestamp: session?.createdAt
