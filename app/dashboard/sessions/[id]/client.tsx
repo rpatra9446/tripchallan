@@ -544,9 +544,48 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     console.log("[DEBUG] Session sealTags:", session?.sealTags);
     console.log("[DEBUG] Session images:", session?.images);
     
-    // First try to use sealTags from database (preferred source)
+    // Use sessionSeals as the primary source if available
+    // This data comes from /api/sessions/${sessionId}/seals endpoint and contains imageData
+    if (sessionSeals && sessionSeals.length > 0) {
+      console.log("[DEBUG] Using sessionSeals for image data, count:", sessionSeals.length);
+      
+      // Find tag seals from the sessionSeals array
+      const tagSeals = sessionSeals.filter(seal => seal.type === 'tag');
+      
+      if (tagSeals.length > 0) {
+        console.log("[DEBUG] Found tag seals in sessionSeals:", tagSeals.length);
+        
+        return tagSeals.map(seal => {
+          // Check for direct image URL or construct API path to fetch image
+          let imageUrl = null;
+          
+          // Try to get image from various sources
+          if (seal.imageData) {
+            // If imageData exists directly on the seal, use it
+            imageUrl = seal.imageData;
+            console.log(`[DEBUG] Using direct imageData for tag ${seal.barcode}:`, imageUrl);
+          } else if (session?.id) {
+            // Construct API path for this seal tag image
+            imageUrl = `/api/images/${session.id}/sealing/${seal.barcode}`;
+            console.log(`[DEBUG] Constructed API image path for tag ${seal.barcode}:`, imageUrl);
+          }
+          
+          console.log(`[DEBUG] Final image for seal tag ${seal.barcode}:`, imageUrl);
+          
+          return {
+            id: seal.barcode,
+            method: seal.method || 'digitally scanned',
+            image: imageUrl,
+            imageData: imageUrl,
+            timestamp: seal.createdAt
+          };
+        });
+      }
+    }
+    
+    // Fallback to sealTags from session object if sessionSeals is not available
     if (session?.sealTags && session.sealTags.length > 0) {
-      console.log("[DEBUG] Using sealTags from database:", session.sealTags.length);
+      console.log("[DEBUG] Falling back to sealTags from session, count:", session.sealTags.length);
       
       // Extract seal tag images from activity logs if needed
       let sealTagImages: Record<string, string> = {};
@@ -628,7 +667,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     return sealTagIds.map((id, index) => {
       // Try to get an image for this tag
       let imageUrl = null;
-      if (hasImages && session.images?.sealingImages) {
+      if (hasImages && session?.images?.sealingImages) {
         imageUrl = session.images.sealingImages[index % session.images.sealingImages.length];
       }
       
@@ -639,10 +678,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         method: sealTagMethods[id] || 'digitally scanned',
         image: imageUrl,
         imageData: imageUrl,
-        timestamp: session.createdAt
+        timestamp: session?.createdAt
       };
     });
-  }, [session]);
+  }, [session, sessionSeals]);
 
   // Update seal comparison data
   const updateSealComparison = useCallback((scannedSeals: any[]) => {
@@ -1954,6 +1993,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               setSelectedSeal(seal);
                               setDetailsDialogOpen(true);
                             }}
+                            onError={(e) => {
+                              console.error(`Failed to load image for seal ${seal.id}:`, seal.imageData);
+                              // Try alternative image URL formats
+                              const img = e.target as HTMLImageElement;
+                              if (session?.id) {
+                                // Attempt direct URL to seal tag image
+                                img.src = `/api/images/${session.id}/sealing/${index}`;
+                                console.log(`Retrying with index-based URL: ${img.src}`);
+                              }
+                            }}
                           />
                         ) : (
                           <Typography variant="caption" color="text.secondary">
@@ -2577,6 +2626,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               // Open image in modal
                               setSelectedSeal(seal);
                               setDetailsDialogOpen(true);
+                            }}
+                            onError={(e) => {
+                              console.error(`Failed to load image for seal ${seal.id}:`, seal.imageData);
+                              // Try alternative image URL formats
+                              const img = e.target as HTMLImageElement;
+                              if (session?.id) {
+                                // Attempt direct URL to seal tag image
+                                img.src = `/api/images/${session.id}/sealing/${index}`;
+                                console.log(`Retrying with index-based URL: ${img.src}`);
+                              }
                             }}
                           />
                         ) : (
@@ -4094,6 +4153,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               // Open image in modal
                               setSelectedSeal(seal);
                               setDetailsDialogOpen(true);
+                            }}
+                            onError={(e) => {
+                              console.error(`Failed to load image for seal ${seal.id}:`, seal.imageData);
+                              // Try alternative image URL formats
+                              const img = e.target as HTMLImageElement;
+                              if (session?.id) {
+                                // Attempt direct URL to seal tag image
+                                img.src = `/api/images/${session.id}/sealing/${index}`;
+                                console.log(`Retrying with index-based URL: ${img.src}`);
+                              }
                             }}
                           />
                         ) : (
