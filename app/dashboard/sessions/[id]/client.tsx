@@ -543,44 +543,81 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     // Add debug logging
     console.log("[DEBUG] Session sealTags:", session?.sealTags);
     console.log("[DEBUG] Session images:", session?.images);
+    console.log("[DEBUG] SessionSeals data:", sessionSeals);
     
-    // Use sessionSeals as the primary source if available
-    // This data comes from /api/sessions/${sessionId}/seals endpoint and contains imageData
-    if (sessionSeals && sessionSeals.length > 0) {
-      console.log("[DEBUG] Using sessionSeals for image data, count:", sessionSeals.length);
+    // Initialize our merged seals array
+    let mergedSeals: Array<{
+      id: string;
+      method: string;
+      image: string | null;
+      imageData: string | null;
+      timestamp: string;
+    }> = [];
+    
+    // First, create a map of all seal tags from session.sealTags for method data
+    const sealTagsMap = new Map<string, { method: string, timestamp: string }>();
+    
+    // Populate from session.sealTags (Table A - has correct Method values)
+    if (session?.sealTags && session.sealTags.length > 0) {
+      console.log("[DEBUG] Extracting methods from sealTags:", session.sealTags.length);
       
-      // Find tag seals from the sessionSeals array
+      session.sealTags.forEach(tag => {
+        sealTagsMap.set(tag.barcode, {
+          method: tag.method,
+          timestamp: tag.createdAt || session.createdAt
+        });
+        console.log(`[DEBUG] Method for ${tag.barcode} from sealTags: ${tag.method}`);
+      });
+    }
+    
+    // Next, create a map of all seal tags from sessionSeals for image data
+    const sessionSealsMap = new Map<string, string | null>();
+    
+    // Populate from sessionSeals (Table B - has correct Image values)
+    if (sessionSeals && sessionSeals.length > 0) {
+      console.log("[DEBUG] Extracting images from sessionSeals:", sessionSeals.length);
+      
+      const tagSeals = sessionSeals.filter(seal => seal.type === 'tag');
+      tagSeals.forEach(seal => {
+        sessionSealsMap.set(seal.barcode, seal.imageData || null);
+        console.log(`[DEBUG] Image for ${seal.barcode} from sessionSeals: ${seal.imageData ? 'present' : 'null'}`);
+      });
+    }
+    
+    // Now merge the data - Start with sealTags as primary source
+    if (sealTagsMap.size > 0) {
+      console.log("[DEBUG] Merging data from sealTags and sessionSeals");
+      
+      sealTagsMap.forEach((data, barcode) => {
+        mergedSeals.push({
+          id: barcode,
+          method: data.method, // From Table A
+          image: sessionSealsMap.get(barcode) || null, // From Table B
+          imageData: sessionSealsMap.get(barcode) || null, // From Table B
+          timestamp: data.timestamp
+        });
+      });
+      
+      console.log(`[DEBUG] Merged ${mergedSeals.length} seals from sealTags`);
+    } 
+    // If no sealTags, use sessionSeals
+    else if (sessionSeals && sessionSeals.length > 0) {
+      console.log("[DEBUG] Using sessionSeals as primary source");
+      
       const tagSeals = sessionSeals.filter(seal => seal.type === 'tag');
       
       if (tagSeals.length > 0) {
         console.log("[DEBUG] Found tag seals in sessionSeals:", tagSeals.length);
         
-        return tagSeals.map(seal => {
-          // Check for direct image URL or construct API path to fetch image
-          let imageUrl = null;
+        mergedSeals = tagSeals.map(seal => {
+          let imageUrl = seal.imageData || null;
           
-          // Try to get image from various sources
-          if (seal.imageData) {
-            // If imageData exists directly on the seal, use it
-            imageUrl = seal.imageData;
-            console.log(`[DEBUG] Using direct imageData for tag ${seal.barcode}:`, imageUrl);
-          } else if (session?.id) {
-            // Construct API path for this seal tag image
-            imageUrl = `/api/images/${session.id}/sealing/${seal.barcode}`;
-            console.log(`[DEBUG] Constructed API image path for tag ${seal.barcode}:`, imageUrl);
-          }
-          
-          console.log(`[DEBUG] Final image for seal tag ${seal.barcode}:`, imageUrl);
-          console.log(`[DEBUG] Original method for seal tag ${seal.barcode}:`, seal.method);
-          
-          // Force the method to be "manually entered" for testing/debugging
-          const originalMethod = seal.method || '';
-          const methodForDisplay = originalMethod.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned';
-          console.log(`[DEBUG] Method after processing for ${seal.barcode}:`, methodForDisplay);
+          // For debug only
+          console.log(`[DEBUG] Using seal from sessionSeals: ${seal.barcode}, method: ${seal.method}`);
           
           return {
             id: seal.barcode,
-            method: methodForDisplay, // Use a consistent method string
+            method: seal.method, // Use method from sessionSeals if sealTags isn't available
             image: imageUrl,
             imageData: imageUrl,
             timestamp: seal.createdAt
@@ -589,116 +626,43 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       }
     }
     
-    // Fallback to sealTags from session object if sessionSeals is not available
-    if (session?.sealTags && session.sealTags.length > 0) {
-      console.log("[DEBUG] Falling back to sealTags from session, count:", session.sealTags.length);
+    // Fallback to tripDetails if we still have no seals
+    if (mergedSeals.length === 0 && session?.tripDetails?.sealTagIds) {
+      console.log("[DEBUG] Using sealTagIds from tripDetails");
       
-      // Extract seal tag images from activity logs if needed
-      let sealTagImages: Record<string, string> = {};
+      const sealTagIds = Array.isArray(session.tripDetails.sealTagIds) 
+        ? session.tripDetails.sealTagIds 
+        : [session.tripDetails.sealTagIds];
       
-      // If we have images in the session, try to match them to seal tags
-      if (session.images?.sealingImages && session.images.sealingImages.length > 0) {
-        // Create a map of barcode -> image URL if there are seal tags
-        const sealingImages = session.images.sealingImages;
-        
-        // If number of seal tags matches number of sealing images, match them directly
-        if (session.sealTags.length === sealingImages.length) {
-          console.log("[DEBUG] Exact match between seal tags and sealing images");
-          session.sealTags.forEach((tag, index) => {
-            sealTagImages[tag.barcode] = sealingImages[index];
-          });
-        } else {
-          // Otherwise use modulo to distribute images
-          console.log("[DEBUG] Using modulo to distribute sealing images to seal tags");
-          session.sealTags.forEach((tag, index) => {
-            sealTagImages[tag.barcode] = sealingImages[index % sealingImages.length];
-          });
+      const sealTagMethods = session.tripDetails.sealTagMethods || {};
+      
+      // Check if we have any sealing images to use
+      const hasImages = session?.images?.sealingImages && session.images.sealingImages.length > 0;
+      
+      mergedSeals = sealTagIds.map((id, index) => {
+        // Try to get an image for this tag
+        let imageUrl = null;
+        if (hasImages && session?.images?.sealingImages) {
+          imageUrl = session.images.sealingImages[index % session.images.sealingImages.length];
         }
-      }
-      
-      return session.sealTags.map((tag, index) => {
-        // Try to find an image for this tag - in priority order:
-        // 1. Use the tag's direct imageUrl if available
-        // 2. Use a mapped image URL from sealTagImages
-        // 3. If session has sealingImages, assign one using modulo
-        // 4. Fallback to null
-        let tagImage = null;
-        
-        if (tag.imageUrl) {
-          // Option 1: Use direct imageUrl from tag
-          tagImage = tag.imageUrl;
-          console.log(`[DEBUG] Using direct imageUrl for tag ${tag.barcode}: ${tagImage}`);
-        } else if (sealTagImages[tag.barcode]) {
-          // Option 2: Use mapped image from sealTagImages
-          tagImage = sealTagImages[tag.barcode];
-          console.log(`[DEBUG] Using mapped image for tag ${tag.barcode}: ${tagImage}`);
-        } else if (session.images?.sealingImages && session.images.sealingImages.length > 0) {
-          // Option 3: Assign a sealing image using modulo
-          tagImage = session.images.sealingImages[index % session.images.sealingImages.length];
-          console.log(`[DEBUG] Assigned sealing image to tag ${tag.barcode}: ${tagImage}`);
-        }
-        
-        console.log(`[DEBUG] Final image for seal tag ${tag.barcode}:`, tagImage);
-        console.log(`[DEBUG] Original method for seal tag ${tag.barcode}:`, tag.method);
-        
-        // Force the method to be "manually entered" for testing/debugging
-        const originalMethod = tag.method || '';
-        const methodForDisplay = originalMethod.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned';
-        console.log(`[DEBUG] Method after processing for ${tag.barcode}:`, methodForDisplay);
         
         return {
-          id: tag.barcode,
-          method: methodForDisplay, // Use a consistent method string
-          image: tagImage, // For backward compatibility
-          imageData: tagImage, // The image URL for display
-          timestamp: tag.createdAt || session.createdAt
+          id,
+          method: sealTagMethods[id] || 'manually entered', // Default to manually entered if no method provided
+          image: imageUrl,
+          imageData: imageUrl,
+          timestamp: session?.createdAt
         };
       });
     }
     
-    // Fallback to tripDetails for backward compatibility
-    if (!session || !session.tripDetails || !session.tripDetails.sealTagIds) return [];
-    
-    console.log("[DEBUG] Using sealTagIds from tripDetails");
-    
-    const sealTagIds = Array.isArray(session.tripDetails.sealTagIds) 
-      ? session.tripDetails.sealTagIds 
-      : [session.tripDetails.sealTagIds];
-    
-    const sealTagMethods = session.tripDetails.sealTagMethods || {};
-    
-    // Check if we have any sealing images to use
-    const hasImages = session?.images?.sealingImages && session.images.sealingImages.length > 0;
-    
-    if (hasImages && session?.images?.sealingImages) {
-      console.log("[DEBUG] Found sealing images:", session.images.sealingImages.length);
-    } else {
-      console.log("[DEBUG] No sealing images found");
-    }
-    
-    return sealTagIds.map((id, index) => {
-      // Try to get an image for this tag
-      let imageUrl = null;
-      if (hasImages && session?.images?.sealingImages) {
-        imageUrl = session.images.sealingImages[index % session.images.sealingImages.length];
-      }
-      
-      console.log(`[DEBUG] Fallback seal tag ${id} image:`, imageUrl);
-      console.log(`[DEBUG] Original method for seal tag ${id}:`, sealTagMethods[id]);
-      
-      // Force the method to be "manually entered" for testing/debugging
-      const originalMethod = sealTagMethods[id] || '';
-      const methodForDisplay = originalMethod.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned';
-      console.log(`[DEBUG] Method after processing for ${id}:`, methodForDisplay);
-      
-      return {
-        id,
-        method: methodForDisplay, // Use a consistent method string
-        image: imageUrl,
-        imageData: imageUrl,
-        timestamp: session?.createdAt
-      };
+    // Log the final result
+    console.log(`[DEBUG] Final merged seals count: ${mergedSeals.length}`);
+    mergedSeals.forEach(seal => {
+      console.log(`[DEBUG] Final seal ${seal.id}, method: ${seal.method}, has image: ${seal.image ? 'yes' : 'no'}`);
     });
+    
+    return mergedSeals;
   }, [session, sessionSeals]);
 
   // Update seal comparison data
@@ -4148,7 +4112,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         </Box>
                       </TableCell>
                       <TableCell>
-                        {(() => { console.log(`[DEBUG] Seal method for ${seal.id}:`, seal.method); return null; })()}
                         <Chip 
                           label={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
                           color={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
