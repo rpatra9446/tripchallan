@@ -540,19 +540,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
    
   // Extract operator seals from session data - pulling from activity logs and sessionSeals
   const operatorSeals = useMemo(() => {
+    // Add debug logging
+    console.log("[DEBUG] Session sealTags:", session?.sealTags);
+    console.log("[DEBUG] Session images:", session?.images);
+    
     // First try to use sealTags from database (preferred source)
     if (session?.sealTags && session.sealTags.length > 0) {
-      return session.sealTags.map(tag => ({
-        id: tag.barcode,
-        method: tag.method || 'digitally scanned', // Use stored method or fallback
-        image: tag.imageUrl || null,
-        imageData: tag.imageUrl || (session.images?.sealingImages && session.images.sealingImages.length > 0 ? session.images.sealingImages[0] : null),
-        timestamp: tag.createdAt || session.createdAt
-      }));
+      console.log("[DEBUG] Using sealTags from database:", session.sealTags.length);
+      
+      // Extract seal tag images from activity logs if needed
+      let sealTagImages: Record<string, string> = {};
+      
+            // If we have images in the session, try to match them to seal tags
+       if (session.images?.sealingImages && session.images.sealingImages.length > 0) {
+         // Create a map of barcode -> image URL if there are seal tags
+         const sealingImages = session.images?.sealingImages || [];
+        
+        // If number of seal tags matches number of sealing images, match them directly
+        if (session.sealTags.length === sealingImages.length) {
+          console.log("[DEBUG] Exact match between seal tags and sealing images");
+          session.sealTags.forEach((tag, index) => {
+            sealTagImages[tag.barcode] = sealingImages[index];
+          });
+        } else {
+          // Otherwise use modulo to distribute images
+          console.log("[DEBUG] Using modulo to distribute sealing images to seal tags");
+          session.sealTags.forEach((tag, index) => {
+            sealTagImages[tag.barcode] = sealingImages[index % sealingImages.length];
+          });
+        }
+      }
+      
+      return session.sealTags.map(tag => {
+        // Try to find an image for this tag
+        const tagImage = tag.imageUrl || sealTagImages[tag.barcode] || null;
+        console.log(`[DEBUG] Seal tag ${tag.barcode} image:`, tagImage);
+        
+        return {
+          id: tag.barcode,
+          method: tag.method || 'digitally scanned', // Use stored method or fallback
+          image: tagImage, // For backward compatibility
+          imageData: tagImage, // The image URL for display
+          timestamp: tag.createdAt || session.createdAt
+        };
+      });
     }
     
     // Fallback to tripDetails for backward compatibility
     if (!session || !session.tripDetails || !session.tripDetails.sealTagIds) return [];
+    
+    console.log("[DEBUG] Using sealTagIds from tripDetails");
     
     const sealTagIds = Array.isArray(session.tripDetails.sealTagIds) 
       ? session.tripDetails.sealTagIds 
@@ -563,14 +600,29 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     // Check if we have any sealing images to use
     const hasImages = session.images?.sealingImages && session.images.sealingImages.length > 0;
     
-    return sealTagIds.map((id, index) => ({
-      id,
-      method: sealTagMethods[id] || 'digitally scanned',
-      image: null,
-      // Try to match seal tag images if available
-      imageData: hasImages && session.images?.sealingImages ? session.images.sealingImages[index % session.images.sealingImages.length] : null,
-      timestamp: session.createdAt
-    }));
+    if (hasImages) {
+      console.log("[DEBUG] Found sealing images:", session.images.sealingImages.length);
+    } else {
+      console.log("[DEBUG] No sealing images found");
+    }
+    
+    return sealTagIds.map((id, index) => {
+      // Try to get an image for this tag
+      let imageUrl = null;
+      if (hasImages && session.images?.sealingImages) {
+        imageUrl = session.images.sealingImages[index % session.images.sealingImages.length];
+      }
+      
+      console.log(`[DEBUG] Fallback seal tag ${id} image:`, imageUrl);
+      
+      return {
+        id,
+        method: sealTagMethods[id] || 'digitally scanned',
+        image: imageUrl,
+        imageData: imageUrl,
+        timestamp: session.createdAt
+      };
+    });
   }, [session]);
 
   // Update seal comparison data
