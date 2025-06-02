@@ -551,10 +551,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       // Extract seal tag images from activity logs if needed
       let sealTagImages: Record<string, string> = {};
       
-            // If we have images in the session, try to match them to seal tags
-       if (session.images?.sealingImages && session.images.sealingImages.length > 0) {
-         // Create a map of barcode -> image URL if there are seal tags
-         const sealingImages = session.images?.sealingImages || [];
+      // If we have images in the session, try to match them to seal tags
+      if (session.images?.sealingImages && session.images.sealingImages.length > 0) {
+        // Create a map of barcode -> image URL if there are seal tags
+        const sealingImages = session.images.sealingImages;
         
         // If number of seal tags matches number of sealing images, match them directly
         if (session.sealTags.length === sealingImages.length) {
@@ -571,10 +571,29 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         }
       }
       
-      return session.sealTags.map(tag => {
-        // Try to find an image for this tag
-        const tagImage = tag.imageUrl || sealTagImages[tag.barcode] || null;
-        console.log(`[DEBUG] Seal tag ${tag.barcode} image:`, tagImage);
+      return session.sealTags.map((tag, index) => {
+        // Try to find an image for this tag - in priority order:
+        // 1. Use the tag's direct imageUrl if available
+        // 2. Use a mapped image URL from sealTagImages
+        // 3. If session has sealingImages, assign one using modulo
+        // 4. Fallback to null
+        let tagImage = null;
+        
+        if (tag.imageUrl) {
+          // Option 1: Use direct imageUrl from tag
+          tagImage = tag.imageUrl;
+          console.log(`[DEBUG] Using direct imageUrl for tag ${tag.barcode}: ${tagImage}`);
+        } else if (sealTagImages[tag.barcode]) {
+          // Option 2: Use mapped image from sealTagImages
+          tagImage = sealTagImages[tag.barcode];
+          console.log(`[DEBUG] Using mapped image for tag ${tag.barcode}: ${tagImage}`);
+        } else if (session.images?.sealingImages && session.images.sealingImages.length > 0) {
+          // Option 3: Assign a sealing image using modulo
+          tagImage = session.images.sealingImages[index % session.images.sealingImages.length];
+          console.log(`[DEBUG] Assigned sealing image to tag ${tag.barcode}: ${tagImage}`);
+        }
+        
+        console.log(`[DEBUG] Final image for seal tag ${tag.barcode}:`, tagImage);
         
         return {
           id: tag.barcode,
@@ -598,9 +617,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     const sealTagMethods = session.tripDetails.sealTagMethods || {};
     
     // Check if we have any sealing images to use
-    const hasImages = session.images?.sealingImages && session.images.sealingImages.length > 0;
+    const hasImages = session?.images?.sealingImages && session.images.sealingImages.length > 0;
     
-    if (hasImages) {
+    if (hasImages && session?.images?.sealingImages) {
       console.log("[DEBUG] Found sealing images:", session.images.sealingImages.length);
     } else {
       console.log("[DEBUG] No sealing images found");
