@@ -574,7 +574,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
           return {
             id: seal.barcode,
-            method: seal.method || 'digitally scanned',
+            method: seal.method || 'manually entered', // Use original method from sessionSeals data
             image: imageUrl,
             imageData: imageUrl,
             timestamp: seal.createdAt
@@ -636,7 +636,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         
         return {
           id: tag.barcode,
-          method: tag.method || 'digitally scanned', // Use stored method or fallback
+          method: tag.method || (tag.barcode.includes('manual') ? 'manually entered' : 'digitally scanned'), // Use stored method or infer from barcode
           image: tagImage, // For backward compatibility
           imageData: tagImage, // The image URL for display
           timestamp: tag.createdAt || session.createdAt
@@ -675,7 +675,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       
       return {
         id,
-        method: sealTagMethods[id] || 'digitally scanned',
+        method: sealTagMethods[id] || (id.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned'),
         image: imageUrl,
         imageData: imageUrl,
         timestamp: session?.createdAt
@@ -4131,8 +4131,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method === 'manually entered' ? 'Manually Entered' : 'Digitally Scanned'}
-                          color={seal.method === 'manually entered' ? 'secondary' : 'primary'} 
+                          label={seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
+                          color={seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
                           size="small"
                         />
                       </TableCell>
