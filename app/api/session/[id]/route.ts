@@ -62,6 +62,7 @@ async function handler(
           },
         },
         seal: true,
+        sealTags: true,
         comments: {
           include: {
             user: {

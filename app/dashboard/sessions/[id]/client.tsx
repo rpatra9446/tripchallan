@@ -106,6 +106,14 @@ type SessionType = {
     email: string;
   };
   seal?: SealType | null;
+  // Direct access to seal tags from database
+  sealTags?: {
+    id: string;
+    barcode: string;
+    method: string;
+    imageUrl?: string | null;
+    createdAt: string;
+  }[];
   // Additional trip details from the session creation form
   tripDetails?: {
     transporterName?: string;
@@ -532,6 +540,17 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
    
   // Extract operator seals from session data - pulling from activity logs and sessionSeals
   const operatorSeals = useMemo(() => {
+    // First try to use sealTags from database (preferred source)
+    if (session?.sealTags && session.sealTags.length > 0) {
+      return session.sealTags.map(tag => ({
+        id: tag.barcode,
+        method: tag.method || 'digitally scanned', // Use stored method or fallback
+        image: tag.imageUrl || session.images?.sealingImages?.[0] || null,
+        timestamp: tag.createdAt || session.createdAt
+      }));
+    }
+    
+    // Fallback to tripDetails for backward compatibility
     if (!session || !session.tripDetails || !session.tripDetails.sealTagIds) return [];
     
     const sealTagIds = Array.isArray(session.tripDetails.sealTagIds) 
@@ -542,9 +561,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     
     return sealTagIds.map(id => ({
       id,
-      method: sealTagMethods[id] || 'digitally scanned', // Default to 'digitally scanned' if not specified
-      image: session.images?.sealingImages?.[0] || null, // Just a placeholder, will need proper logic to match seal tags with images
-      timestamp: session.createdAt // Add timestamp for compatibility with existing code
+      method: sealTagMethods[id] || 'digitally scanned',
+      image: session.images?.sealingImages?.[0] || null,
+      timestamp: session.createdAt
     }));
   }, [session]);
 

@@ -849,10 +849,20 @@ export const POST = withAuth(
                     verified: false, // Explicitly set to false to ensure it shows up for guards
                     scannedAt: null
                   }
+                },
+                // Create SealTag records for each seal tag
+                sealTags: {
+                  create: sealTagIds.map((tagId: string) => ({
+                    barcode: tagId,
+                    method: sealTagMethods[tagId] || 'digitally scanned',
+                    // Store image URL - can be updated later when images are processed
+                    imageUrl: null
+                  }))
                 }
               },
               include: {
-                seal: true
+                seal: true,
+                sealTags: true
               }
             }).catch((error: Error) => {
               console.error("Error creating session:", error);
@@ -861,6 +871,7 @@ export const POST = withAuth(
             
             console.log(`Session created with ID: ${newSession.id}`);
             console.log(`Seal created with ID: ${newSession.seal?.id}, barcode: ${newSession.seal?.barcode}, verified: ${newSession.seal?.verified}`);
+            console.log(`Created ${newSession.sealTags.length} seal tag records`);
             
             // Double-check that the seal was created correctly
             if (!newSession.seal) {

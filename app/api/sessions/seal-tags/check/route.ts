@@ -19,12 +19,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tag ID is required' }, { status: 400 });
     }
 
-    // Check if the seal tag exists in any session
-    const existingSealTag = await prisma.sealTag.findFirst({
+    console.log(`[API DEBUG] Checking if seal tag '${tagId}' exists`);
+
+    // Check if the seal tag exists in any session using the new SealTag model
+    const existingSealTag = await prisma.sealTag.findUnique({
       where: {
-        tagId: tagId,
+        barcode: tagId, // Using barcode which is now a unique field
       },
     });
+
+    console.log(`[API DEBUG] Seal tag '${tagId}' exists: ${!!existingSealTag}`);
 
     // Return whether the tag exists
     return NextResponse.json({ exists: !!existingSealTag });

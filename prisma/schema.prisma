@@ -100,6 +100,7 @@ model Session {
   numberOfPackages     String?
   comments             Comment[]
   seal                 Seal?
+  sealTags             SealTag[]
   company              Company       @relation(fields: [companyId], references: [id])
   createdBy            User          @relation("SessionCreatedBy", fields: [createdById], references: [id])
 
@@ -183,6 +184,18 @@ model Vehicle {
   createdBy               User          @relation("VehicleCreatedBy", fields: [createdById], references: [id])
 
   @@map("vehicles")
+}
+
+model SealTag {
+  id            String   @id @default(uuid())
+  barcode       String   @unique
+  sessionId     String
+  method        String
+  imageUrl      String?
+  createdAt     DateTime @default(now())
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("seal_tags")
 }
 
 enum UserRole {
