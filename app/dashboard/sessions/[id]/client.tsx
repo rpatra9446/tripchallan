@@ -3723,6 +3723,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </Typography>
                     </Box>
                   </Box>
+                  <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+                    <Box display="flex" alignItems="center" mb={1}>
+                      <DirectionsCar color="primary" sx={{ mr: 1 }} />
+                      <Typography variant="body1">
+                        <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
 
@@ -3944,6 +3952,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Person color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body1">
                   <strong>Operator Created:</strong> {session.createdBy?.name || "N/A"}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
+              <Box display="flex" alignItems="center" mb={1}>
+                <DirectionsCar color="primary" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || "N/A"}
                 </Typography>
               </Box>
             </Box>
