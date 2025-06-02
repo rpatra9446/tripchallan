@@ -545,7 +545,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       return session.sealTags.map(tag => ({
         id: tag.barcode,
         method: tag.method || 'digitally scanned', // Use stored method or fallback
-        image: tag.imageUrl || session.images?.sealingImages?.[0] || null,
+        image: tag.imageUrl || null,
+        imageData: tag.imageUrl || (session.images?.sealingImages && session.images.sealingImages.length > 0 ? session.images.sealingImages[0] : null),
         timestamp: tag.createdAt || session.createdAt
       }));
     }
@@ -559,10 +560,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     
     const sealTagMethods = session.tripDetails.sealTagMethods || {};
     
-    return sealTagIds.map(id => ({
+    // Check if we have any sealing images to use
+    const hasImages = session.images?.sealingImages && session.images.sealingImages.length > 0;
+    
+    return sealTagIds.map((id, index) => ({
       id,
       method: sealTagMethods[id] || 'digitally scanned',
-      image: session.images?.sealingImages?.[0] || null,
+      image: null,
+      // Try to match seal tag images if available
+      imageData: hasImages && session.images?.sealingImages ? session.images.sealingImages[index % session.images.sealingImages.length] : null,
       timestamp: session.createdAt
     }));
   }, [session]);
@@ -1860,14 +1866,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </TableCell>
                       <TableCell>{new Date(seal.timestamp).toLocaleString()}</TableCell>
                       <TableCell>
-                        {seal.image ? (
-                          <Box sx={{ width: 60, height: 60 }}>
-                            <img 
-                              src={seal.image} 
-                              alt={`Seal ${index + 1}`}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}
-                            />
-                          </Box>
+                        {seal.imageData ? (
+                          <Box 
+                            component="img" 
+                            src={seal.imageData} 
+                            alt={`Seal tag ${index+1}`}
+                            sx={{ 
+                              width: 60, 
+                              height: 60, 
+                              objectFit: 'cover',
+                              borderRadius: 1,
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                              // Open image in modal
+                              setSelectedSeal(seal);
+                              setDetailsDialogOpen(true);
+                            }}
+                          />
                         ) : (
                           <Typography variant="caption" color="text.secondary">
                             No image
@@ -2474,10 +2490,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {seal.image ? (
+                        {seal.imageData ? (
                           <Box 
                             component="img" 
-                            src={seal.image} 
+                            src={seal.imageData} 
                             alt={`Seal tag ${index+1}`}
                             sx={{ 
                               width: 60, 
@@ -2488,8 +2504,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             }}
                             onClick={() => {
                               // Open image in modal
-                              setSelectedImage(seal.image);
-                              setOpenImageModal(true);
+                              setSelectedSeal(seal);
+                              setDetailsDialogOpen(true);
                             }}
                           />
                         ) : (
@@ -3991,10 +4007,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {seal.image ? (
+                        {seal.imageData ? (
                           <Box 
                             component="img" 
-                            src={seal.image} 
+                            src={seal.imageData} 
                             alt={`Seal tag ${index+1}`}
                             sx={{ 
                               width: 60, 
@@ -4005,8 +4021,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             }}
                             onClick={() => {
                               // Open image in modal
-                              setSelectedImage(seal.image);
-                              setOpenImageModal(true);
+                              setSelectedSeal(seal);
+                              setDetailsDialogOpen(true);
                             }}
                           />
                         ) : (
