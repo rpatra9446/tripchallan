@@ -166,14 +166,12 @@ async function handler(req: NextRequest) {
           select: { id: true }
         });
         
-        // Only add IDs of employees (not the company itself) for login/logout events
-        // For other types of activities, we need to include the company's ID
-        if (action === "LOGIN" || action === "LOGOUT") {
-          userIds.push(...employees.map((emp: { id: string }) => emp.id));
-        } else {
-          // For non-login/logout activities, include the company's own ID too
-          userIds.push(session.user.id, ...employees.map((emp: { id: string }) => emp.id));
-        }
+        // Add employee IDs to userIds for all types of activities (not just login/logout)
+        // This ensures company can see all employee activities including session creation
+        userIds.push(...employees.map((emp: { id: string }) => emp.id));
+        
+        // For non-login/logout activities, include the company's own ID too
+        userIds.push(session.user.id);
       }
     }
     // EMPLOYEE can only see their own activity (excluding login/logout)
