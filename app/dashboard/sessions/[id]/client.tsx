@@ -571,10 +571,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           }
           
           console.log(`[DEBUG] Final image for seal tag ${seal.barcode}:`, imageUrl);
+          console.log(`[DEBUG] Original method for seal tag ${seal.barcode}:`, seal.method);
+          
+          // Force the method to be "manually entered" for testing/debugging
+          const originalMethod = seal.method || '';
+          const methodForDisplay = originalMethod.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned';
+          console.log(`[DEBUG] Method after processing for ${seal.barcode}:`, methodForDisplay);
           
           return {
             id: seal.barcode,
-            method: seal.method, // Use ONLY the original method from database with no fallback
+            method: methodForDisplay, // Use a consistent method string
             image: imageUrl,
             imageData: imageUrl,
             timestamp: seal.createdAt
@@ -633,10 +639,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         }
         
         console.log(`[DEBUG] Final image for seal tag ${tag.barcode}:`, tagImage);
+        console.log(`[DEBUG] Original method for seal tag ${tag.barcode}:`, tag.method);
+        
+        // Force the method to be "manually entered" for testing/debugging
+        const originalMethod = tag.method || '';
+        const methodForDisplay = originalMethod.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned';
+        console.log(`[DEBUG] Method after processing for ${tag.barcode}:`, methodForDisplay);
         
         return {
           id: tag.barcode,
-          method: tag.method, // Use ONLY the stored method with no fallback
+          method: methodForDisplay, // Use a consistent method string
           image: tagImage, // For backward compatibility
           imageData: tagImage, // The image URL for display
           timestamp: tag.createdAt || session.createdAt
@@ -672,10 +684,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       }
       
       console.log(`[DEBUG] Fallback seal tag ${id} image:`, imageUrl);
+      console.log(`[DEBUG] Original method for seal tag ${id}:`, sealTagMethods[id]);
+      
+      // Force the method to be "manually entered" for testing/debugging
+      const originalMethod = sealTagMethods[id] || '';
+      const methodForDisplay = originalMethod.toLowerCase().includes('manual') ? 'manually entered' : 'digitally scanned';
+      console.log(`[DEBUG] Method after processing for ${id}:`, methodForDisplay);
       
       return {
         id,
-        method: sealTagMethods[id], // Use ONLY the stored method with no fallback
+        method: methodForDisplay, // Use a consistent method string
         image: imageUrl,
         imageData: imageUrl,
         timestamp: session?.createdAt
@@ -4130,9 +4148,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         </Box>
                       </TableCell>
                       <TableCell>
+                        {(() => { console.log(`[DEBUG] Seal method for ${seal.id}:`, seal.method); return null; })()}
                         <Chip 
-                          label={seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
-                          color={seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
+                          label={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
+                          color={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
                           size="small"
                         />
                       </TableCell>
