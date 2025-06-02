@@ -235,6 +235,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     additionalImages: []
   });
   
+  // Add state for expandable rows in seal verification
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  
   // Add state for verification results to display matched/mismatched fields
   const [verificationResults, setVerificationResults] = useState<{
     matches: string[];
@@ -1887,9 +1890,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       );
     }
 
-    // Track which rows are expanded
-    const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-    
+    // Use expanded rows state from the component
     const toggleRowExpansion = (sealId: string) => {
       setExpandedRows(prev => ({
         ...prev,
