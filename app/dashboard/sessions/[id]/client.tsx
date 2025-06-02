@@ -3201,97 +3201,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </>
         )}
         
-        {/* Operator Seal Tags Table */}
-        {tagSeals.length > 0 && (
-          <>
-            <Typography variant="subtitle1" gutterBottom sx={{ mt: 3 }}>
-              Operator Seal Tags
-            </Typography>
-            <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'background.paper' }}>
-                    <TableCell>No.</TableCell>
-                    <TableCell>Tag ID</TableCell>
-                    <TableCell>Method</TableCell>
-                    <TableCell>Image</TableCell>
-                    <TableCell>Created At</TableCell>
-                    <TableCell>Created By</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tagSeals.map((seal, index) => (
-                    <TableRow key={seal.id} hover>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>
-                        <Box 
-                          sx={{ 
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            borderRadius: 1,
-                            p: 0.75,
-                            bgcolor: 'background.paper',
-                            maxWidth: 180,
-                            overflow: 'hidden'
-                          }}
-                        >
-                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 'medium' }}>
-                            {seal.barcode}
-                      </Typography>
-                    </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          size="small" 
-                          label="Digitally Scanned" 
-                          color="info"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {seal.imageData ? (
-                          <Box 
-                            component="img" 
-                            src={seal.imageData} 
-                            alt={`Seal tag ${seal.barcode}`}
-                            sx={{ 
-                              width: 60, 
-                              height: 60, 
-                              objectFit: 'cover',
-                              borderRadius: 1,
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => {
-                              // Open image in modal
-                              setSelectedImage(seal.imageData);
-                              setOpenImageModal(true);
-                            }}
-                          />
-                        ) : (
-                          <Typography variant="caption">No image</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>{formatDate(seal.createdAt)}</TableCell>
-                      <TableCell>
-                        {seal.createdBy ? (
-                          <Typography variant="body2">
-                            {seal.createdBy.name || 'Unknown'} 
-                            <Typography variant="caption" component="span" color="text.secondary">
-                              {' '}({seal.createdBy.subrole || seal.createdBy.role || 'User'})
-                            </Typography>
-                          </Typography>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            Unknown
-                          </Typography>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-                </>
-              )}
+        {/* Operator Seal Tags Table - Removed and merged with main Seal Information section */}
         
         <Box display="flex" justifyContent="flex-end">
           <Button
@@ -4043,18 +3953,36 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
               <Table size="small">
                 <TableHead>
-                  <TableRow>
+                  <TableRow sx={{ bgcolor: 'background.paper' }}>
                     <TableCell>No.</TableCell>
                     <TableCell>Seal Tag ID</TableCell>
                     <TableCell>Method</TableCell>
                     <TableCell>Image</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Created By</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {operatorSeals.map((seal, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={index} hover>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{seal.id}</TableCell>
+                      <TableCell>
+                        <Box 
+                          sx={{ 
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                            p: 0.75,
+                            bgcolor: 'background.paper',
+                            maxWidth: 180,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 'medium' }}>
+                            {seal.id}
+                          </Typography>
+                        </Box>
+                      </TableCell>
                       <TableCell>
                         <Chip 
                           label={seal.method === 'manually entered' ? 'Manually Entered' : 'Digitally Scanned'}
@@ -4085,6 +4013,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <Typography variant="caption">No image</Typography>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {seal.timestamp ? formatDate(seal.timestamp) : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {session?.createdBy?.name || "N/A"}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -4097,10 +4031,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         <Box mb={3}>
           <Typography variant="h6" gutterBottom>
             All Verification Seals
-                  </Typography>
+          </Typography>
           <Divider sx={{ mb: 2 }} />
           {renderAllSeals()}
-                </Box>
+        </Box>
 
         {/* Images section - moved before Reports section */}
         {session.images && Object.keys(session.images).some(key => {
