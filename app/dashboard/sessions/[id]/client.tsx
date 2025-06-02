@@ -3771,20 +3771,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </Box>
                 </Box>
               </Box>
-
-              {/* Only show Vehicle Number from Trip Details */}
-              {session.tripDetails?.vehicleNumber && (
-                <Box mb={3}>
-                  <Divider sx={{ mb: 2 }} />
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                    <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
-                      <Typography variant="body1">
-                        <strong>Vehicle Number:</strong> {session.tripDetails.vehicleNumber}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              )}
             </Paper>
 
             {/* Verification Results */}
