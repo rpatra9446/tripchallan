@@ -532,153 +532,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
    
   // Extract operator seals from session data - pulling from activity logs and sessionSeals
   const operatorSeals = useMemo(() => {
-    if (!session) return [];
+    if (!session || !session.tripDetails || !session.tripDetails.sealTagIds) return [];
     
-    const seals: Array<{
-      id: string;
-      method: string;
-      image: string | null;
-      timestamp: string;
-    }> = [];
+    const sealTagIds = Array.isArray(session.tripDetails.sealTagIds) 
+      ? session.tripDetails.sealTagIds 
+      : [session.tripDetails.sealTagIds];
     
-    // First try to get seals from the sessionSeals array (preferred source)
-    if (sessionSeals && sessionSeals.length > 0) {
-      // Use only tag type seals
-      const tagSeals = sessionSeals.filter(seal => seal.type === 'tag');
-      
-      console.log("Found tag seals in sessionSeals:", tagSeals.length);
-      
-                tagSeals.forEach(seal => {
-        // Properly determine the method - treat any "digital" or scan-related keyword as digital
-        const methodValue = seal.method || 'unknown';
-        const isDigital = methodValue.toLowerCase().includes('digital') || 
-                         methodValue.toLowerCase().includes('scan') || 
-                         methodValue.toLowerCase().includes('qr') || 
-                         methodValue.toLowerCase().includes('barcode') ||
-                         methodValue.toLowerCase().includes('code');
-                         
-        seals.push({
-          id: seal.barcode,
-          method: isDigital ? 'digital' : 'manual',
-          image: null, // Images not available in this data structure
-          timestamp: seal.createdAt
-        });
-      });
-    }
+    const sealTagMethods = session.tripDetails.sealTagMethods || {};
     
-    // If we couldn't find any seals in sessionSeals, try activity logs as fallback
-    if (seals.length === 0 && session.activityLogs && session.activityLogs.length > 0) {
-      console.log("No seals found in sessionSeals, trying activity logs");
-      
-      // Find the activity log that contains the seal tag information - usually from session creation
-      const sealTagLog = session.activityLogs.find(log => {
-        if (!log.details) return false;
-        
-        const details = log.details as any;
-        // Check different possible paths to find seal tag data
-        return (
-          details.imageBase64Data?.sealTagImages || 
-          details.sealTagIds || 
-          details.tripDetails?.sealTagIds
-        );
-      });
-      
-      if (sealTagLog && sealTagLog.details) {
-        const details = sealTagLog.details as any;
-        let sealTagIds: string[] = [];
-        let sealTagMethods: Record<string, string> = {};
-        let sealTagImages: Record<string, string> = {};
-        
-        // Find sealTagIds from different possible locations in the data structure
-        if (details.sealTagIds) {
-          sealTagIds = typeof details.sealTagIds === 'string' ? 
-            JSON.parse(details.sealTagIds) : details.sealTagIds;
-        } else if (details.tripDetails?.sealTagIds) {
-          sealTagIds = details.tripDetails.sealTagIds;
-        } else if (details.imageBase64Data?.sealTagImages) {
-          sealTagIds = Object.keys(details.imageBase64Data.sealTagImages);
-        }
-        
-        // Get methods information if available
-        if (details.sealTagMethods) {
-          sealTagMethods = typeof details.sealTagMethods === 'string' ? 
-            JSON.parse(details.sealTagMethods) : details.sealTagMethods;
-        } else if (details.tripDetails?.sealTagMethods) {
-          sealTagMethods = details.tripDetails.sealTagMethods;
-        } else if (details.imageBase64Data?.sealTagImages) {
-          // Extract methods from the image data
-          Object.entries(details.imageBase64Data.sealTagImages).forEach(([id, data]: [string, any]) => {
-            sealTagMethods[id] = data.method || 'unknown';
-          });
-        }
-        
-        // Get images from the session data if possible
-        if (session.images?.sealingImages && session.images.sealingImages.length > 0) {
-          // Associate images with seal tags if possible
-          sealTagIds.forEach((id, index) => {
-            if (index < session.images!.sealingImages!.length) {
-              sealTagImages[id] = session.images!.sealingImages![index];
-            }
-          });
-        }
-        
-        // Create the seals array from the collected data
-        sealTagIds.forEach(id => {
-          // Properly determine the method - treat any "digital" or scan-related keyword as digital
-          // Force all seals to be considered digital by default
-          const methodValue = sealTagMethods[id] || 'digital';
-          const isDigital = true; // Always set to digital
-          console.log(`Setting seal ${id} method to digital (original: ${methodValue})`);
-          
-          seals.push({
-            id,
-            method: isDigital ? 'digital' : 'manual',
-            image: sealTagImages[id] || null,
-            timestamp: sealTagLog.createdAt || session.createdAt
-          });
-        });
-      }
-    }
-    
-    // If we couldn't find any seals, check if session.tripDetails has seal tag information
-    if (seals.length === 0 && session.tripDetails) {
-      console.log("Checking tripDetails for seal tag information");
-      
-      // Access tripDetails and try to extract seal tag information if it exists
-      const tripDetails = session.tripDetails as any;
-      
-      if (tripDetails.sealTagIds) {
-        // If sealTagIds is available directly in tripDetails
-        const sealTagIds = Array.isArray(tripDetails.sealTagIds) ? 
-          tripDetails.sealTagIds : 
-          (typeof tripDetails.sealTagIds === 'string' ? 
-            JSON.parse(tripDetails.sealTagIds) : []);
-            
-        // Check if there's a methods object
-        const sealTagMethods = tripDetails.sealTagMethods || {};
-        
-        sealTagIds.forEach((id: string) => {
-          // Check if there's a method specified and if it's digital
-          // Force all seals to be digital by default
-          const methodValue = 'digital';
-          const isDigital = true; // Always set to digital
-          console.log(`Setting seal ${id} method to digital in tripDetails fallback`);
-                         
-          seals.push({
-            id,
-            method: isDigital ? 'digital' : 'manual',
-            image: null,
-            timestamp: session.createdAt
-          });
-        });
-      }
-    }
-    
-    // Add console log to help debug the issue
-    console.log("Extracted operator seals:", seals.length, seals);
-    
-    return seals;
-  }, [session, sessionSeals]);
+    return sealTagIds.map(id => ({
+      id,
+      method: sealTagMethods[id] || 'digitally scanned', // Default to 'digitally scanned' if not specified
+      image: session.images?.sealingImages?.[0] || null, // Just a placeholder, will need proper logic to match seal tags with images
+      timestamp: session.createdAt // Add timestamp for compatibility with existing code
+    }));
+  }, [session]);
 
   // Update seal comparison data
   const updateSealComparison = useCallback((scannedSeals: any[]) => {
@@ -3695,6 +3563,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [openImageModal, setOpenImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // Filter out system fields from trip details display
+  const isSystemField = (key: string) => {
+    const systemFields = ['createdById', 'id', 'companyId', 'status', 'createdAt', 'updatedAt'];
+    return systemFields.includes(key);
+  };
+
   if (authStatus === "loading" || loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -4067,9 +3941,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               {/* Ensure all required fields are displayed, even if some have to be taken from different sources */}
               {Object.entries(session.tripDetails).map(([key, value]) => {
                 // Skip source and destination as they're already shown in Basic Information
-                if (key === 'source' || key === 'destination' || 
-                    key === 'loadingSite' || key === 'cargoType' || 
-                    key === 'numberOfPackages') {
+                // Also skip system fields
+                if (key === 'source' || 
+                    key === 'destination' || 
+                    key === 'loadingSite' || 
+                    key === 'cargoType' || 
+                    key === 'numberOfPackages' ||
+                    isSystemField(key)) {
                   return null;
                 }
                 
@@ -4125,7 +4003,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             
             <Typography variant="body2" sx={{ mb: 2 }}>
               Total Seal Tags: <strong>{operatorSeals.length}</strong>
-                </Typography>
+            </Typography>
             
             <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
               <Table size="small">
@@ -4144,8 +4022,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip 
-                          label="Digitally Scanned"
-                          color="primary" 
+                          label={seal.method === 'manually entered' ? 'Manually Entered' : 'Digitally Scanned'}
+                          color={seal.method === 'manually entered' ? 'secondary' : 'primary'} 
                           size="small"
                         />
                       </TableCell>
@@ -4177,8 +4055,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 </TableBody>
               </Table>
             </TableContainer>
-                </Box>
-              )}
+          </Box>
+        )}
 
         {/* Add All Verification Seals section */}
         <Box mb={3}>
