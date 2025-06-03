@@ -120,31 +120,28 @@ export const POST = withAuth(
       if (body.role === UserRole.COMPANY) {
         try {
           // Process file uploads (logo and documents)
-          let logoUrl = null;
+          let logoId: string | null = null;
           let documentUrls: string[] = [];
           
           // Process logo if provided
           if (body.logo && body.logo instanceof File) {
             try {
-              // Generate a unique filename
-              const uniqueFilename = `${Date.now()}_${body.logo.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-              const logoPath = `uploads/logos/${uniqueFilename}`;
-              const publicPath = `/uploads/logos/${uniqueFilename}`;
-              
-              // Convert File to Buffer
+              // Read file as ArrayBuffer
               const arrayBuffer = await body.logo.arrayBuffer();
               const buffer = Buffer.from(arrayBuffer);
               
-              // Ensure directory exists (should be created in app startup, but just in case)
-              const dir = path.join(process.cwd(), 'public', 'uploads', 'logos');
-              await fs.mkdir(dir, { recursive: true });
+              // Create a media record for the logo
+              const media = await prisma.media.create({
+                data: {
+                  type: 'LOGO',
+                  mimeType: body.logo.type,
+                  data: buffer
+                }
+              });
               
-              // Write file to public directory
-              await fs.writeFile(path.join(process.cwd(), 'public', logoPath), buffer);
-              
-              // Store public URL path in database
-              logoUrl = publicPath;
-              console.log(`Logo saved successfully at ${logoPath}`);
+              // Store the media ID
+              logoId = media.id;
+              console.log(`Logo saved as media with ID: ${logoId}`);
             } catch (fileError) {
               console.error("Error saving logo file:", fileError);
               // Don't throw error, just log it and continue without logo
@@ -200,7 +197,7 @@ export const POST = withAuth(
               phone: body.companyPhone || "",
               companyType: body.companyType || "--Others--",
               gstin: body.gstin || null,
-              logo: logoUrl,
+              logoId: logoId,
               documents: documentUrls,
               isActive: true
             }
@@ -218,6 +215,14 @@ export const POST = withAuth(
             },
             include: {
               company: true
+            }
+          });
+          
+          // Create a CompanyOwner record to link the user as the owner of the company
+          await prisma.companyOwner.create({
+            data: {
+              userId: newUser.id,
+              companyId: company.id
             }
           });
         } catch (err) {

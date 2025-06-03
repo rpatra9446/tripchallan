@@ -129,24 +129,27 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
         // create a temporary representation but use actual company ID if available
         const realCompanyId = companyUser.companyId || companyUser.id;
         
-        // Get all employees associated with this company, regardless of whether we found the company record
-        const employees = await prisma.user.findMany({
-          where: {
-            OR: [
-              { companyId: companyUser.id },
-              { companyId: companyUser.companyId }
-            ],
-            role: UserRole.EMPLOYEE
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            subrole: true,
-            coins: true,
+              // Get all employees associated with this company, excluding the company owner
+      const employees = await prisma.user.findMany({
+        where: {
+          OR: [
+            { companyId: companyUser.id },
+            { companyId: companyUser.companyId }
+          ],
+          role: UserRole.EMPLOYEE,
+          email: {
+            not: companyUser.email // Exclude the company owner
           }
-        });
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          subrole: true,
+          coins: true,
+        }
+      });
             
         company = {
           id: realCompanyId, // Use the actual company ID if available
@@ -168,11 +171,14 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
         });
         
         if (directCompany) {
-          // Get employees for this company
+          // Get employees for this company, excluding any with the same email as the company
           const employees = await prisma.user.findMany({
             where: {
               companyId: directCompany.id,
-              role: UserRole.EMPLOYEE
+              role: UserRole.EMPLOYEE,
+              email: {
+                not: directCompany.email // Exclude users with the same email as the company
+              }
             },
             select: {
               id: true,
@@ -332,7 +338,7 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
 
           <div className="mt-4">
             <p className="text-gray-600 mb-2">Company Logo</p>
-            <CompanyLogo logoUrl={company.logo} companyName={company.name} />
+            <CompanyLogo logoId={company.logoId} companyName={company.name} />
           </div>
 
           <div className="mt-6">

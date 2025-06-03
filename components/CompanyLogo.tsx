@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 
 interface CompanyLogoProps {
-  logoUrl: string | null | undefined;
+  logoId: string | null | undefined;
   companyName: string;
 }
 
-export default function CompanyLogo({ logoUrl, companyName }: CompanyLogoProps) {
+export default function CompanyLogo({ logoId, companyName }: CompanyLogoProps) {
   const [error, setError] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>("");
-  const [fixedUrl, setFixedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   
   // Get first letter for the avatar (fallback)
   const firstLetter = companyName?.charAt(0)?.toUpperCase() || "C";
@@ -34,62 +34,68 @@ export default function CompanyLogo({ logoUrl, companyName }: CompanyLogoProps) 
   };
   
   useEffect(() => {
-    if (!logoUrl) {
-      setFixedUrl(null);
-      setDebugInfo("Logo URL: none");
-      return;
-    }
+    const fetchLogo = async () => {
+      if (!logoId) {
+        setLogoUrl(null);
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/media?id=${logoId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch logo: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setLogoUrl(data.dataUrl);
+      } catch (err) {
+        console.error("Error fetching logo:", err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    // Fix URL if it doesn't start with a slash
-    let url = logoUrl;
-    if (url && !url.startsWith('/') && !url.startsWith('http')) {
-      url = `/${url}`;
-    }
-    
-    // Use our custom image API route for uploads
-    if (url && url.includes('/uploads/')) {
-      // Remove the leading slash if it exists
-      const pathWithoutLeadingSlash = url.startsWith('/') ? url.substring(1) : url;
-      // Use the API route
-      url = `/api/images/${pathWithoutLeadingSlash}`;
-    }
-    
-    setFixedUrl(url);
-    setDebugInfo(`Original URL: ${logoUrl} | Fixed URL: ${url}`);
-    console.log("CompanyLogo processing logoUrl:", logoUrl, "→", url);
-  }, [logoUrl]);
+    fetchLogo();
+  }, [logoId]);
   
   const handleImageError = () => {
-    console.error("Image failed to load:", fixedUrl);
+    console.error("Image failed to load:", logoUrl);
     setError(true);
   };
   
-  if (!fixedUrl || error) {
-    // Letter avatar fallback
+  // Show loading state
+  if (loading) {
     return (
-      <div>
-        <div 
-          className="w-40 h-40 border rounded-md overflow-hidden flex items-center justify-center"
-          style={{ backgroundColor: getBgColor() }}
-        >
-          <span className="text-white text-6xl font-bold">{firstLetter}</span>
-        </div>
-        <p className="text-xs text-gray-400 mt-1">{debugInfo}</p>
+      <div className="w-40 h-40 border rounded-md overflow-hidden flex items-center justify-center bg-gray-100">
+        <span className="text-gray-400">Loading...</span>
       </div>
     );
   }
   
-  return (
-    <div>
-      <div className="w-40 h-40 border rounded-md overflow-hidden">
-        <img 
-          src={fixedUrl}
-          alt={`${companyName} logo`}
-          className="w-full h-full object-contain"
-          onError={handleImageError}
-        />
+  // Show letter avatar as fallback
+  if (!logoUrl || error) {
+    return (
+      <div 
+        className="w-40 h-40 border rounded-md overflow-hidden flex items-center justify-center"
+        style={{ backgroundColor: getBgColor() }}
+      >
+        <span className="text-white text-6xl font-bold">{firstLetter}</span>
       </div>
-      <p className="text-xs text-gray-400 mt-1">{debugInfo}</p>
+    );
+  }
+  
+  // Show actual logo
+  return (
+    <div className="w-40 h-40 border rounded-md overflow-hidden">
+      <img 
+        src={logoUrl}
+        alt={`${companyName} logo`}
+        className="w-full h-full object-contain"
+        onError={handleImageError}
+      />
     </div>
   );
 } 

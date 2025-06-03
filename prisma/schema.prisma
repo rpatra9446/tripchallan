@@ -29,10 +29,11 @@ model User {
   verifiedSeals        Seal[]               @relation("SealVerifiedBy")
   verifiedGuardSealTags GuardSealTag[]      @relation("GuardSealTagVerifiedBy")
   createdSessions      Session[]            @relation("SessionCreatedBy")
-  company              Company?             @relation(fields: [companyId], references: [id])
+  company              Company?             @relation("CompanyEmployees", fields: [companyId], references: [id])
   createdBy            User?                @relation("UserCreatedBy", fields: [createdById], references: [id])
   createdUsers         User[]               @relation("UserCreatedBy")
   createdVehicles      Vehicle[]            @relation("VehicleCreatedBy")
+  ownedCompany         CompanyOwner?
 
   @@map("users")
 }
@@ -49,12 +50,42 @@ model Company {
   documents   String[]
   gstin       String?
   isActive    Boolean   @default(true)
-  logo        String?
+  logoId      String?   @unique
   sessions    Session[]
-  employees   User[]
+  employees   User[]    @relation("CompanyEmployees")
   vehicles    Vehicle[]
+  logo        Media?    @relation("CompanyLogo", fields: [logoId], references: [id])
+  owner       CompanyOwner?
 
   @@map("companies")
+}
+
+model CompanyOwner {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  companyId  String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@map("company_owners")
+}
+
+model Media {
+  id        String   @id @default(uuid())
+  type      String   // "LOGO", "DOCUMENT", etc.
+  mimeType  String   // "image/jpeg", "image/png", etc.
+  data      Bytes    // Store binary data directly
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  companyLogo Company? @relation("CompanyLogo")
+  
+  @@map("media")
 }
 
 model CoinTransaction {

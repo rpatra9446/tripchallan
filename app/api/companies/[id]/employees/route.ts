@@ -96,41 +96,15 @@ async function handler(req: NextRequest, context?: { params: Record<string, stri
       where: {
         AND: [
           {
-            email: {
-              not: companyEmail // Exclude self-admin (matches company email)
-            }
+            role: UserRole.EMPLOYEE
           },
           {
-            subrole: {
-              in: [EmployeeSubrole.GUARD, EmployeeSubrole.OPERATOR] // Only include GUARD and OPERATOR
-            }
+            // Not a company owner
+            ownedCompany: null
           },
           {
-            OR: [
-              // Direct association via companyId field
-              {
-                companyId: companyId,
-                role: UserRole.EMPLOYEE
-              },
-              // Indirect association via company.employees relation
-              {
-                company: {
-                  id: companyId
-                },
-                role: UserRole.EMPLOYEE
-              },
-              // Created by this company
-              {
-                createdById: companyId,
-                role: UserRole.EMPLOYEE
-              },
-              // Found through Company.employees relation
-              {
-                id: {
-                  in: employeeIdsFromCompany
-                }
-              }
-            ]
+            // Has the company's ID
+            companyId: companyRecord?.id || companyId
           }
         ]
       },
