@@ -3526,7 +3526,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   // Modified Verification Box for Guards
   if (canVerify) {
     return (
-      <Container maxWidth="md">
+      <Container maxWidth="md" sx={{ pb: { xs: 10, sm: 6 } }}> {/* Added bottom padding for better mobile scrolling */}
         <Box mb={3}>
           <Button
             component={Link}
@@ -3704,13 +3704,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
         {/* Verification Button */}
         {!verificationFormOpen && (
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 3, mb: { xs: 4, sm: 3 } }}>
             <Button
               variant="contained"
               color="primary"
               size="large"
               startIcon={<Lock />}
               onClick={startVerification}
+              sx={{ py: { xs: 1.5, sm: 1 } }} /* Increased tap target size on mobile */
             >
               Start Trip Verification
             </Button>
@@ -3747,7 +3748,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   }
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ pb: { xs: 10, sm: 6 } }}> {/* Added bottom padding for better mobile scrolling */}
       <Box mb={3}>
         <Button
           component={Link}
@@ -4385,13 +4386,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
       {/* GUARD Verification Button - Show for GUARD users with IN_PROGRESS sessions */}
       {isGuard && session.status === SessionStatus.IN_PROGRESS && !verificationFormOpen && (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 3, mb: { xs: 4, sm: 3 } }}>
           <Button
             variant="contained"
             color="primary"
             size="large"
             startIcon={<Lock />}
             onClick={startVerification}
+            sx={{ py: { xs: 1.5, sm: 1 } }} /* Increased tap target size on mobile */
           >
             Start Trip Verification
           </Button>
