@@ -2294,7 +2294,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                         <Typography variant="body2">{formatDate(guardSeal.timestamp)}</Typography>
                                       </Box>
                                       
-                                      {guardSeal.imagePreview ? (
+                                                                              {guardSeal.imagePreview ? (
                                         <Box>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>Image:</Typography>
                                           <Box 
@@ -2314,25 +2314,48 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                       ) : (
                                         <Box sx={{ mb: 2 }}>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>Image:</Typography>
-                                          <Button
-                                            component="label"
-                                            variant="outlined"
-                                            size="small"
-                                            startIcon={<CloudUpload />}
-                                          >
-                                            Upload Image
-                                            <input
-                                              type="file"
-                                              hidden
-                                              accept="image/*"
-                                              onChange={(e) => {
-                                                const guardIndex = guardScannedSeals.findIndex(s => s.id === sealId);
-                                                if (guardIndex !== -1) {
-                                                  handleSealImageUpload(guardIndex, e.target.files?.[0] || null);
-                                                }
-                                              }}
-                                            />
-                                          </Button>
+                                          <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <Button
+                                              component="label"
+                                              variant="outlined"
+                                              size="small"
+                                              startIcon={<CloudUpload />}
+                                            >
+                                              Upload Image
+                                              <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                  const guardIndex = guardScannedSeals.findIndex(s => s.id === sealId);
+                                                  if (guardIndex !== -1) {
+                                                    handleSealImageUpload(guardIndex, e.target.files?.[0] || null);
+                                                  }
+                                                }}
+                                              />
+                                            </Button>
+                                            <Button
+                                              component="label"
+                                              variant="outlined"
+                                              size="small"
+                                              color="secondary"
+                                              startIcon={<QrCode />}
+                                            >
+                                              Capture Image
+                                              <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*"
+                                                capture="environment"
+                                                onChange={(e) => {
+                                                  const guardIndex = guardScannedSeals.findIndex(s => s.id === sealId);
+                                                  if (guardIndex !== -1) {
+                                                    handleSealImageUpload(guardIndex, e.target.files?.[0] || null);
+                                                  }
+                                                }}
+                                              />
+                                            </Button>
+                                          </Box>
                                         </Box>
                                       )}
                                     </>
