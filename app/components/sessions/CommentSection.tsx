@@ -115,16 +115,16 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
     }
 
     try {
-      const file = e.target.files[0];
+    const file = e.target.files[0];
       // Compress the image before setting it
       const compressedImage = await resizeAndCompressImage(file);
       setSelectedImage(compressedImage);
 
-      // Create and set image preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
+    // Create and set image preview URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
       reader.readAsDataURL(compressedImage);
     } catch (error) {
       console.error("Error processing image:", error);

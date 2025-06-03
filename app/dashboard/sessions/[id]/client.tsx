@@ -185,8 +185,8 @@ type SessionType = {
        id: string;
        name: string;
        email: string;
-     };
-   }[];
+    };
+  }[];
 };
 
 // For Material-UI Grid component
@@ -4756,8 +4756,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               onClick={() => {
                                 // Open image in modal
                                 setSelectedImage(seal.imageUrl || '');
-                                setOpenImageModal(true);
-                              }}
+                              setOpenImageModal(true);
+                            }}
                               onError={(e) => {
                                 console.error(`Failed to load image for seal ${seal.barcode}:`, seal.imageUrl);
                                 // Try alternative image URL formats
@@ -4768,11 +4768,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                   console.log(`Retrying with index-based URL: ${img.src}`);
                                 }
                               }}
-                            />
-                          ) : (
-                            <Typography variant="caption">No image</Typography>
-                          )}
-                        </TableCell>
+                          />
+                        ) : (
+                          <Typography variant="caption">No image</Typography>
+                        )}
+                      </TableCell>
                         <TableCell>
                           <Chip 
                             label={seal.status || 'VERIFIED'}
@@ -4783,11 +4783,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <TableCell>
                           {seal.createdAt ? formatDate(seal.createdAt) : "N/A"}
                         </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
               
               {/* Display images in a gallery view as well */}
               <Typography variant="subtitle1" gutterBottom>
