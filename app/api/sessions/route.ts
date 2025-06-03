@@ -346,11 +346,16 @@ async function handler(req: NextRequest) {
       where: whereClause,
       include: {
         seal: {
-          select: {
-            id: true,
-            barcode: true,
-            verified: true,
-            scannedAt: true
+          include: {
+            verifiedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                subrole: true
+              }
+            }
           }
         },
         company: {
@@ -400,7 +405,21 @@ async function handler(req: NextRequest) {
             companyId: whereClause.companyId,
             status: "IN_PROGRESS"
           },
-          include: { seal: true },
+          include: { 
+            seal: {
+              include: {
+                verifiedBy: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                    subrole: true
+                  }
+                }
+              }
+            } 
+          },
           take: 5
         }).then((checkSessions: any[]) => {
           console.log(`[API DEBUG] Found ${checkSessions.length} IN_PROGRESS sessions for company without seal filter`);
