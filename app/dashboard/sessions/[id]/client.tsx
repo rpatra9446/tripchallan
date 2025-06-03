@@ -202,7 +202,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   
   // Add new state for verification tabs
   const [activeTab, setActiveTab] = useState(0);
-  const verificationTabs = ['Loading Details', 'Seal Tags', 'Driver Details', 'Images'];
+  const verificationTabs = ['Loading Details', 'Session Info', 'Seal Tags', 'Driver Details', 'Images'];
   
   // Add new state for guard's uploaded images
   const [guardImages, setGuardImages] = useState<{
@@ -307,7 +307,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       'source': 'Source',
       'destination': 'Destination',
       'cargoType': 'Cargo Type',
-      'numberOfPackages': 'Number of Packages'
+      'numberOfPackages': 'Number of Packages',
+      'createdById': 'Created By ID',
+      'createdByName': 'Created By Name'
     };
     
     // Return custom label if exists, otherwise convert camelCase to Title Case
@@ -870,6 +872,52 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             };
           }
         });
+      }
+      
+      // Add system fields like createdBy
+      if (session.createdBy) {
+        fields['createdById'] = {
+          operatorValue: session.createdBy.id,
+          guardValue: '',
+          comment: '',
+          isVerified: false
+        };
+        
+        fields['createdByName'] = {
+          operatorValue: session.createdBy.name,
+          guardValue: '',
+          comment: '',
+          isVerified: false
+        };
+      }
+      
+      // Ensure source and destination are added from either tripDetails or session
+      if (session.source && !fields['source']) {
+        fields['source'] = {
+          operatorValue: session.source,
+          guardValue: '',
+          comment: '',
+          isVerified: false
+        };
+      }
+      
+      if (session.destination && !fields['destination']) {
+        fields['destination'] = {
+          operatorValue: session.destination,
+          guardValue: '',
+          comment: '',
+          isVerified: false
+        };
+      }
+      
+      // Make sure driver contact number is included
+      if (session.tripDetails?.driverContactNumber && !fields['driverContactNumber']) {
+        fields['driverContactNumber'] = {
+          operatorValue: session.tripDetails.driverContactNumber,
+          guardValue: '',
+          comment: '',
+          isVerified: false
+        };
       }
       
       setVerificationFields(fields);
@@ -1451,6 +1499,90 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     );
   };
 
+  // Session Information Verification
+  const renderSessionInfoVerification = () => {
+    if (!session) {
+      return (
+        <Box sx={{ py: 3, textAlign: 'center' }}>
+          <Typography variant="body1" color="text.secondary">
+            No session information available for verification.
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Box>
+        <Typography variant="h6" gutterBottom>
+          Session Information Verification
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Please verify the session information details by comparing with the operator.
+        </Typography>
+
+        <TableContainer component={Paper} variant="outlined" sx={{ mb: 4 }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: 'background.paper' }}>
+                <TableCell width="40%"><strong>Field</strong></TableCell>
+                <TableCell width="45%"><strong>Operator Value</strong></TableCell>
+                <TableCell width="15%"><strong>Status</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {Object.entries(verificationFields)
+                .filter(([field, _]) => [
+                  'createdById', 'createdByName', 'source', 'destination'
+                ].includes(field))
+                .map(([field, data]) => (
+                <TableRow key={field} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableCell component="th" scope="row">
+                    {getFieldLabel(field)}
+                  </TableCell>
+                  <TableCell>
+                      {data.operatorValue}
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column" alignItems="center">
+                        <IconButton 
+                          onClick={() => verifyField(field)}
+                          color={data.isVerified ? "success" : "default"}
+                          size="small"
+                        >
+                          {data.isVerified ? <CheckCircle /> : <RadioButtonUnchecked />}
+                        </IconButton>
+                    <TextField 
+                      size="small"
+                          placeholder="Add comment"
+                          value={data.comment}
+                          onChange={(e) => handleCommentChange(field, e.target.value)}
+                          variant="standard"
+                          sx={{ mt: 1, width: '100%' }}
+                          InputProps={{
+                            endAdornment: data.comment ? (
+                              <InputAdornment position="end">
+                                <IconButton 
+                                  onClick={() => handleCommentChange(field, '')}
+                                  edge="end"
+                                  size="small" 
+                                >
+                                  <Close fontSize="small" />
+                                </IconButton>
+                              </InputAdornment>
+                            ) : null,
+                          }}
+                        />
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    );
+  };
+
   // Driver Details Verification
   const renderDriverDetailsVerification = () => {
     if (!session || !session.tripDetails) {
@@ -1484,7 +1616,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             <TableBody>
               {Object.entries(verificationFields)
                 .filter(([field, _]) => [
-                  'driverName', 'driverMobileNumber', 'driverLicenseNumber',
+                  'driverName', 'driverMobileNumber', 'driverContactNumber', 'driverLicenseNumber',
                   'driverLicenseExpiryDate', 'driverAddress', 'driverExperience'
                 ].includes(field))
                 .map(([field, data]) => (
@@ -3685,9 +3817,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             
             {/* Tab Content */}
             {activeTab === 0 && renderTripDetailsVerification()}
-            {activeTab === 1 && renderSealVerification()}
-            {activeTab === 2 && renderDriverDetailsVerification()}
-            {activeTab === 3 && renderImageVerification()}
+                {activeTab === 1 && renderSessionInfoVerification()}
+                {activeTab === 2 && renderSealVerification()}
+                {activeTab === 3 && renderDriverDetailsVerification()}
+                {activeTab === 4 && renderImageVerification()}
 
             {/* Navigation and Verification Actions */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
