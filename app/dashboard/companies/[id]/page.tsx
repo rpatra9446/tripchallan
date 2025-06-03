@@ -104,6 +104,12 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
         where: { id: actualCompanyId },
         include: {
           employees: {
+            where: {
+              // Only include real employees, not company owners
+              role: UserRole.EMPLOYEE,
+              // Exclude users who own a company (regardless of which company)
+              ownedCompany: null
+            },
             select: {
               id: true,
               name: true,
@@ -129,7 +135,7 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
         // create a temporary representation but use actual company ID if available
         const realCompanyId = companyUser.companyId || companyUser.id;
         
-              // Get all employees associated with this company, excluding the company owner
+              // Get all employees associated with this company, excluding company owners
       const employees = await prisma.user.findMany({
         where: {
           OR: [
@@ -137,9 +143,8 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
             { companyId: companyUser.companyId }
           ],
           role: UserRole.EMPLOYEE,
-          email: {
-            not: companyUser.email // Exclude the company owner
-          }
+          // Exclude company owners
+          ownedCompany: null
         },
         select: {
           id: true,
@@ -171,14 +176,13 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
         });
         
         if (directCompany) {
-          // Get employees for this company, excluding any with the same email as the company
+          // Get employees for this company, excluding company owners
           const employees = await prisma.user.findMany({
             where: {
               companyId: directCompany.id,
               role: UserRole.EMPLOYEE,
-              email: {
-                not: directCompany.email // Exclude users with the same email as the company
-              }
+              // Exclude any users who own a company
+              ownedCompany: null,
             },
             select: {
               id: true,
@@ -205,7 +209,9 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
         const companyEmployees = await prisma.user.findMany({
           where: {
             companyId: companyId,
-            role: UserRole.EMPLOYEE
+            role: UserRole.EMPLOYEE,
+            // Exclude company owners
+            ownedCompany: null
           },
           select: {
             id: true,

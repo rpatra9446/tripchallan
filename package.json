@@ -14,7 +14,8 @@
     "db:seed:js": "node prisma/seed.js",
     "vercel-build": "echo 'Running Vercel specific build' && node scripts/check-directories.js && prisma generate && node prisma/migrate-safely.js && (node prisma/seed.js || echo 'Seed failed but continuing') && next build",
     "check-dirs": "node scripts/check-directories.js",
-    "fix-images": "node scripts/fix-image-paths.js"
+    "fix-images": "node scripts/fix-image-paths.js",
+    "fix-owners": "node scripts/fix-company-owners.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
