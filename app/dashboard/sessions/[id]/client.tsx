@@ -75,6 +75,15 @@ import { processMultipleImages, resizeAndCompressImage } from "@/lib/imageUtils"
 
 
 // Types
+type GuardSealTagType = {
+  id: string;
+  barcode: string;
+  method: string;
+  imageUrl: string | null;
+  createdAt: string;
+  verified: boolean;
+};
+
 type SealType = {
   id: string;
   barcode: string;
@@ -93,6 +102,7 @@ type SealType = {
     allMatch?: boolean;
     verificationTimestamp?: string;
   };
+  guardSealTags?: GuardSealTagType[];
 };
 
 type SessionType = {
@@ -287,6 +297,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [selectedSeal, setSelectedSeal] = useState<any>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   
+  // Add a new state for guard seal tags from the new model
+  const [guardSealTagsData, setGuardSealTagsData] = useState<Array<{
+    id: string;
+    barcode: string;
+    method: string;
+    imageUrl: string | null;
+    createdAt: string;
+    verified: boolean;
+  }>>([]);
+
   // Utility functions needed before other definitions
   const getFieldLabel = useCallback((key: string): string => {
     // Define custom labels for specific fields
@@ -3475,6 +3495,43 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           addDivider();
         }
         
+        // Seal Information and Guard Seal Tags
+        if (session.seal) {
+          checkPageBreak(30);
+          addSectionTitle("Seal Information");
+          
+          // Basic seal info
+          addField("Seal ID", session.seal.id, true);
+          addField("Barcode", session.seal.barcode, true);
+          addField("Verified", session.seal.verified ? "Yes" : "No", true);
+          
+          if (session.seal.scannedAt) {
+            addField("Scanned At", formatDate(session.seal.scannedAt), true);
+          }
+          
+          if (session.seal.verifiedBy) {
+            addField("Verified By", `${session.seal.verifiedBy.name} (${session.seal.verifiedBy.email})`, true);
+          }
+          
+          // Add guard seal tags if available
+          if (guardSealTagsData.length > 0) {
+            checkPageBreak(20);
+            addSectionTitle("Guard Seal Tags");
+            
+            addField("Total Guard Seal Tags", guardSealTagsData.length.toString(), true);
+            
+            guardSealTagsData.forEach((tag, index) => {
+              checkPageBreak(20);
+              addField(`Tag ${index + 1} ID`, tag.barcode, true);
+              addField(`Tag ${index + 1} Method`, tag.method, true);
+              addField(`Tag ${index + 1} Verified`, tag.verified ? "Yes" : "No", true);
+              addField(`Tag ${index + 1} Created At`, formatDate(tag.createdAt), true);
+            });
+          }
+          
+          addDivider();
+        }
+        
         // QR Code information
         if (session.qrCodes) {
           checkPageBreak(20);
@@ -4088,6 +4145,28 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     return systemFields.includes(key);
   };
 
+  // Use effect to fetch guard seal tags
+  useEffect(() => {
+    if (session?.seal?.id) {
+      const fetchGuardSealTags = async () => {
+        try {
+          const response = await fetch(`/api/seals/${session.seal!.id}/guardTags`);
+          if (response.ok) {
+            const data = await response.json();
+            setGuardSealTagsData(data);
+            console.log("[DEBUG] Fetched guard seal tags:", data);
+          } else {
+            console.error("[ERROR] Failed to fetch guard seal tags:", await response.text());
+          }
+        } catch (error) {
+          console.error("[ERROR] Error fetching guard seal tags:", error);
+        }
+      };
+      
+      fetchGuardSealTags();
+    }
+  }, [session?.seal?.id]);
+
   if (authStatus === "loading" || loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -4616,133 +4695,232 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         )}
 
                 {/* NEW SECTION: Dedicated Guard Seal Tags section for visibility */}
-        {session.seal?.verificationData?.guardImages && (
+        {(session.seal?.id && (guardSealTagsData.length > 0 || session.seal?.verificationData?.guardImages)) && (
           <Box mb={3}>
             <Typography variant="h6" gutterBottom sx={{ color: 'secondary.main' }}>
               Guard Seal Tags
             </Typography>
             <Divider sx={{ mb: 2 }} />
-              
-              {/* Debug information for development */}
-              {process.env.NODE_ENV === 'development' && (
-                <details>
-                  <summary>Debug: Guard Images Data Structure</summary>
-                  <pre style={{ fontSize: '11px', overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: '200px', overflow: 'auto' }}>
-                    {JSON.stringify(session.seal.verificationData.guardImages, null, 2)}
-                  </pre>
-                </details>
-              )}
-              
-              <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {/* Display all available images from guardImages */}
-                {Object.entries(session.seal.verificationData.guardImages).map(([key, value]) => {
-                  if (Array.isArray(value)) {
-                    return (
-                      <Box key={key} sx={{ mb: 3 }}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          {getFieldLabel(key)}
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {value.map((url, idx) => 
-                            typeof url === 'string' ? (
-                              <Box key={`${key}-${idx}`} sx={{ position: 'relative', mb: 1 }}>
-                                <Typography variant="caption" sx={{ position: 'absolute', top: 0, left: 0, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', px: 1 }}>
-                                  {idx + 1}
-                                </Typography>
-                                <Box
-                                  component="img"
-                                  src={url}
-                                  alt={`${key} ${idx + 1}`}
-                                  sx={{
-                                    width: 120,
-                                    height: 120,
-                                    objectFit: 'cover',
-                                    border: '2px solid',
-                                    borderColor: 'secondary.main',
-                                    borderRadius: 1,
-                                    cursor: 'pointer'
-                                  }}
-                                  onClick={() => {
-                                    setSelectedImage(url);
-                                    setOpenImageModal(true);
-                                  }}
-                                />
-                              </Box>
-                            ) : null
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  } else if (typeof value === 'string') {
-                    return (
-                      <Box key={key} sx={{ position: 'relative', mb: 1 }}>
-                        <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
-                          {getFieldLabel(key)}
-                        </Typography>
-                        <Box
-                          component="img"
-                          src={value}
-                          alt={key}
-                          sx={{
-                            width: 120,
-                            height: 120,
-                            objectFit: 'cover',
-                            border: '2px solid',
-                            borderColor: 'secondary.main',
-                            borderRadius: 1,
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => {
-                            setSelectedImage(value);
-                            setOpenImageModal(true);
-                          }}
-                        />
-                      </Box>
-                    );
-                  }
-                  return null;
-                })}
-              </Box>
-              
-              {/* Specific extraction of sealingImages array if it exists */}
-              {session.seal?.verificationData?.guardImages?.sealingImages && Array.isArray(session.seal.verificationData.guardImages.sealingImages) && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Guard Seal Tag Images
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                    {session.seal.verificationData.guardImages.sealingImages.map((url, index) => 
-                      typeof url === 'string' ? (
-                        <Box key={`sealing-${index}`} sx={{ position: 'relative' }}>
-                          <Typography variant="caption" sx={{ position: 'absolute', top: 0, left: 0, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', px: 1 }}>
-                            {index + 1}
-                          </Typography>
-                          <Box
-                            component="img"
-                            src={url}
-                            alt={`Seal Tag ${index + 1}`}
-                            sx={{
-                              width: 150,
-                              height: 150,
-                              objectFit: 'cover',
-                              border: '2px solid',
-                              borderColor: 'secondary.main',
-                              borderRadius: 1,
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => {
-                              setSelectedImage(url);
-                              setOpenImageModal(true);
-                            }}
-                          />
-                        </Box>
-                      ) : null
-                    )}
+            
+            {/* Display structured guard seal tags from database */}
+            {guardSealTagsData.length > 0 ? (
+              <>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Total Guard Seal Tags: <strong>{guardSealTagsData.length}</strong>
+                </Typography>
+                
+                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'background.paper' }}>
+                        <TableCell>No.</TableCell>
+                        <TableCell>Seal Tag ID</TableCell>
+                        <TableCell>Method</TableCell>
+                        <TableCell>Image</TableCell>
+                        <TableCell>Created At</TableCell>
+                        <TableCell>Verified</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {guardSealTagsData.map((seal, index) => (
+                        <TableRow key={index} hover>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>
+                            <Box 
+                              sx={{ 
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1,
+                                p: 0.75,
+                                bgcolor: 'background.paper',
+                                maxWidth: 180,
+                                overflow: 'hidden'
+                              }}
+                            >
+                              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 'medium' }}>
+                                {seal.barcode}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
+                              color={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {seal.imageUrl ? (
+                              <Box 
+                                component="img" 
+                                src={seal.imageUrl} 
+                                alt={`Seal tag ${index+1}`}
+                                sx={{ 
+                                  width: 60, 
+                                  height: 60, 
+                                  objectFit: 'cover',
+                                  borderRadius: 1,
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                  setSelectedImage(seal.imageUrl!);
+                                  setOpenImageModal(true);
+                                }}
+                                onError={(e) => {
+                                  console.error(`Failed to load image for guard seal ${seal.barcode}:`, seal.imageUrl);
+                                  const img = e.target as HTMLImageElement;
+                                  if (session?.id) {
+                                    img.src = `/api/images/${session.id}/guard/${index}`;
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <Typography variant="caption">No image</Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {seal.createdAt ? formatDate(seal.createdAt) : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={seal.verified ? "Verified" : "Unverified"}
+                              color={seal.verified ? "success" : "warning"}
+                              size="small"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            ) : (
+              // Fallback to legacy format for backward compatibility
+              <>
+                {/* Debug information for development */}
+                {process.env.NODE_ENV === 'development' && session.seal?.verificationData?.guardImages && (
+                  <details>
+                    <summary>Debug: Guard Images Data Structure</summary>
+                    <pre style={{ fontSize: '11px', overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: '200px', overflow: 'auto' }}>
+                      {JSON.stringify(session.seal.verificationData.guardImages, null, 2)}
+                    </pre>
+                  </details>
+                )}
+                
+                {session.seal?.verificationData?.guardImages && (
+                  <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                    {/* Display all available images from guardImages */}
+                    {Object.entries(session.seal.verificationData.guardImages).map(([key, value]) => {
+                      if (Array.isArray(value)) {
+                        return (
+                          <Box key={key} sx={{ mb: 3 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              {getFieldLabel(key)}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {value.map((url, idx) => 
+                                typeof url === 'string' ? (
+                                  <Box key={`${key}-${idx}`} sx={{ position: 'relative', mb: 1 }}>
+                                    <Typography variant="caption" sx={{ position: 'absolute', top: 0, left: 0, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', px: 1 }}>
+                                      {idx + 1}
+                                    </Typography>
+                                    <Box
+                                      component="img"
+                                      src={url}
+                                      alt={`${key} ${idx + 1}`}
+                                      sx={{
+                                        width: 120,
+                                        height: 120,
+                                        objectFit: 'cover',
+                                        border: '2px solid',
+                                        borderColor: 'secondary.main',
+                                        borderRadius: 1,
+                                        cursor: 'pointer'
+                                      }}
+                                      onClick={() => {
+                                        setSelectedImage(url);
+                                        setOpenImageModal(true);
+                                      }}
+                                    />
+                                  </Box>
+                                ) : null
+                              )}
+                            </Box>
+                          </Box>
+                        );
+                      } else if (typeof value === 'string') {
+                        return (
+                          <Box key={key} sx={{ position: 'relative', mb: 1 }}>
+                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
+                              {getFieldLabel(key)}
+                            </Typography>
+                            <Box
+                              component="img"
+                              src={value}
+                              alt={key}
+                              sx={{
+                                width: 120,
+                                height: 120,
+                                objectFit: 'cover',
+                                border: '2px solid',
+                                borderColor: 'secondary.main',
+                                borderRadius: 1,
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => {
+                                setSelectedImage(value);
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          </Box>
+                        );
+                      }
+                      return null;
+                    })}
                   </Box>
-                </Box>
-              )}
-            </Box>
-          )}
+                )}
+                
+                {/* Specific extraction of sealingImages array if it exists */}
+                {session.seal?.verificationData?.guardImages?.sealingImages && Array.isArray(session.seal.verificationData.guardImages.sealingImages) && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Guard Seal Tag Images
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                      {session.seal.verificationData.guardImages.sealingImages.map((url, index) => 
+                        typeof url === 'string' ? (
+                          <Box key={`sealing-${index}`} sx={{ position: 'relative' }}>
+                            <Typography variant="caption" sx={{ position: 'absolute', top: 0, left: 0, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', px: 1 }}>
+                              {index + 1}
+                            </Typography>
+                            <Box
+                              component="img"
+                              src={url}
+                              alt={`Seal Tag ${index + 1}`}
+                              sx={{
+                                width: 150,
+                                height: 150,
+                                objectFit: 'cover',
+                                border: '2px solid',
+                                borderColor: 'secondary.main',
+                                borderRadius: 1,
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => {
+                                setSelectedImage(url);
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          </Box>
+                        ) : null
+                      )}
+                    </Box>
+                  </Box>
+                )}
+              </>
+            )}
+          </Box>
+        )}
 
           {/* Add All Verification Seals section */}
           <Box mb={3}>

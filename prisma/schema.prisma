@@ -108,18 +108,20 @@ model Session {
 }
 
 model Seal {
-  id              String    @id @default(uuid())
-  sessionId       String    @unique
+  id              String        @id @default(uuid())
+  sessionId       String        @unique
   barcode         String
   scannedAt       DateTime?
-  verified        Boolean   @default(false)
+  verified        Boolean       @default(false)
   verifiedById    String?
   status          String?
   statusComment   String?
   statusEvidence  Json?
   statusUpdatedAt DateTime?
-  session         Session   @relation(fields: [sessionId], references: [id])
-  verifiedBy      User?     @relation("SealVerifiedBy", fields: [verifiedById], references: [id])
+  verificationData Json?        @default("{}")
+  session         Session       @relation(fields: [sessionId], references: [id])
+  verifiedBy      User?         @relation("SealVerifiedBy", fields: [verifiedById], references: [id])
+  guardSealTags   GuardSealTag[]
 
   @@map("seals")
 }
@@ -196,6 +198,20 @@ model SealTag {
   session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@map("seal_tags")
+}
+
+model GuardSealTag {
+  id            String   @id @default(uuid())
+  barcode       String
+  sealId        String
+  method        String
+  imageUrl      String?
+  createdAt     DateTime @default(now())
+  verified      Boolean  @default(false)
+  seal          Seal     @relation(fields: [sealId], references: [id], onDelete: Cascade)
+
+  @@unique([sealId, barcode])
+  @@map("guard_seal_tags")
 }
 
 enum UserRole {

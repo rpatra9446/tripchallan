@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
             email: true,
           },
         },
+        guardSealTags: true,
       },
     });
 
@@ -119,9 +120,79 @@ export async function POST(req: NextRequest) {
       sealData.verifiedById = user.id;
       sealData.scannedAt = new Date();
       
+      // Store the verification data in the JSON field for backward compatibility
+      sealData.verificationData = verificationData;
+      
+      // Extract guard seal tags if present
+      const guardSealTags = [];
+      if (verificationData.guardImages) {
+        // Handle different formats of guard seal tags
+        if (verificationData.guardImages.sealTags && Array.isArray(verificationData.guardImages.sealTags)) {
+          // If guardImages has a structured sealTags array
+          guardSealTags.push(...verificationData.guardImages.sealTags.map((tag: any) => ({
+            barcode: tag.id || tag.barcode,
+            method: tag.method || 'digital',
+            imageUrl: tag.imageUrl || tag.image,
+            verified: tag.verified !== undefined ? tag.verified : true
+          })));
+        } else {
+          // Try to find seal tags in the flat structure
+          for (const [key, value] of Object.entries(verificationData.guardImages)) {
+            // Process key-value pairs that look like seal tag data
+            if (
+              (key.toLowerCase().includes('seal') || key.toLowerCase().includes('tag') || key.toLowerCase().includes('barcode')) && 
+              (typeof value === 'string' || (typeof value === 'object' && value !== null))
+            ) {
+              if (typeof value === 'string') {
+                // Simple string value, assume it's an image URL
+                guardSealTags.push({
+                  barcode: key,
+                  method: 'digital',
+                  imageUrl: value,
+                  verified: true
+                });
+              } else if (typeof value === 'object' && value !== null) {
+                if (Array.isArray(value)) {
+                  // Array of values, assume it's an array of images
+                  value.forEach((item, index) => {
+                    if (typeof item === 'string') {
+                      guardSealTags.push({
+                        barcode: `${key}_${index + 1}`,
+                        method: 'digital',
+                        imageUrl: item,
+                        verified: true
+                      });
+                    }
+                  });
+                } else {
+                  // Object with properties
+                  const valueObj = value as Record<string, any>;
+                  guardSealTags.push({
+                    barcode: valueObj.id || valueObj.barcode || key,
+                    method: valueObj.method || 'digital',
+                    imageUrl: valueObj.imageUrl || valueObj.image,
+                    verified: valueObj.verified !== undefined ? valueObj.verified : true
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+      
       // Create the seal with verification
-    const seal = await prisma.seal.create({
-        data: sealData,
+      const seal = await prisma.seal.create({
+        data: {
+          ...sealData,
+          guardSealTags: {
+            create: guardSealTags.map(tag => ({
+              barcode: tag.barcode,
+              method: tag.method,
+              imageUrl: tag.imageUrl,
+              verified: tag.verified,
+            }))
+          }
+        },
         include: {
           verifiedBy: {
             select: {
@@ -132,8 +203,9 @@ export async function POST(req: NextRequest) {
               subrole: true,
             }
           },
-      },
-    });
+          guardSealTags: true
+        },
+      });
       
       // Update session status to COMPLETED
       await prisma.session.update({
@@ -300,15 +372,73 @@ export async function PATCH(req: NextRequest) {
         // Type assertion for the transaction client
         const tx = prismaClient as typeof prisma;
 
-    // Update the seal as verified
+        // Extract guard seal tags from verificationData if present
+        const guardSealTags = [];
+        if (verificationData.guardImages) {
+          // Handle different formats of guard seal tags
+          if (verificationData.guardImages.sealTags && Array.isArray(verificationData.guardImages.sealTags)) {
+            // If guardImages has a structured sealTags array
+            guardSealTags.push(...verificationData.guardImages.sealTags.map((tag: any) => ({
+              barcode: tag.id || tag.barcode,
+              method: tag.method || 'digital',
+              imageUrl: tag.imageUrl || tag.image,
+              verified: tag.verified !== undefined ? tag.verified : true
+            })));
+          } else {
+            // Try to find seal tags in the flat structure
+            for (const [key, value] of Object.entries(verificationData.guardImages)) {
+              // Process key-value pairs that look like seal tag data
+              if (
+                (key.toLowerCase().includes('seal') || key.toLowerCase().includes('tag') || key.toLowerCase().includes('barcode')) && 
+                (typeof value === 'string' || (typeof value === 'object' && value !== null))
+              ) {
+                if (typeof value === 'string') {
+                  // Simple string value, assume it's an image URL
+                  guardSealTags.push({
+                    barcode: key,
+                    method: 'digital',
+                    imageUrl: value,
+                    verified: true
+                  });
+                } else if (typeof value === 'object' && value !== null) {
+                  if (Array.isArray(value)) {
+                    // Array of values, assume it's an array of images
+                    value.forEach((item, index) => {
+                      if (typeof item === 'string') {
+                        guardSealTags.push({
+                          barcode: `${key}_${index + 1}`,
+                          method: 'digital',
+                          imageUrl: item,
+                          verified: true
+                        });
+                      }
+                    });
+                  } else {
+                    // Object with properties
+                    const valueObj = value as Record<string, any>;
+                    guardSealTags.push({
+                      barcode: valueObj.id || valueObj.barcode || key,
+                      method: valueObj.method || 'digital',
+                      imageUrl: valueObj.imageUrl || valueObj.image,
+                      verified: valueObj.verified !== undefined ? valueObj.verified : true
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Update the seal as verified
         const updatedSeal = await tx.seal.update({
-      where: { id: sealId },
-      data: {
-        verified: true,
-        verifiedById: user.id,
-        scannedAt: new Date(),
-      },
-      include: {
+          where: { id: sealId },
+          data: {
+            verified: true,
+            verifiedById: user.id,
+            scannedAt: new Date(),
+            verificationData: verificationData, // Keep for backward compatibility
+          },
+          include: {
             verifiedBy: {
               select: {
                 id: true,
@@ -324,35 +454,58 @@ export async function PATCH(req: NextRequest) {
                 createdBy: true,
               }
             },
-      },
-    });
+          },
+        });
 
-    // Update session status to COMPLETED
-        await tx.session.update({
-      where: { id: updatedSeal.sessionId },
-      data: { 
-        status: "COMPLETED" 
-      },
-    });
+        // Create GuardSealTag records
+        if (guardSealTags.length > 0) {
+          // Delete any existing guard seal tags
+          await tx.guardSealTag.deleteMany({
+            where: { sealId }
+          });
 
-    // Store verification data in activity log
-        await tx.activityLog.create({
-      data: {
-        userId: user.id,
-        action: "UPDATE",
-        targetResourceId: updatedSeal.sessionId,
-        targetResourceType: "session",
-        details: {
-          verification: {
-            timestamp: new Date().toISOString(),
-            sealId: sealId,
-            fieldVerifications: verificationData.fieldVerifications,
-            imageVerifications: verificationData.imageVerifications,
-            allMatch: verificationData.allMatch
-          }
+          // Create new guard seal tags
+          await Promise.all(guardSealTags.map(tag => 
+            tx.guardSealTag.create({
+              data: {
+                barcode: tag.barcode,
+                method: tag.method,
+                imageUrl: tag.imageUrl,
+                verified: tag.verified,
+                sealId: sealId,
+                createdAt: new Date()
+              }
+            })
+          ));
         }
-      }
-    });
+
+        // Update session status to COMPLETED
+        await tx.session.update({
+          where: { id: updatedSeal.sessionId },
+          data: { 
+            status: "COMPLETED" 
+          },
+        });
+
+        // Store verification data in activity log
+        await tx.activityLog.create({
+          data: {
+            userId: user.id,
+            action: "UPDATE",
+            targetResourceId: updatedSeal.sessionId,
+            targetResourceType: "session",
+            details: {
+              verification: {
+                timestamp: new Date().toISOString(),
+                sealId: sealId,
+                fieldVerifications: verificationData.fieldVerifications,
+                imageVerifications: verificationData.imageVerifications,
+                guardSealTagsCount: guardSealTags.length,
+                allMatch: verificationData.allMatch
+              }
+            }
+          }
+        });
 
         return updatedSeal;
       });
@@ -402,11 +555,17 @@ export async function PATCH(req: NextRequest) {
         console.log("[API] No company email found, skipping verification email");
       }
 
-    return NextResponse.json({
+      // Get guard seal tags for response
+      const guardSealTags = await prisma.guardSealTag.findMany({
+        where: { sealId }
+      });
+
+      return NextResponse.json({
         ...result,
-      verificationDetails: {
-        allMatch: verificationData.allMatch,
-        fieldVerifications: verificationData.fieldVerifications
+        guardSealTags,
+        verificationDetails: {
+          allMatch: verificationData.allMatch,
+          fieldVerifications: verificationData.fieldVerifications
         },
         emailSent,
         emailError: emailError ? String(emailError) : null
