@@ -5201,7 +5201,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   maxWidth: { xs: '100%', sm: 250 }
                 }}
               >
-                Download with image
+                Print this page
               </Button>
             </Box>
           </Box>
