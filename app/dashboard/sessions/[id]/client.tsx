@@ -2571,76 +2571,206 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Typography>
         </Alert>
         
-        {/* Seal verification information */}
-        {session.seal && operatorSeals && operatorSeals.length > 0 && (
-          <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-            <Typography variant="subtitle1" gutterBottom>Seal Information</Typography>
-            
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              Total Seal Tags: <strong>{operatorSeals.length}</strong>
+        {/* Tabs for verification results */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs 
+            value={activeSealTab} 
+            onChange={(_, newValue) => setActiveSealTab(newValue)}
+            variant="fullWidth"
+          >
+            <Tab label="Verification Summary" />
+            <Tab label="Detailed Comparison" />
+          </Tabs>
+        </Box>
+        
+        {/* Tab content */}
+        {activeSealTab === 0 ? (
+          /* Verification Summary Tab */
+          <>
+            {/* Seal verification information */}
+            {session.seal && operatorSeals && operatorSeals.length > 0 && (
+              <Box sx={{ mt: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Typography variant="subtitle1" gutterBottom>Seal Information</Typography>
+                
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Total Seal Tags: <strong>{operatorSeals.length}</strong>
                 </Typography>
+                
+                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>No.</TableCell>
+                        <TableCell>Seal Tag ID</TableCell>
+                        <TableCell>Method</TableCell>
+                        <TableCell>Image</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {operatorSeals.map((seal, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{seal.id}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={seal.method && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
+                              color={seal.method && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {seal.imageData ? (
+                              <Box 
+                                component="img" 
+                                src={seal.imageData} 
+                                alt={`Seal tag ${index+1}`}
+                                sx={{ 
+                                  width: 60, 
+                                  height: 60, 
+                                  objectFit: 'cover',
+                                  borderRadius: 1,
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                  // Open image in modal
+                                  setSelectedSeal(seal);
+                                  setDetailsDialogOpen(true);
+                                }}
+                                onError={(e) => {
+                                  console.error(`Failed to load image for seal ${seal.id}:`, seal.imageData);
+                                  // Try alternative image URL formats
+                                  const img = e.target as HTMLImageElement;
+                                  if (session?.id) {
+                                    // Attempt direct URL to seal tag image
+                                    img.src = `/api/images/${session.id}/sealing/${index}`;
+                                    console.log(`Retrying with index-based URL: ${img.src}`);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <Typography variant="caption">No image</Typography>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
             
-            <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-              <Table size="small">
+            {/* Field verification summary */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>Field Verification Summary</Typography>
+              
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                  <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
+                    <Typography variant="h5" align="center">{matches.length}</Typography>
+                    <Typography variant="body2" align="center">Matching Fields</Typography>
+                  </Paper>
+                </Box>
+                <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                  <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
+                    <Typography variant="h5" align="center">{mismatches.length}</Typography>
+                    <Typography variant="body2" align="center">Mismatched Fields</Typography>
+                  </Paper>
+                </Box>
+                <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                  <Paper sx={{ p: 2, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+                    <Typography variant="h5" align="center">{unverified.length}</Typography>
+                    <Typography variant="body2" align="center">Unverified Fields</Typography>
+                  </Paper>
+                </Box>
+              </Box>
+            </Box>
+          </>
+        ) : (
+          /* Detailed Comparison Tab */
+          <>
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 4 }}>
+              <Table>
                 <TableHead>
-                  <TableRow>
-                    <TableCell>No.</TableCell>
-                    <TableCell>Seal Tag ID</TableCell>
-                    <TableCell>Method</TableCell>
-                    <TableCell>Image</TableCell>
+                  <TableRow sx={{ bgcolor: 'grey.100' }}>
+                    <TableCell width="30%"><strong>Field</strong></TableCell>
+                    <TableCell width="25%"><strong>Operator Value</strong></TableCell>
+                    <TableCell width="25%"><strong>Guard Value</strong></TableCell>
+                    <TableCell width="20%" align="center"><strong>Status</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {operatorSeals.map((seal, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{seal.id}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label="Digitally Scanned"
-                          color="primary" 
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {seal.imageData ? (
-                          <Box 
-                            component="img" 
-                            src={seal.imageData} 
-                            alt={`Seal tag ${index+1}`}
-                            sx={{ 
-                              width: 60, 
-                              height: 60, 
-                              objectFit: 'cover',
-                              borderRadius: 1,
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => {
-                              // Open image in modal
-                              setSelectedSeal(seal);
-                              setDetailsDialogOpen(true);
-                            }}
-                            onError={(e) => {
-                              console.error(`Failed to load image for seal ${seal.id}:`, seal.imageData);
-                              // Try alternative image URL formats
-                              const img = e.target as HTMLImageElement;
-                              if (session?.id) {
-                                // Attempt direct URL to seal tag image
-                                img.src = `/api/images/${session.id}/sealing/${index}`;
-                                console.log(`Retrying with index-based URL: ${img.src}`);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <Typography variant="caption">No image</Typography>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {/* Matching fields (green) - PASS */}
+                  {matches.map(field => {
+                    const data = allFields[field];
+                    return (
+                      <TableRow key={field} sx={{ 
+                        bgcolor: 'rgba(46, 125, 50, 0.15)', 
+                        '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.25)' }
+                      }}>
+                        <TableCell component="th" scope="row" sx={{ color: 'success.dark', fontWeight: 'medium' }}>
+                          {getFieldLabel(field)}
+                        </TableCell>
+                        <TableCell sx={{ color: 'success.dark' }}>{String(data.operatorValue || 'N/A')}</TableCell>
+                        <TableCell sx={{ color: 'success.dark' }}>{String(data.guardValue || 'Not provided')}</TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" alignItems="center" justifyContent="center" sx={{ color: 'success.main' }}>
+                            <CheckCircle fontSize="small" sx={{ mr: 0.5 }} />
+                            <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>Pass</Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  
+                  {/* Mismatched fields (red) - FAIL */}
+                  {mismatches.map(field => {
+                    const data = allFields[field];
+                    return (
+                      <TableRow key={field} sx={{ 
+                        bgcolor: 'rgba(211, 47, 47, 0.15)', 
+                        '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.25)' }
+                      }}>
+                        <TableCell component="th" scope="row" sx={{ color: 'error.dark', fontWeight: 'medium' }}>
+                          {getFieldLabel(field)}
+                        </TableCell>
+                        <TableCell sx={{ color: 'error.dark' }}>{String(data.operatorValue || 'N/A')}</TableCell>
+                        <TableCell sx={{ color: 'error.dark' }}>{String(data.guardValue || 'Not provided')}</TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" alignItems="center" justifyContent="center" sx={{ color: 'error.main' }}>
+                            <Warning fontSize="small" sx={{ mr: 0.5 }} />
+                            <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 'bold' }}>Fail</Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  
+                  {/* Unverified fields (orange) - NOT VERIFIED */}
+                  {unverified.map(field => {
+                    const data = allFields[field];
+                    return (
+                      <TableRow key={field} sx={{ 
+                        bgcolor: 'rgba(255, 152, 0, 0.15)', 
+                        '&:hover': { bgcolor: 'rgba(255, 152, 0, 0.25)' }
+                      }}>
+                        <TableCell component="th" scope="row" sx={{ color: 'warning.dark', fontWeight: 'medium' }}>
+                          {getFieldLabel(field)}
+                        </TableCell>
+                        <TableCell sx={{ color: 'warning.dark' }}>{String(data.operatorValue || 'N/A')}</TableCell>
+                        <TableCell sx={{ color: 'warning.dark' }}>{String(data.guardValue || 'Not verified')}</TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" alignItems="center" justifyContent="center" sx={{ color: 'warning.main' }}>
+                            <RadioButtonUnchecked fontSize="small" sx={{ mr: 0.5 }} />
+                            <Typography variant="body2" sx={{ color: 'warning.main', fontWeight: 'bold' }}>Not Verified</Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
-              </Box>
+          </>
         )}
       </Paper>
     );
@@ -4439,134 +4569,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Box>
         )}
 
-        {/* Field Verification Summary - Show for completed sessions */}
-        {session.status === SessionStatus.COMPLETED && (
-          <Box mb={3}>
-            <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-              Field Verification Summary
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            
-            {verificationResults ? (
-              <>
-                <TableContainer component={Paper} variant="outlined" sx={{ mb: 4 }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: 'grey.100' }}>
-                        <TableCell width="30%"><strong>Field</strong></TableCell>
-                        <TableCell width="25%"><strong>Operator Value</strong></TableCell>
-                        <TableCell width="25%"><strong>Guard Value</strong></TableCell>
-                        <TableCell width="20%" align="center"><strong>Status</strong></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {/* Matching fields (green) - PASS */}
-                      {verificationResults.matches.map(field => {
-                        const data = verificationResults.allFields[field];
-                        return (
-                          <TableRow key={field} sx={{ 
-                            bgcolor: 'rgba(46, 125, 50, 0.15)', 
-                            '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.25)' }
-                          }}>
-                            <TableCell component="th" scope="row" sx={{ color: 'success.dark', fontWeight: 'medium' }}>
-                              {getFieldLabel(field)}
-                            </TableCell>
-                            <TableCell sx={{ color: 'success.dark' }}>{String(data.operatorValue || 'N/A')}</TableCell>
-                            <TableCell sx={{ color: 'success.dark' }}>{String(data.guardValue || 'Not provided')}</TableCell>
-                            <TableCell align="center">
-                              <Box display="flex" alignItems="center" justifyContent="center" sx={{ color: 'success.main' }}>
-                                <CheckCircle fontSize="small" sx={{ mr: 0.5 }} />
-                                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>Pass</Typography>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      
-                      {/* Mismatched fields (red) - FAIL */}
-                      {verificationResults.mismatches.map(field => {
-                        const data = verificationResults.allFields[field];
-                        return (
-                          <TableRow key={field} sx={{ 
-                            bgcolor: 'rgba(211, 47, 47, 0.15)', 
-                            '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.25)' }
-                          }}>
-                            <TableCell component="th" scope="row" sx={{ color: 'error.dark', fontWeight: 'medium' }}>
-                              {getFieldLabel(field)}
-                            </TableCell>
-                            <TableCell sx={{ color: 'error.dark' }}>{String(data.operatorValue || 'N/A')}</TableCell>
-                            <TableCell sx={{ color: 'error.dark' }}>{String(data.guardValue || 'Not provided')}</TableCell>
-                            <TableCell align="center">
-                              <Box display="flex" alignItems="center" justifyContent="center" sx={{ color: 'error.main' }}>
-                                <Warning fontSize="small" sx={{ mr: 0.5 }} />
-                                <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 'bold' }}>Fail</Typography>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      
-                      {/* Unverified fields (red) - FAIL */}
-                      {verificationResults.unverified.map(field => {
-                        const data = verificationResults.allFields[field];
-                        return (
-                          <TableRow key={field} sx={{ 
-                            bgcolor: 'rgba(211, 47, 47, 0.15)', 
-                            '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.25)' }
-                          }}>
-                            <TableCell component="th" scope="row" sx={{ color: 'error.dark', fontWeight: 'medium' }}>
-                              {getFieldLabel(field)}
-                            </TableCell>
-                            <TableCell sx={{ color: 'error.dark' }}>{String(data.operatorValue || 'N/A')}</TableCell>
-                            <TableCell sx={{ color: 'error.dark' }}>{String(data.guardValue || 'Not provided')}</TableCell>
-                            <TableCell align="center">
-                              <Box display="flex" alignItems="center" justifyContent="center" sx={{ color: 'error.main' }}>
-                                <Warning fontSize="small" sx={{ mr: 0.5 }} />
-                                <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 'bold' }}>Fail</Typography>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-
-                {/* Summary statistics */}
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
-                      <Typography variant="h5" align="center">{verificationResults.matches.length}</Typography>
-                      <Typography variant="body2" align="center">Matching Fields</Typography>
-                    </Paper>
-                  </Box>
-                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
-                      <Typography variant="h5" align="center">{verificationResults.mismatches.length}</Typography>
-                      <Typography variant="body2" align="center">Mismatched Fields</Typography>
-                    </Paper>
-                  </Box>
-                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
-                      <Typography variant="h5" align="center">{verificationResults.unverified.length}</Typography>
-                      <Typography variant="body2" align="center">Unverified Fields</Typography>
-                    </Paper>
-                  </Box>
-                </Box>
-              </>
-            ) : (
-              <Alert severity="info">
-                <AlertTitle>Verification Data Not Available</AlertTitle>
-                <Typography variant="body2">
-                  This session has been verified, but detailed verification data is not available.
-                </Typography>
-              </Alert>
-            )}
-          </Box>
-        )}
+        {/* Verification Results for completed sessions */}
+        {session.status === SessionStatus.COMPLETED && verificationResults && renderVerificationResults()}
       </Paper>
-
-      {/* We've now replaced this with the unified Seal Verification Results section */}
 
       {/* GUARD Verification Button - Show for GUARD users with IN_PROGRESS sessions */}
       {isGuard && session.status === SessionStatus.IN_PROGRESS && !verificationFormOpen && (
