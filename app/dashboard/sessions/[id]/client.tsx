@@ -72,7 +72,6 @@ import { jsPDF } from 'jspdf';
 import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
 import { toast } from "react-hot-toast";
 import { processMultipleImages, resizeAndCompressImage } from "@/lib/imageUtils";
-import { useTheme } from "@mui/material/styles";
 
 
 // Types
@@ -192,27 +191,6 @@ type SessionType = {
 
 // For Material-UI Grid component
 const Grid = MuiGrid;
-
-// Add print styles
-const printStyles = `
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    .session-details-print, .session-details-print * {
-      visibility: visible;
-    }
-    .session-details-print {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-    }
-    .no-print {
-      display: none !important;
-    }
-  }
-`;
 
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
   const { data: authSession, status: authStatus } = useSession();
@@ -4176,18 +4154,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     return systemFields.includes(key);
   };
 
-  const theme = useTheme();
-
-  // Add print styles to head
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.innerHTML = printStyles;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-
   if (authStatus === "loading" || loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -5201,7 +5167,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   maxWidth: { xs: '100%', sm: 250 }
                 }}
               >
-                Print this page
+                Download using script
               </Button>
             </Box>
           </Box>
