@@ -1,6 +1,6 @@
 // JavaScript version of seed.ts for easier execution in Vercel build
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+const { hash } = require('bcrypt');
 
 // Log environment for debugging
 console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -76,7 +76,7 @@ async function main() {
     if (superAdminCount === 0) {
       console.log('No SuperAdmin found, creating one...');
       // Create initial SuperAdmin user
-      const hashedPassword = await bcrypt.hash('superadmin123', 12);
+      const hashedPassword = await hash('superadmin123', 12);
       
       const superAdmin = await prisma.user.create({
         data: {
