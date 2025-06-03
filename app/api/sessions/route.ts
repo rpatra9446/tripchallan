@@ -88,7 +88,19 @@ interface QueryOptions {
         name: true;
       };
     };
-    seal: true;
+    seal: {
+      include: {
+        verifiedBy: {
+          select: {
+            id: true;
+            name: true;
+            email: true;
+            role: true;
+            subrole: true;
+          }
+        }
+      }
+    };
   };
   where?: Record<string, unknown>;
 }
