@@ -5153,6 +5153,22 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               >
                 {reportLoading === "pdf" ? "Downloading..." : "Download PDF Report"}
               </Button>
+              <Button
+                variant="contained"
+                startIcon={<Description />}
+                onClick={() => window.print()}
+                fullWidth
+                sx={{ 
+                  bgcolor: 'primary.main', 
+                  color: 'white', 
+                  '&:hover': { bgcolor: 'primary.dark' },
+                  py: { xs: 1.5, sm: 1 },
+                  fontSize: { xs: '0.9rem', sm: '0.875rem' },
+                  maxWidth: { xs: '100%', sm: 250 }
+                }}
+              >
+                Download using script
+              </Button>
             </Box>
           </Box>
         )}
