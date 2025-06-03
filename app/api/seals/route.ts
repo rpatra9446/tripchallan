@@ -123,7 +123,15 @@ export async function POST(req: NextRequest) {
     const seal = await prisma.seal.create({
         data: sealData,
         include: {
-          verifiedBy: true,
+          verifiedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              subrole: true,
+            }
+          },
       },
     });
       
@@ -301,7 +309,15 @@ export async function PATCH(req: NextRequest) {
         scannedAt: new Date(),
       },
       include: {
-            verifiedBy: true,
+            verifiedBy: {
+              select: {
+                id: true,
+                name: true, 
+                email: true,
+                role: true,
+                subrole: true,
+              }
+            },
             session: {
               include: {
                 company: true,

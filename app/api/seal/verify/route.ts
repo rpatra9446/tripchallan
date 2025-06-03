@@ -54,6 +54,17 @@ async function handler(req: NextRequest) {
         verified: true,
         verifiedById: session.user.id,
         scannedAt: new Date()
+      },
+      include: {
+        verifiedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            subrole: true,
+          }
+        }
       }
     });
 
@@ -134,6 +145,17 @@ export const POST = withAuth(
           verified: true,
           verifiedById: userId,
           scannedAt: new Date()
+        },
+        include: {
+          verifiedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              subrole: true,
+            }
+          }
         }
       });
 

@@ -113,7 +113,15 @@ export async function PATCH(
       },
       include: {
         session: true,
-        verifiedBy: true
+        verifiedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            subrole: true,
+          }
+        }
       }
     });
 
