@@ -27,6 +27,7 @@ model User {
   comments             Comment[]
   operatorPermissions  OperatorPermissions?
   verifiedSeals        Seal[]               @relation("SealVerifiedBy")
+  verifiedGuardSealTags GuardSealTag[]      @relation("GuardSealTagVerifiedBy")
   createdSessions      Session[]            @relation("SessionCreatedBy")
   company              Company?             @relation(fields: [companyId], references: [id])
   createdBy            User?                @relation("UserCreatedBy", fields: [createdById], references: [id])
@@ -101,6 +102,7 @@ model Session {
   comments             Comment[]
   seal                 Seal?
   sealTags             SealTag[]
+  guardSealTags        GuardSealTag[] @relation("GuardSealTags")
   company              Company       @relation(fields: [companyId], references: [id])
   createdBy            User          @relation("SessionCreatedBy", fields: [createdById], references: [id])
 
@@ -108,20 +110,18 @@ model Session {
 }
 
 model Seal {
-  id              String        @id @default(uuid())
-  sessionId       String        @unique
+  id              String    @id @default(uuid())
+  sessionId       String    @unique
   barcode         String
   scannedAt       DateTime?
-  verified        Boolean       @default(false)
+  verified        Boolean   @default(false)
   verifiedById    String?
   status          String?
   statusComment   String?
   statusEvidence  Json?
   statusUpdatedAt DateTime?
-  verificationData Json?        @default("{}")
-  session         Session       @relation(fields: [sessionId], references: [id])
-  verifiedBy      User?         @relation("SealVerifiedBy", fields: [verifiedById], references: [id])
-  guardSealTags   GuardSealTag[]
+  session         Session   @relation(fields: [sessionId], references: [id])
+  verifiedBy      User?     @relation("SealVerifiedBy", fields: [verifiedById], references: [id])
 
   @@map("seals")
 }
@@ -202,15 +202,16 @@ model SealTag {
 
 model GuardSealTag {
   id            String   @id @default(uuid())
-  barcode       String
-  sealId        String
+  barcode       String   @unique
+  sessionId     String
   method        String
   imageUrl      String?
   createdAt     DateTime @default(now())
-  verified      Boolean  @default(false)
-  seal          Seal     @relation(fields: [sealId], references: [id], onDelete: Cascade)
+  verifiedById  String?
+  status        String?  @default("VERIFIED")
+  session       Session  @relation("GuardSealTags", fields: [sessionId], references: [id], onDelete: Cascade)
+  verifiedBy    User?    @relation("GuardSealTagVerifiedBy", fields: [verifiedById], references: [id])
 
-  @@unique([sealId, barcode])
   @@map("guard_seal_tags")
 }
 
