@@ -34,7 +34,9 @@ import {
   IconButton,
   Grid as MuiGrid,
   InputAdornment,
-  Tooltip
+  Tooltip,
+  Tabs,
+  Tab
 } from "@mui/material";
 import { 
   LocationOn, 
@@ -203,6 +205,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   // Add new state for verification tabs
   const [activeTab, setActiveTab] = useState(0);
   const verificationTabs = ['Loading Details', 'Session Info', 'Seal Tags', 'Driver Details', 'Images'];
+  
+  // State for seal verification results tabs
+  const [activeSealTab, setActiveSealTab] = useState(0);
   
   // Add new state for guard's uploaded images
   const [guardImages, setGuardImages] = useState<{
@@ -3530,23 +3535,34 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Typography variant="subtitle1" gutterBottom>
                       Verification Images
                     </Typography>
-                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                       {Object.entries(selectedSeal.verificationDetails.guardImages || {}).map(([key, url]) => {
-                         if (Array.isArray(url)) {
-                           return url.map((imageUrl, idx) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                      {Object.entries(selectedSeal.verificationDetails.guardImages || {}).map(([key, url]) => {
+                        if (Array.isArray(url)) {
+                          return url.map((imageUrl, idx) => (
                             <Box key={`${key}-${idx}`} sx={{ width: 150, height: 150, position: 'relative' }}>
-                              <Typography variant="caption" sx={{ mb: 0.5 }}>
+                              <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
                                 {getFieldLabel(key)} {idx + 1}
                               </Typography>
-                              <img 
+                              <Box
+                                component="img" 
                                 src={imageUrl as string} 
                                 alt={`${key} ${idx + 1}`}
-                                style={{ 
+                                sx={{ 
                                   width: '100%', 
                                   height: '100%', 
                                   objectFit: 'cover',
                                   borderRadius: '4px',
-                                  border: '1px solid #ddd'
+                                  border: '1px solid #ddd',
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.2s',
+                                  '&:hover': {
+                                    transform: 'scale(1.05)',
+                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                                  }
+                                }}
+                                onClick={() => {
+                                  setSelectedImage(imageUrl as string);
+                                  setOpenImageModal(true);
                                 }}
                               />
                             </Box>
@@ -3555,18 +3571,29 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         
                         return (
                           <Box key={key} sx={{ width: 150, height: 150, position: 'relative' }}>
-                            <Typography variant="caption" sx={{ mb: 0.5 }}>
+                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block' }}>
                               {getFieldLabel(key)}
                             </Typography>
-                            <img 
+                            <Box 
+                              component="img" 
                               src={typeof url === 'string' ? url : ''} 
                               alt={key}
-                              style={{ 
+                              sx={{ 
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'cover',
                                 borderRadius: '4px',
-                                border: '1px solid #ddd'
+                                border: '1px solid #ddd',
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s',
+                                '&:hover': {
+                                  transform: 'scale(1.05)',
+                                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                                }
+                              }}
+                              onClick={() => {
+                                setSelectedImage(typeof url === 'string' ? url : '');
+                                setOpenImageModal(true);
                               }}
                             />
                           </Box>
@@ -3576,32 +3603,34 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </Paper>
                 )}
                 
-                {/* JSON Debug */}
-                <Box sx={{ mt: 3 }}>
-                  <details>
-                    <summary>
-                      <Typography variant="caption" component="span">
-                        Technical Details (Debug)
-                      </Typography>
-                    </summary>
-                    <Box 
-                      component="pre" 
-                      sx={{ 
-                        mt: 1, 
-                        p: 2, 
-                        bgcolor: 'background.paper', 
-                        border: '1px solid', 
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        overflow: 'auto',
-                        fontSize: '0.7rem',
-                        maxHeight: 300
-                      }}
-                    >
-                      {JSON.stringify(selectedSeal, null, 2)}
-                    </Box>
-                  </details>
-                </Box>
+                {/* JSON Debug - only show in development */}
+                {process.env.NODE_ENV === 'development' && (
+                  <Box sx={{ mt: 3 }}>
+                    <details>
+                      <summary>
+                        <Typography variant="caption" component="span">
+                          Technical Details (Debug)
+                        </Typography>
+                      </summary>
+                      <Box 
+                        component="pre" 
+                        sx={{ 
+                          mt: 1, 
+                          p: 2, 
+                          bgcolor: 'background.paper', 
+                          border: '1px solid', 
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          overflow: 'auto',
+                          fontSize: '0.7rem',
+                          maxHeight: 300
+                        }}
+                      >
+                        {JSON.stringify(selectedSeal, null, 2)}
+                      </Box>
+                    </details>
+                  </Box>
+                )}
               </>
             )}
           </DialogContent>
@@ -4537,8 +4566,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         )}
       </Paper>
 
-      {/* Verification Results */}
-      {renderVerificationResults()}
+      {/* We've now replaced this with the unified Seal Verification Results section */}
 
       {/* GUARD Verification Button - Show for GUARD users with IN_PROGRESS sessions */}
       {isGuard && session.status === SessionStatus.IN_PROGRESS && !verificationFormOpen && (
@@ -4559,27 +4587,44 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       {/* Comment section - moved after verification results */}
       <CommentSection sessionId={sessionId} />
 
-      {/* Image Modal */}
+      {/* Enhanced Image Modal */}
       <Dialog
         open={openImageModal}
         onClose={() => setOpenImageModal(false)}
         maxWidth="lg"
         fullWidth
       >
-        <DialogContent sx={{ p: 1, textAlign: 'center' }}>
+        <DialogContent sx={{ p: 1, textAlign: 'center', bgcolor: '#000' }}>
           {selectedImage && (
             <Box
               component="img"
               src={selectedImage}
-              alt="Seal tag"
+              alt="Image preview"
               sx={{
                 maxWidth: '100%',
                 maxHeight: 'calc(100vh - 100px)',
                 objectFit: 'contain'
               }}
+              onError={(e) => {
+                console.error("Failed to load image in modal:", selectedImage);
+                const img = e.target as HTMLImageElement;
+                img.src = '/images/image-placeholder.png'; // Fallback image
+                img.style.maxWidth = '300px';
+                img.style.border = '1px solid #ddd';
+                img.style.padding = '20px';
+                img.style.background = '#f8f8f8';
+              }}
             />
           )}
         </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between', px: 2, py: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            Click outside to close
+          </Typography>
+          <Button onClick={() => setOpenImageModal(false)} variant="contained">
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );
