@@ -2118,11 +2118,29 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           </Box>
                         </TableCell>
                         <TableCell onClick={() => toggleRowExpansion(sealId)}>
-                          <Chip 
-                            label="Digitally Scanned"
-                            color="primary" 
-                            size="small"
-                          />
+                          {operatorSeal ? (
+                            <Chip 
+                              label={operatorSeal.method && typeof operatorSeal.method === 'string' && 
+                                     operatorSeal.method.toLowerCase().includes('manual') ? 
+                                     'Manually Entered' : 'Digitally Scanned'}
+                              color={operatorSeal.method && typeof operatorSeal.method === 'string' && 
+                                     operatorSeal.method.toLowerCase().includes('manual') ? 
+                                     'secondary' : 'primary'} 
+                              size="small"
+                            />
+                          ) : guardSeal ? (
+                            <Chip 
+                              label={guardSeal.method && typeof guardSeal.method === 'string' && 
+                                     guardSeal.method.toLowerCase().includes('manual') ? 
+                                     'Manually Entered' : 'Digitally Scanned'}
+                              color={guardSeal.method && typeof guardSeal.method === 'string' && 
+                                     guardSeal.method.toLowerCase().includes('manual') ? 
+                                     'secondary' : 'primary'} 
+                              size="small"
+                            />
+                          ) : (
+                            <Chip label="Unknown" color="default" size="small" />
+                          )}
                         </TableCell>
                         <TableCell onClick={() => toggleRowExpansion(sealId)}>
                           {operatorSeal && guardSeal ? (
@@ -2199,14 +2217,18 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                         <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{operatorSeal.id}</Typography>
                                       </Box>
                                       
-                                      <Box sx={{ mb: 2 }}>
-                                        <Typography variant="body2" color="text.secondary">Method:</Typography>
-                                        <Chip 
-                                          label="Digitally Scanned" 
-                                          size="small"
-                                          color="primary"
-                                        />
-                                      </Box>
+                                                                              <Box sx={{ mb: 2 }}>
+                                          <Typography variant="body2" color="text.secondary">Method:</Typography>
+                                          <Chip 
+                                            label={operatorSeal.method && typeof operatorSeal.method === 'string' && 
+                                                  operatorSeal.method.toLowerCase().includes('manual') ? 
+                                                  'Manually Entered' : 'Digitally Scanned'} 
+                                            size="small"
+                                            color={operatorSeal.method && typeof operatorSeal.method === 'string' && 
+                                                  operatorSeal.method.toLowerCase().includes('manual') ? 
+                                                  'secondary' : 'primary'}
+                                          />
+                                        </Box>
                                       
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
@@ -2254,14 +2276,18 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                         <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{guardSeal.id}</Typography>
                                       </Box>
                                       
-                                      <Box sx={{ mb: 2 }}>
-                                        <Typography variant="body2" color="text.secondary">Method:</Typography>
-                                        <Chip 
-                                          label="Digitally Scanned" 
-                                          size="small"
-                                          color="secondary"
-                                        />
-                                      </Box>
+                                                                              <Box sx={{ mb: 2 }}>
+                                          <Typography variant="body2" color="text.secondary">Method:</Typography>
+                                          <Chip 
+                                            label={guardSeal.method && typeof guardSeal.method === 'string' && 
+                                                  guardSeal.method.toLowerCase().includes('manual') ? 
+                                                  'Manually Entered' : 'Digitally Scanned'} 
+                                            size="small"
+                                            color={guardSeal.method && typeof guardSeal.method === 'string' && 
+                                                  guardSeal.method.toLowerCase().includes('manual') ? 
+                                                  'secondary' : 'primary'}
+                                          />
+                                        </Box>
                                       
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
