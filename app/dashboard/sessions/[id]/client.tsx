@@ -881,7 +881,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
     // Add to scanned seals
     const newSeal = {
-      id: trimmedData,
+      id: trimmedSealId, // Fixed: Use trimmedSealId instead of undefined trimmedData
       method: scanMethod,
       image: null,
       imagePreview: null,
@@ -901,8 +901,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     // Show success or warning message based on match
     if (isVerified) {
       console.log("Seal tag matched with operator seals");
+      toast.success(`Seal tag ${trimmedSealId} matched with operator seal`);
     } else {
       console.log("Seal tag does not match any operator seals");
+      toast.error(`Seal tag ${trimmedSealId} does not match any operator seal`);
     }
   }, [guardScannedSeals, scanMethod, operatorSeals, updateSealComparison]);
 
@@ -2353,8 +2355,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   // Show success or warning message based on match
                   if (isVerified) {
                     console.log("Seal tag matched with operator seals");
+                    toast.success(`Seal tag ${trimmedData} matched with operator seal`);
                   } else {
                     console.log("Seal tag does not match any operator seals");
+                    toast.error(`Seal tag ${trimmedData} does not match any operator seal`);
                   }
                 }}
                 buttonText="Scan QR/Barcode"

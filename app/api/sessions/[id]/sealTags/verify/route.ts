@@ -53,21 +53,45 @@ export async function POST(
     }
 
     // Check if this seal tag exists in the session
-    const existingSealTag = await prisma.sealTag.findFirst({
+    let existingSealTag = await prisma.sealTag.findFirst({
       where: {
         sessionId,
         barcode
       }
     });
 
+    // If the seal tag doesn't exist, we can create a new one for guard-only verification
+    // This allows guards to scan tags that may not have been scanned by operators
     if (!existingSealTag) {
-      return NextResponse.json({ 
-        error: "Seal tag not found. This must be verified against an existing operator seal tag." 
-      }, { status: 404 });
-    }
-
-    // Check if the seal tag is already verified by a guard
-    if (existingSealTag.guardUserId) {
+      console.log(`Creating new seal tag for guard verification: ${barcode}`);
+      
+      try {
+        // Create a new seal tag for guard verification
+        existingSealTag = await prisma.sealTag.create({
+          data: {
+            sessionId,
+            barcode,
+            method: 'guard only',
+            createdById: user.id,
+            guardMethod: method,
+            guardImageData: imageData,
+            guardTimestamp: new Date(),
+            guardUserId: user.id,
+            guardStatus: "GUARD_ONLY"
+          }
+        });
+        
+        console.log(`Created new guard-only seal tag: ${existingSealTag.id}`);
+        
+        // Continue with verification using the newly created tag
+      } catch (error) {
+        console.error(`Error creating new seal tag: ${error}`);
+        return NextResponse.json({ 
+          error: "Failed to create new seal tag for verification" 
+        }, { status: 500 });
+      }
+    } else if (existingSealTag.guardUserId) {
+      // Check if the seal tag is already verified by a guard
       return NextResponse.json({ 
         error: "This seal tag has already been verified by a guard" 
       }, { status: 409 });
