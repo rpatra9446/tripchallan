@@ -41,7 +41,8 @@ export async function GET(
       return new NextResponse(guardSealTag.media.data, {
         headers: {
           'Content-Type': guardSealTag.media.mimeType,
-          'Cache-Control': 'public, max-age=31536000, immutable' // Cache for 1 year
+          'Cache-Control': 'public, max-age=31536000, immutable', // Cache for 1 year
+          'X-Content-Type-Options': 'nosniff'
         }
       });
     }
@@ -51,13 +52,24 @@ export async function GET(
       return NextResponse.redirect(guardSealTag.imageUrl);
     }
     
-    // If neither media nor imageUrl is available, return error
-    return NextResponse.json({ error: "No image found for this guard seal tag" }, { status: 404 });
+    // If neither media nor imageUrl is available, return a default image or placeholder
+    // Create a transparent 1x1 pixel PNG as fallback
+    const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    return new NextResponse(transparentPixel, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      }
+    });
   } catch (error) {
     console.error("Error fetching guard seal tag image:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch guard seal tag image" },
-      { status: 500 }
-    );
+    // Return a default image instead of JSON error
+    const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    return new NextResponse(transparentPixel, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'no-cache'
+      }
+    });
   }
 } 
