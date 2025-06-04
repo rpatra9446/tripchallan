@@ -76,7 +76,7 @@ model CompanyOwner {
 
 model Media {
   id        String   @id @default(uuid())
-  type      String   // "LOGO", "DOCUMENT", etc.
+  type      String   // "LOGO", "DOCUMENT", "GUARD_SEAL_TAG", etc.
   mimeType  String   // "image/jpeg", "image/png", etc.
   data      Bytes    // Store binary data directly
   createdAt DateTime @default(now())
@@ -84,6 +84,7 @@ model Media {
   
   // Relations
   companyLogo Company? @relation("CompanyLogo")
+  guardSealTag GuardSealTag? @relation("GuardSealTagMedia")
   
   @@map("media")
 }
@@ -237,11 +238,13 @@ model GuardSealTag {
   sessionId     String
   method        String
   imageUrl      String?
+  mediaId       String?  @unique
   createdAt     DateTime @default(now())
   verifiedById  String?
   status        String?  @default("VERIFIED")
   session       Session  @relation("GuardSealTags", fields: [sessionId], references: [id], onDelete: Cascade)
   verifiedBy    User?    @relation("GuardSealTagVerifiedBy", fields: [verifiedById], references: [id])
+  media         Media?   @relation("GuardSealTagMedia", fields: [mediaId], references: [id])
 
   @@map("guard_seal_tags")
 }

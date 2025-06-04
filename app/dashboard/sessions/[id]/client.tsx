@@ -301,6 +301,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [selectedSeal, setSelectedSeal] = useState<any>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   
+  // Add state for image modal
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [openImageModal, setOpenImageModal] = useState(false);
+  
   // Utility functions needed before other definitions
   const getFieldLabel = useCallback((key: string): string => {
     // Define custom labels for specific fields
@@ -4413,6 +4417,42 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Button>
           </DialogActions>
         </Dialog>
+        
+        {/* Image Modal */}
+        <Dialog 
+          open={openImageModal} 
+          onClose={() => setOpenImageModal(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogContent sx={{ p: 0, position: 'relative' }}>
+            <IconButton 
+              onClick={() => setOpenImageModal(false)}
+              sx={{ 
+                position: 'absolute', 
+                top: 8, 
+                right: 8, 
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                }
+              }}
+            >
+              <Close />
+            </IconButton>
+            <Box
+              component="img"
+              src={selectedImage}
+              alt="Full size image"
+              sx={{
+                width: '100%',
+                maxHeight: '80vh',
+                objectFit: 'contain'
+              }}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Success Notification */}
         {verificationSuccess && (
@@ -4599,16 +4639,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'background.paper' }}>
                     <TableCell>No.</TableCell>
-                    <TableCell>Seal Tag ID</TableCell>
+                    <TableCell>Tag ID</TableCell>
                     <TableCell>Method</TableCell>
                     <TableCell>Image</TableCell>
                     <TableCell>Created At</TableCell>
-                    <TableCell>Created By</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {operatorSeals.map((seal, index) => (
-                    <TableRow key={index} hover>
+                    <TableRow key={seal.id} hover>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>
                         <Box 
@@ -4629,49 +4668,39 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
-                          color={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
-                          size="small"
+                          size="small" 
+                          label={seal.method === 'digital' ? 'Scanned' : 'Manual'} 
+                          color={seal.method === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell>
-                        {seal.imageData ? (
-                          <Box 
-                            component="img" 
-                            src={seal.imageData} 
-                            alt={`Seal tag ${index+1}`}
-                            sx={{ 
-                              width: 60, 
-                              height: 60, 
-                              objectFit: 'cover',
-                              borderRadius: 1,
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => {
-                              // Open image in modal
-                              setSelectedSeal(seal);
-                              setDetailsDialogOpen(true);
-                            }}
-                            onError={(e) => {
-                              console.error(`Failed to load image for seal ${seal.id}:`, seal.imageData);
-                              // Try alternative image URL formats
-                              const img = e.target as HTMLImageElement;
-                              if (session?.id) {
-                                // Attempt direct URL to seal tag image
-                                img.src = `/api/images/${session.id}/sealing/${index}`;
-                                console.log(`Retrying with index-based URL: ${img.src}`);
-                              }
-                            }}
-                          />
+                        {seal.image ? (
+                          <Tooltip title="Click to view image">
+                            <Box 
+                              component="img" 
+                              src={seal.image} 
+                              alt={`Seal tag ${seal.id}`}
+                              sx={{ 
+                                width: 60, 
+                                height: 60, 
+                                objectFit: 'cover',
+                                borderRadius: 1,
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => {
+                                // Open image in new tab
+                                if (seal.image) {
+                                  window.open(seal.image, '_blank');
+                                }
+                              }}
+                            />
+                          </Tooltip>
                         ) : (
                           <Typography variant="caption">No image</Typography>
                         )}
                       </TableCell>
                       <TableCell>
                         {seal.timestamp ? formatDate(seal.timestamp) : "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        {session?.createdBy?.name || "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -4681,147 +4710,120 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Box>
         )}
 
-                {/* NEW SECTION: Dedicated Guard Seal Tags section from database */}
+        {/* Show guard seal tags if available */}
         {session.guardSealTags && session.guardSealTags.length > 0 && (
           <Box mb={3}>
-            <Typography variant="h6" gutterBottom sx={{ color: 'secondary.main' }}>
-              Guard Seal Tags
+            <Typography variant="h6" gutterBottom>
+              Guard Verification Seal Tags
             </Typography>
             <Divider sx={{ mb: 2 }} />
-              
-              {/* Debug information for development */}
-              {process.env.NODE_ENV === 'development' && (
-                <details>
-                  <summary>Debug: Guard Seal Tags from Database</summary>
-                  <pre style={{ fontSize: '11px', overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: '200px', overflow: 'auto' }}>
-                    {JSON.stringify(session.guardSealTags, null, 2)}
-                  </pre>
-                </details>
-              )}
-              
-              {/* Display guard seal tags in a table similar to operator seal tags */}
-              <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: 'background.paper' }}>
-                      <TableCell>No.</TableCell>
-                      <TableCell>Seal Tag ID</TableCell>
-                      <TableCell>Method</TableCell>
-                      <TableCell>Image</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Created At</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {session.guardSealTags.map((seal, index) => (
-                      <TableRow key={index} hover>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>
+            
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Total Guard Seal Tags: <strong>{session.guardSealTags.length}</strong>
+            </Typography>
+            
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'background.paper' }}>
+                    <TableCell>No.</TableCell>
+                    <TableCell>Tag ID</TableCell>
+                    <TableCell>Method</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Verified By</TableCell>
+                    <TableCell>Created At</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.guardSealTags.map((tag, index) => (
+                    <TableRow key={tag.id} hover>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>
+                        <Box 
+                          sx={{ 
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                            p: 0.75,
+                            bgcolor: 'background.paper',
+                            maxWidth: 180,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 'medium' }}>
+                            {tag.barcode}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          size="small" 
+                          label={tag.method === 'digital' ? 'Scanned' : 'Manual'} 
+                          color={tag.method === 'digital' ? 'info' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {/* Always use the media endpoint for all guard seal tags since we've updated the API */}
+                        <Tooltip title="Click to view image">
                           <Box 
+                            component="img" 
+                            src={`/api/media/guardSealTag/${tag.id}`}
+                            alt={`Guard seal tag ${tag.barcode}`}
                             sx={{ 
-                              border: '1px solid',
-                              borderColor: 'divider',
+                              width: 60, 
+                              height: 60, 
+                              objectFit: 'cover',
                               borderRadius: 1,
-                              p: 0.75,
-                              bgcolor: 'background.paper',
-                              maxWidth: 180,
-                              overflow: 'hidden'
+                              cursor: 'pointer'
                             }}
-                          >
-                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 'medium' }}>
-                              {seal.barcode}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
-                            color={seal.method && typeof seal.method === 'string' && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {seal.imageUrl ? (
-                            <Box 
-                              component="img" 
-                              src={seal.imageUrl} 
-                              alt={`Seal tag ${index+1}`}
-                              sx={{ 
-                                width: 60, 
-                                height: 60, 
-                                objectFit: 'cover',
-                                borderRadius: 1,
-                                cursor: 'pointer'
-                              }}
-                              onClick={() => {
-                                // Open image in modal
-                                setSelectedImage(seal.imageUrl || '');
-                              setOpenImageModal(true);
+                            onClick={() => {
+                              // Open image in new tab
+                              window.open(`/api/media/guardSealTag/${tag.id}`, '_blank');
                             }}
-                              onError={(e) => {
-                                console.error(`Failed to load image for seal ${seal.barcode}:`, seal.imageUrl);
-                                // Try alternative image URL formats
-                                const img = e.target as HTMLImageElement;
-                                if (session?.id) {
-                                  // Attempt direct URL to seal tag image
-                                  img.src = `/api/images/${session.id}/guard-sealing/${index}`;
-                                  console.log(`Retrying with index-based URL: ${img.src}`);
-                                }
-                              }}
+                            onError={(e) => {
+                              console.error(`Error loading guard seal tag image`, e);
+                              const img = e.target as HTMLImageElement;
+                              img.style.display = 'none';
+                              
+                              // Try the imageUrl as fallback if available
+                              if (tag.imageUrl) {
+                                setTimeout(() => {
+                                  img.src = tag.imageUrl as string;
+                                  img.style.display = 'block';
+                                }, 100);
+                              }
+                            }}
                           />
+                        </Tooltip>
+                      }
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          size="small" 
+                          label={tag.status || 'Verified'} 
+                          color={tag.status === 'VERIFIED' || tag.status === 'Verified' || !tag.status ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {tag.verifiedBy ? (
+                          <Typography variant="body2">
+                            {tag.verifiedBy.name || 'Guard'} 
+                          </Typography>
                         ) : (
-                          <Typography variant="caption">No image</Typography>
+                          <Typography variant="caption">Unknown</Typography>
                         )}
                       </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={seal.status || 'VERIFIED'}
-                            color={seal.status === 'MATCHED' ? 'success' : (seal.status === 'UNMATCHED' ? 'warning' : 'default')} 
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {seal.createdAt ? formatDate(seal.createdAt) : "N/A"}
-                        </TableCell>
+                      <TableCell>
+                        {formatDate(tag.createdAt)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-              
-              {/* Display images in a gallery view as well */}
-              <Typography variant="subtitle1" gutterBottom>
-                Guard Seal Tag Images
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-                {session.guardSealTags.filter(seal => seal.imageUrl).map((seal, index) => (
-                  <Box key={`sealing-${index}`} sx={{ position: 'relative' }}>
-                    <Typography variant="caption" sx={{ position: 'absolute', top: 0, left: 0, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', px: 1 }}>
-                      {index + 1}
-                    </Typography>
-                    <Box
-                      component="img"
-                      src={seal.imageUrl || ''}
-                      alt={`Seal Tag ${index + 1}`}
-                      sx={{
-                        width: 150,
-                        height: 150,
-                        objectFit: 'cover',
-                        border: '2px solid',
-                        borderColor: 'secondary.main',
-                        borderRadius: 1,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => {
-                        setSelectedImage(seal.imageUrl || '');
-                        setOpenImageModal(true);
-                      }}
-                    />
-                  </Box>
-                ))}
-              </Box>
-                </Box>
-              )}
+          </Box>
+        )}
 
         {/* Add All Verification Seals section */}
         <Box mb={3}>
