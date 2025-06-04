@@ -9,14 +9,14 @@ import {
   CardContent, 
   Button, 
   TextField, 
-  Grid, 
   Divider,
   Paper,
   Alert,
   Snackbar,
   CircularProgress,
   InputAdornment,
-  IconButton
+  IconButton,
+  Stack
 } from "@mui/material";
 import { 
   Person, 
@@ -45,13 +45,10 @@ export default function ProfilePage() {
     severity: "success" as "success" | "error" | "info" | "warning"
   });
 
-  if (!session || !session.user) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // Format role for display
+  const formatRole = (role: string) => {
+    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+  };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -145,10 +142,16 @@ export default function ProfilePage() {
     }
   };
 
-  // Format role for display
-  const formatRole = (role: string) => {
-    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
-  };
+  if (!session || !session.user) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Get company name safely - assume it's not directly available in session.user
+  const companyName = "Not Assigned";
 
   return (
     <Box>
@@ -156,9 +159,9 @@ export default function ProfilePage() {
         My Profile
       </Typography>
       
-      <Grid container spacing={4}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
         {/* Profile Information */}
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: 1 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" component="h2" gutterBottom>
@@ -217,7 +220,7 @@ export default function ProfilePage() {
                   </Box>
                 )}
                 
-                {session.user.company && (
+                {session.user.companyId && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Business color="primary" />
                     <Box>
@@ -225,7 +228,7 @@ export default function ProfilePage() {
                         Company
                       </Typography>
                       <Typography variant="body1">
-                        {session.user.company.name}
+                        {companyName}
                       </Typography>
                     </Box>
                   </Box>
@@ -246,10 +249,10 @@ export default function ProfilePage() {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         
         {/* Change Password Form */}
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: 1 }}>
           <Paper elevation={1} sx={{ p: 3 }}>
             <Typography variant="h6" component="h2" gutterBottom>
               Change Password
@@ -349,8 +352,8 @@ export default function ProfilePage() {
               </Button>
             </form>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
       
       {/* Success/Error Snackbar */}
       <Snackbar
