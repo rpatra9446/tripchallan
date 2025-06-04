@@ -118,4 +118,46 @@ export async function processMultipleImages(
   return Promise.all(
     limitedFiles.map(file => resizeAndCompressImage(file, 800, 800, 0.6, maxSizeInMB))
   );
+}
+
+/**
+ * Compress a base64 image string to reduce its size
+ * @param base64Image The original base64 image string
+ * @param quality JPEG quality from 0 to 1 (default: 0.6 = 60%)
+ * @returns A promise that resolves to the compressed base64 image string
+ */
+export async function compressImage(
+  base64Image: string,
+  quality = 0.6
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = base64Image;
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+      
+      // Use original dimensions (no resizing)
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw the image on the canvas
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // Get the compressed base64 string
+      const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+      
+      resolve(compressedBase64);
+    };
+    
+    img.onerror = (error) => {
+      reject(error);
+    };
+  });
 } 

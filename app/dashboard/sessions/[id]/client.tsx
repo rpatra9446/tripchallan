@@ -73,6 +73,7 @@ import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
 import { toast } from "react-hot-toast";
 import { processMultipleImages, resizeAndCompressImage } from "@/lib/imageUtils";
 import { useTheme } from "@mui/material/styles";
+import { compressImage } from "@/lib/imageUtils";
 
 
 // Types
@@ -904,11 +905,19 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Get the seal ID
         const sealId = updatedSeals[index].id;
         
-                              // Upload the guard seal tag directly to the server - use relative URL to work in all environments
-                      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
-                      console.log('Posting to API URL:', apiUrl);
-                      
-                      const response = await fetch(apiUrl, {
+        // Compress image if it's too large
+        let compressedImageData = base64Image;
+        if (base64Image.length > 1000000) { // 1MB
+          console.log('Image is large, compressing...');
+          compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
+          console.log(`Compressed image from ${base64Image.length} to ${compressedImageData.length} bytes`);
+        }
+                              
+        // Upload the guard seal tag directly to the server - use relative URL to work in all environments
+        const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+        console.log('Posting to API URL:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -916,7 +925,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           body: JSON.stringify({
             barcode: sealId,
             method: updatedSeals[index].method || 'manual',
-            imageData: base64Image
+            imageData: compressedImageData
           }),
         });
         
@@ -2287,6 +2296,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     const base64Image = reader.result as string;
                     
                     try {
+                      // Compress image if it's too large
+                      let compressedImageData = base64Image;
+                      if (base64Image.length > 1000000) { // 1MB
+                        console.log('Image is large, compressing...');
+                        compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
+                        console.log(`Compressed image from ${base64Image.length} to ${compressedImageData.length} bytes`);
+                      }
+                      
                       // Upload the guard seal tag directly to the server - ensure relative URL is used
                       // Avoid using window.location.origin as it causes domain mismatch when deployed
                       const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
@@ -2298,9 +2315,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                          barcode: trimmedData,
+                          barcode: data.trim(), // Use data from the scan parameter
                           method: 'digital',
-                          imageData: base64Image
+                          imageData: compressedImageData
                         }),
                       });
                       
