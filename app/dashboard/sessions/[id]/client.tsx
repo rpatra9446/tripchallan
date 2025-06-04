@@ -4880,6 +4880,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <TableCell>Method</TableCell>
                     <TableCell>Image</TableCell>
                     <TableCell>Created At</TableCell>
+                    <TableCell>Created By</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -4943,6 +4944,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       </TableCell>
                       <TableCell>
                         {seal?.timestamp ? seal?.timestamp ? formatDate(seal.timestamp) : "N/A" : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {session?.createdBy?.name || "OPERATOR"}
+                        </Typography>
                       </TableCell>
                     </TableRow>
                   ))}
