@@ -531,8 +531,12 @@ export default function SealVerification({
                     <TableCell>
                       <Chip 
                         size="small" 
-                        label={seal.method === 'digital' ? 'Scanned' : 'Manual'} 
-                        color={seal.method === 'digital' ? 'info' : 'default'}
+                        label={seal.method && typeof seal.method === 'string' && 
+                               seal.method.toLowerCase().includes('manual') ? 
+                               'Manually Entered' : 'Digitally Scanned'}
+                        color={seal.method && typeof seal.method === 'string' && 
+                               seal.method.toLowerCase().includes('manual') ? 
+                               'secondary' : 'primary'} 
                       />
                     </TableCell>
                     <TableCell>

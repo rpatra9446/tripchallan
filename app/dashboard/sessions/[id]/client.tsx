@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback , CheckCircle, Cancel} from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import React from 'react';
@@ -36,7 +36,11 @@ import {
   InputAdornment,
   Tooltip,
   Tabs,
-  Tab
+  Tab,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from "@mui/material";
 import { 
   LocationOn, 
@@ -886,7 +890,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   // Update seal comparison when operator seals or guard scanned seals change
   useEffect(() => {
     if (operatorSeals.length > 0 || guardScannedSeals.length > 0) {
-      updateSealComparison();
+      updateSealComparison(guardScannedSeals);
     }
   }, [operatorSeals, guardScannedSeals, updateSealComparison]);
 
@@ -1309,7 +1313,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
 
   // Utility function to compress images
-  const compressImage = async (base64Image, quality = 0.8) => {
+  const compressImage = async (base64Image: string, quality = 0.8): Promise<string> => {
     return new Promise((resolve, reject) => {
       try {
         const img = new Image();
@@ -2140,15 +2144,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   placeholder="Add comment"
                   value={imageComments.driverPicture || ''}
                   onChange={(e) => handleImageCommentChange('driverPicture', e.target.value)}
-                      variant="outlined"
+                  variant="outlined"
                   multiline
                   rows={2}
                   sx={{ mt: 2 }}
                 />
-                </Box>
-                    </Box>
-                  </Box>
-                </Paper>
+              </Box>
+            </Box>
+          </Paper>
         )}
 
         {/* Vehicle Number Plate Verification */}
@@ -2183,14 +2186,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   placeholder="Add comment"
                   value={imageComments.vehicleNumberPlatePicture || ''}
                   onChange={(e) => handleImageCommentChange('vehicleNumberPlatePicture', e.target.value)}
-                      variant="outlined"
+                  variant="outlined"
                   multiline
                   rows={2}
                   sx={{ mt: 2 }}
                 />
-                </Box>
-                    </Box>
-            </Paper>
+              </Box>
+            </Box>
+          </Paper>
         )}
 
         {/* GPS IMEI Verification */}
@@ -2225,13 +2228,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   placeholder="Add comment"
                   value={imageComments.gpsImeiPicture || ''}
                   onChange={(e) => handleImageCommentChange('gpsImeiPicture', e.target.value)}
-                      variant="outlined"
+                  variant="outlined"
                   multiline
                   rows={2}
                   sx={{ mt: 2 }}
                 />
-                </Box>
-                    </Box>
+              </Box>
+            </Box>
           </Paper>
         )}
 
@@ -2442,159 +2445,160 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </Box>
               
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                variant="outlined"
-                label="Seal Tag ID"
-                value={scanInput}
-                onChange={(e) => setScanInput(e.target.value)}
-                error={!!scanError}
-                helperText={scanError}
-              />
-              
-              <Button 
-                variant="contained" 
-                onClick={() => {
-                  setScanMethod('manual');
-                  handleScanComplete(scanInput);
-                }}
-                disabled={!scanInput.trim()}
-              >
-                Add Manually
-              </Button>
-              
-              <ClientSideQrScanner
-                onScanWithImage={(data, imageFile) => {
-                  // Set method to digital since this was scanned with camera
-                  setScanMethod('digital');
-                  // Set method to digital since this was scanned
-                  setScanMethod('digital');
-                  
-                  const trimmedData = data.trim();
-                  
-                  // Check if already scanned by guard (case insensitive)
-                  if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
-                    setScanError('This seal has already been scanned');
-                    setTimeout(() => setScanError(''), 3000);
-                    return;
-                  }
-                  
-                  // Check if this seal matches an operator seal (case insensitive)
-                  const isVerified = operatorSeals.some(seal => 
-                    seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
-                  );
-                  
-                  console.log('Scanning seal ID (QR):', trimmedData);
-                  console.log('Operator seals:', operatorSeals.map(s => s.id));
-                  console.log('Is verified:', isVerified);
-                  
-                  // Add the seal with the scanned data and captured image
-                  // Convert image to base64 for server storage
-                  const reader = new FileReader();
-                  reader.onloadend = async () => {
-                    const base64Image = reader.result as string;
+                <TextField
+                  fullWidth
+                  size="small"
+                  variant="outlined"
+                  label="Seal Tag ID"
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
+                  error={!!scanError}
+                  helperText={scanError}
+                />
+                
+                <Button 
+                  variant="contained" 
+                  onClick={() => {
+                    setScanMethod('manual');
+                    handleScanComplete(scanInput);
+                  }}
+                  disabled={!scanInput.trim()}
+                >
+                  Add Manually
+                </Button>
+                
+                <ClientSideQrScanner
+                  onScanWithImage={(data, imageFile) => {
+                    // Set method to digital since this was scanned with camera
+                    setScanMethod('digital');
+                    // Set method to digital since this was scanned
+                    setScanMethod('digital');
                     
-                    try {
-                      console.log(`[Client] Scan data processed, length: ${data.length}`);
-                      
-                      // Store the trimmed data for reference
-                      const trimmedData = data.trim();
-                      
-                      // Compress image if it's too large
-                      let compressedImageData = base64Image;
-                      if (base64Image.length > 1000000) { // 1MB
-                        console.log('[Client] Image is large, compressing...');
-                        compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
-                        console.log(`[Client] Compressed image from ${base64Image.length} to ${compressedImageData.length} bytes`);
-                      }
-                      
-                      // More aggressive compression if still too large
-                      if (compressedImageData.length > 800000) { // 800KB
-                        console.log('[Client] Image still large, compressing further...');
-                        compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
-                        console.log(`[Client] Further compressed image to ${compressedImageData.length} bytes`);
-                      }
-                      
-                      // Maximum compression for very large images
-                      if (compressedImageData.length > 500000) { // 500KB
-                        console.log('[Client] Image size critical, applying maximum compression...');
-                        compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
-                        console.log(`[Client] Maximum compressed image to ${compressedImageData.length} bytes`);
-                      }
-                      
-                      // Handle potential CORS issues by using same-origin policy
-                      // Construct URL without using window.location to avoid cross-origin issues
-                      // Force using relative URL by starting with /
-                      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
-                      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
-                      
-                      // Use same-origin fetch with explicit cors mode
-                      const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        mode: 'same-origin',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                          barcode: trimmedData,
-                          method: 'digital',
-                          imageData: compressedImageData
-                        }),
-                      });
-                      
-                      if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('API error response:', errorText);
-                        throw new Error(`Failed to save guard seal tag: ${response.status}`);
-                      }
-                      
-                      const savedTag = await response.json();
-                      console.log('Guard seal tag saved:', savedTag);
-                      
-                      // Refresh the guard seal tags from the server
-                      fetchGuardSealTags();
-                      toast.success(`Seal tag ${trimmedData} saved successfully!`);
-                    } catch (error) {
-                      console.error('Error saving guard seal tag:', error);
-                      toast.error('Failed to save guard seal tag. Please try again.');
+                    const trimmedData = data.trim();
+                    
+                    // Check if already scanned by guard (case insensitive)
+                    if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
+                      setScanError('This seal has already been scanned');
+                      setTimeout(() => setScanError(''), 3000);
+                      return;
                     }
-                  };
-                  reader.readAsDataURL(imageFile);
-                  
-                  // Create temporary seal for UI feedback only
-                  const newSeal = {
-                    id: trimmedData,
-                    method: 'digital',
-                    image: imageFile,
-                    // Don't create a blob URL anymore
-                    imagePreview: null,
-                    timestamp: new Date().toISOString(),
-                    verified: isVerified
-                  };
-                  
-                  // Update state with the new seal
-                  const updatedSeals = [...guardScannedSeals, newSeal];
-                  setGuardScannedSeals(updatedSeals);
-                  
-                  // Update comparison with the updated list
-                  updateSealComparison(updatedSeals);
-                  
-                  // Show success or warning message based on match
-                  if (isVerified) {
-                    console.log("Seal tag matched with operator seals");
-                  } else {
-                    console.log("Seal tag does not match any operator seals");
-                  }
-                }}
-                buttonText="Scan QR/Barcode"
-                scannerTitle="Scan Seal Tag"
-                buttonVariant="contained"
-              />
-                </Box>
-                    </Box>
-                  </Paper>
+                    
+                    // Check if this seal matches an operator seal (case insensitive)
+                    const isVerified = operatorSeals.some(seal => 
+                      seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
+                    );
+                    
+                    console.log('Scanning seal ID (QR):', trimmedData);
+                    console.log('Operator seals:', operatorSeals.map(s => s.id));
+                    console.log('Is verified:', isVerified);
+                    
+                    // Add the seal with the scanned data and captured image
+                    // Convert image to base64 for server storage
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                      const base64Image = reader.result as string;
+                      
+                      try {
+                        console.log(`[Client] Scan data processed, length: ${data.length}`);
+                        
+                        // Store the trimmed data for reference
+                        const trimmedData = data.trim();
+                        
+                        // Compress image if it's too large
+                        let compressedImageData = base64Image;
+                        if (base64Image.length > 1000000) { // 1MB
+                          console.log('[Client] Image is large, compressing...');
+                          compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
+                          console.log(`[Client] Compressed image from ${base64Image.length} to ${compressedImageData.length} bytes`);
+                        }
+                        
+                        // More aggressive compression if still too large
+                        if (compressedImageData.length > 800000) { // 800KB
+                          console.log('[Client] Image still large, compressing further...');
+                          compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
+                          console.log(`[Client] Further compressed image to ${compressedImageData.length} bytes`);
+                        }
+                        
+                        // Maximum compression for very large images
+                        if (compressedImageData.length > 500000) { // 500KB
+                          console.log('[Client] Image size critical, applying maximum compression...');
+                          compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
+                          console.log(`[Client] Maximum compressed image to ${compressedImageData.length} bytes`);
+                        }
+                        
+                        // Handle potential CORS issues by using same-origin policy
+                        // Construct URL without using window.location to avoid cross-origin issues
+                        // Force using relative URL by starting with /
+                        const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+                        console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
+                        
+                        // Use same-origin fetch with explicit cors mode
+                        const response = await fetch(apiUrl, {
+                          method: 'POST',
+                          credentials: 'same-origin',
+                          mode: 'same-origin',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            barcode: trimmedData,
+                            method: 'digital',
+                            imageData: compressedImageData
+                          }),
+                        });
+                        
+                        if (!response.ok) {
+                          const errorText = await response.text();
+                          console.error('API error response:', errorText);
+                          throw new Error(`Failed to save guard seal tag: ${response.status}`);
+                        }
+                        
+                        const savedTag = await response.json();
+                        console.log('Guard seal tag saved:', savedTag);
+                        
+                        // Refresh the guard seal tags from the server
+                        fetchGuardSealTags();
+                        toast.success(`Seal tag ${trimmedData} saved successfully!`);
+                      } catch (error) {
+                        console.error('Error saving guard seal tag:', error);
+                        toast.error('Failed to save guard seal tag. Please try again.');
+                      }
+                    };
+                    reader.readAsDataURL(imageFile);
+                    
+                    // Create temporary seal for UI feedback only
+                    const newSeal = {
+                      id: trimmedData,
+                      method: 'digital',
+                      image: imageFile,
+                      // Don't create a blob URL anymore
+                      imagePreview: null,
+                      timestamp: new Date().toISOString(),
+                      verified: isVerified
+                    };
+                    
+                    // Update state with the new seal
+                    const updatedSeals = [...guardScannedSeals, newSeal];
+                    setGuardScannedSeals(updatedSeals);
+                    
+                    // Update comparison with the updated list
+                    updateSealComparison(updatedSeals);
+                    
+                    // Show success or warning message based on match
+                    if (isVerified) {
+                      console.log("Seal tag matched with operator seals");
+                    } else {
+                      console.log("Seal tag does not match any operator seals");
+                    }
+                  }}
+                  buttonText="Scan QR/Barcode"
+                  scannerTitle="Scan Seal Tag"
+                  buttonVariant="contained"
+                />
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
 
         {/* Seal Verification Summary */}
         <Paper 

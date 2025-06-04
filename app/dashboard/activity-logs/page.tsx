@@ -90,10 +90,8 @@ export default function ActivityLogsPage() {
       setAvailableActions(actions);
       setAvailableUsers(users);
       setAvailableResourceTypes(resourceTypes);
-      setFilteredData(tableData);
-    } else {
-      setFilteredData([]);
-    }
+      setFilteredData(tableData)} else {
+      setFilteredData([])}
   }, [tableData]);
 
   // Fetch activity logs with robust error handling
@@ -111,8 +109,7 @@ export default function ActivityLogsPage() {
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
+        throw new Error(`API error: ${response.status}`)}
       
       const data = await response.json();
       console.log('API Response:', data);
@@ -120,24 +117,19 @@ export default function ActivityLogsPage() {
       if (!data || !data.logs || !Array.isArray(data.logs)) {
         console.warn('Invalid API response format:', data);
         setLogs([]);
-        setTotalPages(1);
-      } else {
+        setTotalPages(1)} else {
         setLogs(data.logs);
-        setTotalPages(data.meta?.totalPages || 1);
-      }
+        setTotalPages(data.meta?.totalPages || 1)}
     } catch (err) {
       console.error('Error fetching activity logs:', err);
       setError(`Failed to load activity logs: ${err instanceof Error ? err.message : String(err)}`);
-      setLogs([]);
-    } finally {
-      setIsLoading(false);
-    }
+      setLogs([])} finally {
+      setIsLoading(false)}
   }, []);
 
   // Handle refresh
   const handleRefresh = useCallback(() => {
-    fetchActivityLogs(page);
-  }, [fetchActivityLogs, page]);
+    fetchActivityLogs(page)}, [fetchActivityLogs, page]);
 
   // Create test log data
   const createTestLogs = useCallback(async () => {
@@ -147,18 +139,14 @@ export default function ActivityLogsPage() {
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to create test logs: ${errorText}`);
-      }
+        throw new Error(`Failed to create test logs: ${errorText}`)}
       
       const result = await response.json();
       alert(`Created ${result.logs?.length || 0} test logs. Refreshing...`);
-      fetchActivityLogs(1, true);
-    } catch (error: any) {
+      fetchActivityLogs(1, true)} catch (error: any) {
       console.error('Error creating test logs:', error);
-      alert(`Error creating test logs: ${error.message || String(error)}`);
-    } finally {
-      setIsLoading(false);
-    }
+      alert(`Error creating test logs: ${error.message || String(error)}`)} finally {
+      setIsLoading(false)}
   }, [fetchActivityLogs]);
 
   // Apply filters effect
@@ -171,62 +159,51 @@ export default function ActivityLogsPage() {
     // Filter by action
     if (filters.action) {
       filtered = filtered.filter(row => row.action === filters.action);
-      activeFiltersList.push(`Action: ${formatAction(filters.action)}`);
-    }
+      activeFiltersList.push(`Action: ${formatAction(filters.action)}`)}
     
     // Filter by date range
     if (filters.startDate) {
       const startTimestamp = filters.startDate.getTime();
       filtered = filtered.filter(row => {
         const rowDate = new Date(row.createdAt).getTime();
-        return rowDate >= startTimestamp;
-      });
-      activeFiltersList.push(`After: ${format(filters.startDate, 'MMM dd, yyyy')}`);
-    }
+        return rowDate >= startTimestamp});
+      activeFiltersList.push(`After: ${format(filters.startDate, 'MMM dd, yyyy')}`)}
     
     if (filters.endDate) {
       const endTimestamp = filters.endDate.getTime();
       filtered = filtered.filter(row => {
         const rowDate = new Date(row.createdAt).getTime();
-        return rowDate <= endTimestamp;
-      });
-      activeFiltersList.push(`Before: ${format(filters.endDate, 'MMM dd, yyyy')}`);
-    }
+        return rowDate <= endTimestamp});
+      activeFiltersList.push(`Before: ${format(filters.endDate, 'MMM dd, yyyy')}`)}
     
     // Filter by user
     if (filters.user) {
       filtered = filtered.filter(row => row.user.email === filters.user);
       const userName = availableUsers.find(u => u.email === filters.user)?.name || filters.user;
-      activeFiltersList.push(`User: ${userName}`);
-    }
+      activeFiltersList.push(`User: ${userName}`)}
     
     // Filter by resource type
     if (filters.resourceType) {
       filtered = filtered.filter(row => row.targetResourceType === filters.resourceType);
-      activeFiltersList.push(`Resource: ${filters.resourceType}`);
-    }
+      activeFiltersList.push(`Resource: ${filters.resourceType}`)}
     
     setActiveFilters(activeFiltersList);
-    setFilteredData(filtered);
-  }, [filters, tableData, availableUsers]);
+    setFilteredData(filtered)}, [filters, tableData, availableUsers]);
 
   // Initialize data load
   useEffect(() => {
-    fetchActivityLogs(1);
-  }, [fetchActivityLogs]);
+    fetchActivityLogs(1)}, [fetchActivityLogs]);
 
   // Handle pagination change
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage + 1);
-    fetchActivityLogs(newPage + 1);
-  };
+    fetchActivityLogs(newPage + 1)};
 
   // Handle rows per page change  
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(1);
-    fetchActivityLogs(1);
-  };
+    fetchActivityLogs(1)};
 
   // Render device icon
   const renderDeviceIcon = (details?: ActivityLogDetails, userAgent?: string) => {
@@ -235,13 +212,11 @@ export default function ActivityLogsPage() {
       <span style={{ display: 'flex', alignItems: 'center' }}>
         {device === 'mobile' ? <Smartphone size={16} /> : <Monitor size={16} />}
       </span>
-    );
-  };
+    )};
 
   // Format action for display
   const formatAction = (action: string) => {
-    return action.charAt(0) + action.slice(1).toLowerCase();
-  };
+    return action.charAt(0) + action.slice(1).toLowerCase()};
 
   // Reset filters
   const resetFilters = () => {
@@ -251,19 +226,16 @@ export default function ActivityLogsPage() {
       endDate: null,
       user: '',
       resourceType: ''
-    });
-  };
+    })};
 
   // Handle date input changes
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const dateValue = e.target.value ? new Date(e.target.value) : null;
-    setFilters({...filters, startDate: dateValue});
-  };
+    setFilters({...filters, startDate: dateValue})};
 
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const dateValue = e.target.value ? new Date(e.target.value) : null;
-    setFilters({...filters, endDate: dateValue});
-  };
+    setFilters({...filters, endDate: dateValue})};
 
   return (
     <Box sx={{ p: 3 }}>
@@ -529,5 +501,4 @@ export default function ActivityLogsPage() {
         </Card>
       )}
     </Box>
-  );
-} 
+  )} 
