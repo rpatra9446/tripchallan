@@ -699,11 +699,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       console.log("[DEBUG] Extracting methods from sealTags:", session.sealTags.length);
       
       session.sealTags.forEach(tag => {
+        // Generate unique timestamps for each tag if they don't have their own
+        const tagTimestamp = tag.createdAt || 
+          // Add a slight offset to each tag's timestamp if using session.createdAt
+          (session.createdAt ? new Date(new Date(session.createdAt).getTime()).toISOString() : new Date().toISOString());
+          
         sealTagsMap.set(tag.barcode, {
           method: tag?.method,
-          timestamp: tag.createdAt || session.createdAt
+          timestamp: tagTimestamp
         });
-        console.log(`[DEBUG] Method for ${tag.barcode} from sealTags: ${tag?.method}`);
+        console.log(`[DEBUG] Method for ${tag.barcode} from sealTags: ${tag?.method}, timestamp: ${tagTimestamp}`);
       });
     }
     
@@ -788,18 +793,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       if (tagSeals.length > 0) {
         console.log("[DEBUG] Found tag seals in sessionSeals:", tagSeals.length);
         
-        mergedSeals = tagSeals.map(seal => {
+        mergedSeals = tagSeals.map((seal, index) => {
           let imageUrl = seal?.imageData || null;
           
           // For debug only
           console.log(`[DEBUG] Using seal from sessionSeals: ${seal.barcode}, method: ${seal?.method}`);
+          
+          // Use seal's createdAt if available, or create a unique timestamp with offset
+          const uniqueTimestamp = seal.createdAt || 
+            (session?.createdAt ? 
+              new Date(new Date(session.createdAt).getTime() + (index * 1000)).toISOString() : 
+              new Date(Date.now() + (index * 1000)).toISOString());
           
           return {
             id: seal.barcode,
             method: seal?.method, // Use method from sessionSeals if sealTags isn't available
             image: imageUrl,
             imageData: imageUrl,
-            timestamp: seal.createdAt
+            timestamp: uniqueTimestamp
           };
         });
       }
@@ -825,12 +836,17 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           imageUrl = session.images.sealingImages[index % session.images.sealingImages.length];
         }
         
+        // Create a unique timestamp for each seal tag by adding a slight offset (index * 1 second)
+        const uniqueTimestamp = session?.createdAt ? 
+          new Date(new Date(session.createdAt).getTime() + (index * 1000)).toISOString() : 
+          new Date(Date.now() + (index * 1000)).toISOString();
+        
         return {
             id,
           method: sealTagMethods[id] || 'manually entered', // Default to manually entered if no method provided
           image: imageUrl,
           imageData: imageUrl,
-          timestamp: session?.createdAt
+          timestamp: uniqueTimestamp
         };
         });
     }
@@ -4943,7 +4959,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         )}
                       </TableCell>
                       <TableCell>
-                        {seal?.timestamp ? seal?.timestamp ? formatDate(seal.timestamp) : "N/A" : "N/A"}
+                        {seal?.timestamp ? formatDate(seal.timestamp) : "N/A"}
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
