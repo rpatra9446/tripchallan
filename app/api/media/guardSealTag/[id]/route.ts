@@ -35,16 +35,20 @@ export async function GET(
       return NextResponse.json({ error: "Media record not found for this guard seal tag" }, { status: 404 });
     }
     
-    // If the guard seal tag has media, return the data URL
+    // If the guard seal tag has media, return the image data directly
     if (guardSealTag.media) {
-      // Create a data URL from the binary data
-      const dataUrl = `data:${guardSealTag.media.mimeType};base64,${Buffer.from(guardSealTag.media.data).toString('base64')}`;
-      return NextResponse.json({ dataUrl });
+      // Return the actual image data with appropriate content type
+      return new NextResponse(guardSealTag.media.data, {
+        headers: {
+          'Content-Type': guardSealTag.media.mimeType,
+          'Cache-Control': 'public, max-age=31536000, immutable' // Cache for 1 year
+        }
+      });
     }
     
-    // If the guard seal tag has an imageUrl but no media, return the image URL
+    // If the guard seal tag has an imageUrl but no media, redirect to the image URL
     if (guardSealTag.imageUrl) {
-      return NextResponse.json({ imageUrl: guardSealTag.imageUrl });
+      return NextResponse.redirect(guardSealTag.imageUrl);
     }
     
     // If neither media nor imageUrl is available, return error
