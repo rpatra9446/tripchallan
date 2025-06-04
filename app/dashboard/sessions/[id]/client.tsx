@@ -4149,9 +4149,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }));
   };
 
-  const [openImageModal, setOpenImageModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
   // Filter out system fields from trip details display
   const isSystemField = (key: string) => {
     const systemFields = ['createdById', 'id', 'companyId', 'status', 'createdAt', 'updatedAt'];
