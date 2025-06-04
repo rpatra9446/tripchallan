@@ -218,13 +218,11 @@ const printStyles = `
 
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
   // Helper function to display method consistently
-  const getMethodDisplay = 
-  (methodVar) => {
+  const getMethodDisplay = (methodVar: any): string => {
     if (!methodVar) return 'Unknown';
     if (typeof methodVar !== 'string') return 'Unknown';
     return methodVar.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
-  }
-;
+  };
   const getMethodColor = (methodVar: any) => {
     if (!methodVar) return 'default';
     if (typeof methodVar !== 'string') return 'default';
@@ -246,7 +244,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   
   // New state for guard verification
   const [verificationFormOpen, setVerificationFormOpen] = useState(false);
-  const [verificationFields, setVerificationFields] = useState<Record<string, any>>({});
+  const [verificationFields, setVerificationFields] = useState<{[key: string]: {
+    operatorValue: any;
+    guardValue: any;
+    comment: string;
+    isVerified: boolean;
+  }}>({});
   const [verificationStep, setVerificationStep] = useState(0);
   const [verificationProgress, setVerificationProgress] = useState(0);
   const [sealInput, setSealInput] = useState("");
@@ -694,10 +697,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       
       session.sealTags.forEach(tag => {
         sealTagsMap.set(tag.barcode, {
-          method: tag.method,
+          method: tag?.method,
           timestamp: tag.createdAt || session.createdAt
         });
-        console.log(`[DEBUG] Method for ${tag.barcode} from sealTags: ${tag.method}`);
+        console.log(`[DEBUG] Method for ${tag.barcode} from sealTags: ${tag?.method}`);
       });
     }
     
@@ -711,8 +714,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         if (guardSeal.id && sealTagsMap.has(guardSeal.id)) {
           const existing = sealTagsMap.get(guardSeal.id);
           if (existing) {
-            console.log(`[DEBUG] Using method from guard verification for ${guardSeal.id}: ${guardSeal.method}`);
-            existing.method = guardSeal.method;
+            console.log(`[DEBUG] Using method from guard verification for ${guardSeal.id}: ${guardSeal?.method}`);
+            existing.method = guardSeal?.method;
           }
         }
       });
@@ -724,16 +727,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       // Update the method information from guard verification data if available
       Object.keys(verificationSealTags).forEach(key => {
         const tag = verificationSealTags[key];
-        if (tag && tag.barcode && tag.method) {
+        if (tag && tag.barcode && tag?.method) {
           if (sealTagsMap.has(tag.barcode)) {
             // Update the method if it exists
             const existing = sealTagsMap.get(tag.barcode);
             if (existing) {
               sealTagsMap.set(tag.barcode, {
                 ...existing,
-                method: tag.method
+                method: tag?.method
               });
-              console.log(`[DEBUG] Updated method for ${tag.barcode} from verification data: ${tag.method}`);
+              console.log(`[DEBUG] Updated method for ${tag.barcode} from verification data: ${tag?.method}`);
             }
           }
         }
@@ -783,11 +786,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           let imageUrl = seal.imageData || null;
           
           // For debug only
-          console.log(`[DEBUG] Using seal from sessionSeals: ${seal.barcode}, method: ${seal.method}`);
+          console.log(`[DEBUG] Using seal from sessionSeals: ${seal.barcode}, method: ${seal?.method}`);
           
           return {
             id: seal.barcode,
-            method: seal.method, // Use method from sessionSeals if sealTags isn't available
+            method: seal?.method, // Use method from sessionSeals if sealTags isn't available
             image: imageUrl,
             imageData: imageUrl,
             timestamp: seal.createdAt
@@ -829,7 +832,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     // Log the final result
     console.log(`[DEBUG] Final merged seals count: ${mergedSeals.length}`);
     mergedSeals.forEach(seal => {
-      console.log(`[DEBUG] Final seal ${seal.id}, method: ${seal.method}, has image: ${seal.image ? 'yes' : 'no'}`);
+      console.log(`[DEBUG] Final seal ${seal.id}, method: ${seal?.method}, has image: ${seal.image ? 'yes' : 'no'}`);
     });
     
     return mergedSeals;
@@ -1314,7 +1317,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Prepare the data for the database
         return {
           id: seal.id,
-          method: seal.method,
+          method: seal?.method,
           imageUrl: seal.imagePreview, // Use the preview URL
           verified: seal.verified
         };
@@ -2569,22 +2572,22 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           </Box>
                         </TableCell>
                         <TableCell onClick={() => toggleRowExpansion(sealId)}>
-                          {operatorSeal ? (
+                          {operatorSeal != null ? (
                         <Chip 
-                              label={getMethodDisplay(operatorSeal.method)}
-                              color={getMethodColor(operatorSeal.method)} 
+                              label={getMethodDisplay(operatorSeal??.method)}
+                              color={getMethodColor(operatorSeal??.method)} 
                           size="small" />
                           ) : guardSeal ? (
                             <Chip 
-                              label={getMethodDisplay(guardSeal.method)}
-                              color={getMethodColor(guardSeal.method)} 
+                              label={getMethodDisplay(guardSeal??.method)}
+                              color={getMethodColor(guardSeal??.method)} 
                               size="small" />
                       ) : (
                             <Chip label="Unknown" color="default" size="small" />
                           )}
                           </TableCell>
                         <TableCell onClick={() => toggleRowExpansion(sealId)}>
-                          {operatorSeal && guardSeal ? (
+                          {operatorSeal && guardSeal != null ? (
                             <Box>
                               <Chip size="small" label="Both" color="success" sx={{ mr: 1 }} />
                             </Box>
@@ -2608,7 +2611,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           size="small"
                                 onClick={() => toggleRowExpansion(sealId)}
                               >
-                                {isExpanded ? (
+                                {isExpanded != null ? (
                                   <KeyboardArrowUp fontSize="small" />
                                 ) : (
                                   <KeyboardArrowDown fontSize="small" />
@@ -2650,7 +2653,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     Operator Information
                 </Typography>
           
-                      {operatorSeal ? (
+                      {operatorSeal != null ? (
                         <>
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
@@ -2660,15 +2663,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                                                               <Box sx={{ mb: 2 }}>
                                           <Typography variant="body2" color="text.secondary">Method:</Typography>
                             <Chip 
-                                            label={getMethodDisplay(operatorSeal.method)} 
+                                            label={getMethodDisplay(operatorSeal??.method)} 
                               size="small"
-                                            color={getMethodColor(operatorSeal.method)}
+                                            color={getMethodColor(operatorSeal??.method)}
                             />
                                         </Box>
                                       
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                        <Typography variant="body2">{formatDate(operatorSeal.timestamp)}</Typography>
+                                        <Typography variant="body2">{operatorSeal?.timestamp ? formatDate(operatorSeal.timestamp) : "N/A"}</Typography>
                                       </Box>
                                       
                                       {operatorSeal.imageData && (
@@ -2677,7 +2680,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                           <Box 
                                             component="img" 
                                             src={operatorSeal.imageData} 
-                                            alt={`Seal ${operatorSeal.id}`}
+                                            alt={`Seal ${operatorSeal?.id || "Unknown"}`}
                                             sx={{ 
                                               maxWidth: '100%', 
                                               height: 'auto', 
@@ -2705,7 +2708,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     Guard Information
                                   </Typography>
                                   
-                      {guardSeal ? (
+                      {guardSeal != null ? (
                         <>
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
@@ -2715,24 +2718,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                                                               <Box sx={{ mb: 2 }}>
                                           <Typography variant="body2" color="text.secondary">Method:</Typography>
                             <Chip 
-                                            label={getMethodDisplay(guardSeal.method)} 
+                                            label={getMethodDisplay(guardSeal??.method)} 
                               size="small"
-                                            color={getMethodColor(guardSeal.method)}
+                                            color={getMethodColor(guardSeal??.method)}
                             />
                                         </Box>
                                       
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                        <Typography variant="body2">{formatDate(guardSeal.timestamp)}</Typography>
+                                        <Typography variant="body2">{guardSeal?.timestamp ? formatDate(guardSeal.timestamp) : "N/A"}</Typography>
                                       </Box>
                                       
-                            {guardSeal.imagePreview ? (
+                            {guardSeal.imagePreview != null ? (
                                         <Box>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>Image:</Typography>
                                           <Box 
                                             component="img" 
                                   src={guardSeal.imagePreview} 
-                                            alt={`Seal ${guardSeal.id}`}
+                                            alt={`Seal ${guardSeal?.id || "Unknown"}`}
                                             sx={{ 
                                               maxWidth: '100%', 
                                               height: 'auto', 
@@ -2879,7 +2882,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Box>
         
         {/* Tab content */}
-        {activeSealTab === 0 ? (
+        {activeSealTab === 0 != null ? (
           /* Verification Summary Tab */
           <>
         {/* Seal verification information */}
@@ -2911,13 +2914,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip
-                            label={seal.method && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
-                            color={seal.method && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'}
+                            label={seal?.method && seal?.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
+                            color={seal?.method && seal?.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'}
                             size="small"
                           />
                       </TableCell>
                       <TableCell>
-                              {seal.imageData ? (
+                              {seal.imageData != null ? (
                           <Box 
                             component="img" 
                                   src={seal.imageData} 
@@ -3989,14 +3992,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           />
                         </TableCell>
                         <TableCell>
-                          {seal.method && (
+                          {seal?.method && (
                             <Chip 
                               size="small" 
-                              label={seal.method && typeof seal.method === 'string' && 
-                                     seal.method.toLowerCase().includes('manual') ? 
+                              label={seal?.method && typeof seal?.method === 'string' && 
+                                     seal?.method.toLowerCase().includes('manual') ? 
                                      'Manually Entered' : 'Digitally Scanned'}
-                              color={seal.method && typeof seal.method === 'string' && 
-                                     seal.method.toLowerCase().includes('manual') ? 
+                              color={seal?.method && typeof seal?.method === 'string' && 
+                                     seal?.method.toLowerCase().includes('manual') ? 
                                      'secondary' : 'primary'} 
                             />
                           )}
@@ -4023,7 +4026,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           />
                         </TableCell>
                         <TableCell>
-                          {seal.verifiedBy ? (
+                          {seal.verifiedBy != null ? (
                             <Tooltip title={`User ID: ${seal.verifiedBy.id}`}>
                       <Typography variant="body2">
                                 {seal.verifiedBy.name || (seal.verifiedById ? 'Guard' : 'Unknown')} 
@@ -4039,7 +4042,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           )}
                         </TableCell>
                         <TableCell>
-                          {seal.scannedAt ? (
+                          {seal.scannedAt != null ? (
                             <Tooltip title={new Date(seal.scannedAt).toLocaleString()}>
                               <Typography variant="body2">
                                 {formatDate(seal.scannedAt)}
@@ -4240,7 +4243,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                 <TableCell>{data.operatorValue !== undefined ? String(data.operatorValue) : 'N/A'}</TableCell>
                                 <TableCell>{data.guardValue !== undefined ? String(data.guardValue) : 'N/A'}</TableCell>
                                 <TableCell>
-                                  {isVerified ? (
+                                  {isVerified != null ? (
                                     <Chip 
                                       label={matches ? "Match" : "Mismatch"} 
                                       color={matches ? "success" : "warning"}
@@ -4916,21 +4919,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={seal.method && typeof seal.method === 'string' && 
-                                 seal.method.toLowerCase().includes('manual') ? 
+                          label={seal?.method && typeof seal?.method === 'string' && 
+                                 seal?.method.toLowerCase().includes('manual') ? 
                                  'Manually Entered' : 'Digitally Scanned'}
-                          color={seal.method && typeof seal.method === 'string' && 
-                                 seal.method.toLowerCase().includes('manual') ? 
+                          color={seal?.method && typeof seal?.method === 'string' && 
+                                 seal?.method.toLowerCase().includes('manual') ? 
                                  'secondary' : 'primary'} 
                         />
                       </TableCell>
                       <TableCell>
-                        {seal.image ? (
+                        {seal.image != null ? (
                           <Tooltip title="Click to view image">
                             <Box 
                               component="img" 
                               src={seal.image} 
-                              alt={`Seal tag ${seal.id}`}
+                              alt={`Seal tag ${seal?.id || "Unknown"}`}
                               sx={{ 
                                 width: 60, 
                                 height: 60, 
@@ -5011,16 +5014,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={tag.method && typeof tag.method === 'string' && 
-                                 tag.method.toLowerCase().includes('manual') ? 
+                          label={tag?.method && typeof tag?.method === 'string' && 
+                                 tag?.method.toLowerCase().includes('manual') ? 
                                  'Manually Entered' : 'Digitally Scanned'}
-                          color={tag.method && typeof tag.method === 'string' && 
-                                 tag.method.toLowerCase().includes('manual') ? 
+                          color={tag?.method && typeof tag?.method === 'string' && 
+                                 tag?.method.toLowerCase().includes('manual') ? 
                                  'secondary' : 'primary'} 
                         />
                       </TableCell>
                       <TableCell>
-                        {tag.imageData ? (
+                        {tag.imageData != null ? (
                           <Tooltip title="Click to view image">
                             <Box 
                               component="img" 
@@ -5055,7 +5058,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {tag.verifiedBy ? (
+                        {tag.verifiedBy != null ? (
                           <Typography variant="body2">
                             {tag.verifiedBy.name || 'Guard'} 
                           </Typography>
