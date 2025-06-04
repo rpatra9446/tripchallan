@@ -860,8 +860,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Get the seal ID
         const sealId = updatedSeals[index].id;
         
-        // Upload the guard seal tag directly to the server
-        const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+                              // Upload the guard seal tag directly to the server - use relative URL to work in all environments
+                      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+                      console.log('Posting to API URL:', apiUrl);
+                      
+                      const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2240,8 +2243,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     const base64Image = reader.result as string;
                     
                     try {
-                      // Upload the guard seal tag directly to the server
-                      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+                      // Upload the guard seal tag directly to the server - ensure relative URL is used
+                      // Avoid using window.location.origin as it causes domain mismatch when deployed
+                      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+                      console.log('Posting to API URL:', apiUrl);
+                      
+                      const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
@@ -2254,7 +2261,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       });
                       
                       if (!response.ok) {
-                        throw new Error('Failed to save guard seal tag');
+                        const errorText = await response.text();
+                        console.error('API error response:', errorText);
+                        throw new Error(`Failed to save guard seal tag: ${response.status}`);
                       }
                       
                       const savedTag = await response.json();
