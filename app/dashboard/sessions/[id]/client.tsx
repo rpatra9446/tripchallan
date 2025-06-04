@@ -177,16 +177,35 @@ type SessionType = {
      guardSealTags?: {
      id: string;
      barcode: string;
-     method: string;
-     imageUrl?: string | null;
+     method: string; // Original method (backward compatibility)
+     imageUrl?: string | null; // Original imageUrl (backward compatibility)
      createdAt: string;
+     
+     // Updated fields with unified model
+     imageData?: string; // Operator's image data (base64)
+     guardMethod?: string; // Guard's verification method ('digital' or 'manual')
+     guardImageData?: string; // Guard's verification image (base64)
+     guardTimestamp?: string; // When guard verified
+     guardStatus?: string; // Status of verification
+     guardNotes?: string; // Any notes by guard
+     
+     // User references
+     createdById?: string;
+     guardUserId?: string;
+     
+     // For backward compatibility
      status?: string;
      verifiedById?: string;
      verifiedBy?: {
        id: string;
        name: string;
        email: string;
-    };
+     };
+     guardUser?: {
+       id: string;
+       name: string;
+       email: string;
+     };
   }[];
 };
 
@@ -417,9 +436,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       const data = await response.json();
       console.log("Session data received:", data);
       
-      // Fetch guard seal tags separately
+      // Fetch verified seal tags (guard verification) separately
       try {
-        const guardSealsResponse = await fetch(`/api/sessions/${sessionId}/guardSealTags?nocache=${Date.now()}`, {
+        const verifiedSealsResponse = await fetch(`/api/sessions/${sessionId}/sealTags/verified?nocache=${Date.now()}`, {
           cache: 'no-store',
           headers: {
             'Pragma': 'no-cache',
@@ -428,15 +447,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           }
         });
         
-        if (guardSealsResponse.ok) {
-          const guardSealsData = await guardSealsResponse.json();
-          console.log("Guard seal tags received:", guardSealsData);
-          // Add guard seal tags to session data
-          data.guardSealTags = guardSealsData;
+        if (verifiedSealsResponse.ok) {
+          const verifiedSealsData = await verifiedSealsResponse.json();
+          console.log("Verified seal tags received:", verifiedSealsData);
+          // Add guard seal tags to session data (using the same property name for backward compatibility)
+          data.guardSealTags = verifiedSealsData;
         }
       } catch (err) {
-        console.error("Error fetching guard seal tags:", err);
-        // Continue without guard seal tags
+        console.error("Error fetching verified seal tags:", err);
+        // Continue without verified seal tags
       }
       
       setSession(data);
@@ -454,11 +473,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       fetchSessionDetails();
   }, [fetchSessionDetails]);
 
-  // Add function to fetch guard seal tags
-  const fetchGuardSealTags = useCallback(async () => {
+  // Add function to fetch verified seal tags (guard verification)
+  const fetchVerifiedSealTags = useCallback(async () => {
     try {
-      console.log("Fetching guard seal tags...");
-      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags?nocache=${Date.now()}`, {
+      console.log("Fetching verified seal tags...");
+      const response = await fetch(`/api/sessions/${sessionId}/sealTags/verified?nocache=${Date.now()}`, {
         cache: 'no-store',
         headers: {
           'Pragma': 'no-cache',
@@ -468,28 +487,28 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch guard seal tags');
+        throw new Error('Failed to fetch verified seal tags');
       }
       
-      const guardSealTagsData = await response.json();
-      console.log("Guard seal tags received:", guardSealTagsData);
+      const verifiedSealTagsData = await response.json();
+      console.log("Verified seal tags received:", verifiedSealTagsData);
       
-      // Update session with new guard seal tags
+      // Update session with new verified seal tags
       setSession(prev => {
         if (!prev) return prev;
         return {
           ...prev,
-          guardSealTags: guardSealTagsData
+          guardSealTags: verifiedSealTagsData // Keep same property name for compatibility
         };
       });
       
-      return guardSealTagsData;
+      return verifiedSealTagsData;
     } catch (error) {
-      console.error("Error fetching guard seal tags:", error);
+      console.error("Error fetching verified seal tags:", error);
       toast.error("Failed to refresh seal tags");
       return [];
     }
-  }, [sessionId, toast]);
+  }, [sessionId]);
 
   // Format field names for display
   const formatFieldName = (field: string) => {
@@ -4913,16 +4932,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={tag.method === 'digital' ? 'Scanned' : 'Manual'} 
-                          color={tag.method === 'digital' ? 'info' : 'default'}
+                          label={tag.guardMethod === 'digital' ? 'Scanned' : 'Manual'} 
+                          color={tag.guardMethod === 'digital' ? 'info' : 'default'}
                         />
                       </TableCell>
                       <TableCell>
-                        {/* The API now returns the raw image data directly */}
+                        {/* Image is now stored directly in the database as base64 */}
                         <Tooltip title="Click to view image">
                           <Box 
                             component="img" 
-                            src={`/api/media/guardSealTag/${tag.id}?t=${new Date().getTime()}`}
+                            src={tag.guardImageData || '/images/driver-placeholder.svg'}
                             alt={`Guard seal tag ${tag.barcode}`}
                             sx={{ 
                               width: 60, 
@@ -4934,8 +4953,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             }}
                             onClick={() => {
                               // Open image in modal
-                              setSelectedImage(`/api/media/guardSealTag/${tag.id}`);
-                              setOpenImageModal(true);
+                              if (tag.guardImageData) {
+                                setSelectedImage(tag.guardImageData);
+                                setOpenImageModal(true);
+                              }
                             }}
                             onError={(e) => {
                               console.error(`Error loading guard seal tag image`, e);
@@ -4949,21 +4970,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={tag.status || 'Verified'} 
-                          color={tag.status === 'VERIFIED' || tag.status === 'Verified' || !tag.status ? 'success' : 'default'}
+                          label={tag.guardStatus || 'Verified'} 
+                          color={tag.guardStatus === 'VERIFIED' || tag.guardStatus === 'Verified' || !tag.guardStatus ? 'success' : 'default'}
                         />
                       </TableCell>
                       <TableCell>
-                        {tag.verifiedBy ? (
+                        {tag.guardUser ? (
                           <Typography variant="body2">
-                            {tag.verifiedBy.name || 'Guard'} 
+                            {tag.guardUser.name || 'Guard'} 
                           </Typography>
                         ) : (
                           <Typography variant="caption">Unknown</Typography>
                         )}
                       </TableCell>
                       <TableCell>
-                        {formatDate(tag.createdAt)}
+                        {formatDate(tag.guardTimestamp || tag.createdAt)}
                       </TableCell>
                     </TableRow>
                   ))}
