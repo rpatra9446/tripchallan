@@ -453,6 +453,49 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     console.log("Component mounted, fetching session details...");
       fetchSessionDetails();
   }, [fetchSessionDetails]);
+
+  // Add function to fetch guard seal tags
+  const fetchGuardSealTags = useCallback(async () => {
+    try {
+      console.log("Fetching guard seal tags...");
+      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags?nocache=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch guard seal tags');
+      }
+      
+      const guardSealTagsData = await response.json();
+      console.log("Guard seal tags received:", guardSealTagsData);
+      
+      // Update session with new guard seal tags
+      setSession(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          guardSealTags: guardSealTagsData
+        };
+      });
+      
+      return guardSealTagsData;
+    } catch (error) {
+      console.error("Error fetching guard seal tags:", error);
+      toast.error("Failed to refresh seal tags");
+      return [];
+    }
+  }, [sessionId, toast]);
+
+  // Format field names for display
+  const formatFieldName = (field: string) => {
+    return field.replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase());
+  };
   
   // Add useEffect to extract verification data from session when it's loaded
   useEffect(() => {
