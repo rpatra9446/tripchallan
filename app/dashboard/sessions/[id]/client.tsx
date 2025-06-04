@@ -715,7 +715,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           const existing = sealTagsMap.get(guardSeal.id);
           if (existing) {
             console.log(`[DEBUG] Using method from guard verification for ${guardSeal.id}: ${guardSeal?.method}`);
-            existing.method = guardSeal?.method;
+            existing?.method = guardSeal?.method;
           }
         }
       });
@@ -752,8 +752,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       
       const tagSeals = sessionSeals.filter(seal => seal.type === 'tag');
       tagSeals.forEach(seal => {
-        sessionSealsMap.set(seal.barcode, seal.imageData || null);
-        console.log(`[DEBUG] Image for ${seal.barcode} from sessionSeals: ${seal.imageData ? 'present' : 'null'}`);
+        sessionSealsMap.set(seal.barcode, seal?.imageData || null);
+        console.log(`[DEBUG] Image for ${seal.barcode} from sessionSeals: ${seal?.imageData ? 'present' : 'null'}`);
       });
     }
     
@@ -764,7 +764,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       sealTagsMap.forEach((data, barcode) => {
         mergedSeals.push({
           id: barcode,
-          method: data.method, // From Table A
+          method: data?.method, // From Table A
           image: sessionSealsMap.get(barcode) || null, // From Table B
           imageData: sessionSealsMap.get(barcode) || null, // From Table B
           timestamp: data.timestamp
@@ -783,7 +783,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         console.log("[DEBUG] Found tag seals in sessionSeals:", tagSeals.length);
         
         mergedSeals = tagSeals.map(seal => {
-          let imageUrl = seal.imageData || null;
+          let imageUrl = seal?.imageData || null;
           
           // For debug only
           console.log(`[DEBUG] Using seal from sessionSeals: ${seal.barcode}, method: ${seal?.method}`);
@@ -1712,8 +1712,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <Box display="flex" flexDirection="column" alignItems="center">
                         <IconButton 
                           onClick={() => verifyField(field)}
-                          color={data.isVerified ? "success" : "default"}
-                          size="small"
+                          color={data.isVerified ? "success" : "default"} size="small"
                         >
                           {data.isVerified ? <CheckCircle /> : <RadioButtonUnchecked />}
                         </IconButton>
@@ -1796,8 +1795,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <Box display="flex" flexDirection="column" alignItems="center">
                         <IconButton 
                           onClick={() => verifyField(field)}
-                          color={data.isVerified ? "success" : "default"}
-                          size="small"
+                          color={data.isVerified ? "success" : "default"} size="small"
                         >
                           {data.isVerified ? <CheckCircle /> : <RadioButtonUnchecked />}
                         </IconButton>
@@ -1881,8 +1879,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Box display="flex" flexDirection="column" alignItems="center">
                       <IconButton 
                         onClick={() => verifyField(field)}
-                          color={data.isVerified ? "success" : "default"}
-                        size="small"
+                          color={data.isVerified ? "success" : "default"} size="small"
                       >
                           {data.isVerified ? <CheckCircle /> : <RadioButtonUnchecked />}
                       </IconButton>
@@ -1942,8 +1939,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center">
                 <IconButton 
                   onClick={() => verifyImage('driverPicture')}
-                  color={imageVerificationStatus.driverPicture ? "success" : "default"}
-                  size="small"
+                  color={imageVerificationStatus.driverPicture ? "success" : "default"} size="small"
                 >
                   {imageVerificationStatus.driverPicture ? <CheckCircle /> : <RadioButtonUnchecked />}
                 </IconButton>
@@ -1998,8 +1994,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box display="flex" alignItems="center">
                   <IconButton 
                     onClick={() => verifyImage('driverPicture')}
-                    color={imageVerificationStatus.driverPicture ? "success" : "default"}
-                    size="small"
+                    color={imageVerificationStatus.driverPicture ? "success" : "default"} size="small"
                   >
                     {imageVerificationStatus.driverPicture ? <CheckCircle /> : <RadioButtonUnchecked />}
                   </IconButton>
@@ -2041,8 +2036,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box display="flex" alignItems="center">
                   <IconButton 
                     onClick={() => verifyImage('vehicleNumberPlatePicture')}
-                    color={imageVerificationStatus.vehicleNumberPlatePicture ? "success" : "default"}
-                    size="small"
+                    color={imageVerificationStatus.vehicleNumberPlatePicture ? "success" : "default"} size="small"
                   >
                     {imageVerificationStatus.vehicleNumberPlatePicture ? <CheckCircle /> : <RadioButtonUnchecked />}
                   </IconButton>
@@ -2084,8 +2078,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box display="flex" alignItems="center">
                   <IconButton 
                     onClick={() => verifyImage('gpsImeiPicture')}
-                    color={imageVerificationStatus.gpsImeiPicture ? "success" : "default"}
-                    size="small"
+                    color={imageVerificationStatus.gpsImeiPicture ? "success" : "default"} size="small"
                   >
                     {imageVerificationStatus.gpsImeiPicture ? <CheckCircle /> : <RadioButtonUnchecked />}
                   </IconButton>
@@ -2119,8 +2112,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center">
                 <IconButton 
                   onClick={() => verifyImage('sealingImages')}
-                  color={imageVerificationStatus.sealingImages ? "success" : "default"}
-                  size="small"
+                  color={imageVerificationStatus.sealingImages ? "success" : "default"} size="small"
                 >
                   {imageVerificationStatus.sealingImages ? <CheckCircle /> : <RadioButtonUnchecked />}
                 </IconButton>
@@ -2164,8 +2156,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center">
                       <IconButton 
                   onClick={() => verifyImage('vehicleImages')}
-                  color={imageVerificationStatus.vehicleImages ? "success" : "default"}
-                        size="small"
+                  color={imageVerificationStatus.vehicleImages ? "success" : "default"} size="small"
                       >
                   {imageVerificationStatus.vehicleImages ? <CheckCircle /> : <RadioButtonUnchecked />}
                       </IconButton>
@@ -2209,8 +2200,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box display="flex" alignItems="center">
                 <IconButton 
                   onClick={() => verifyImage('additionalImages')}
-                  color={imageVerificationStatus.additionalImages ? "success" : "default"}
-                  size="small"
+                  color={imageVerificationStatus.additionalImages ? "success" : "default"} size="small"
                 >
                   {imageVerificationStatus.additionalImages ? <CheckCircle /> : <RadioButtonUnchecked />}
                 </IconButton>
@@ -2474,8 +2464,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 </Typography>
                         <Chip
                             label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                            color={sealComparison.matched.length === operatorSeals.length ? "success" : "primary"}
-                            size="small"
+                            color={sealComparison.matched.length === operatorSeals.length ? "success" : "primary"} size="small"
                           />
                           </Box>
             
@@ -2572,22 +2561,20 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           </Box>
                         </TableCell>
                         <TableCell onClick={() => toggleRowExpansion(sealId)}>
-                          {operatorSeal != null ? (
+                          {operatorSeal ? (
                         <Chip 
-                              label={getMethodDisplay(operatorSeal??.method)}
-                              color={getMethodColor(operatorSeal??.method)} 
-                          size="small" />
+                              label={getMethodDisplay(operatorSeal?.method)}
+                              color={getMethodColor(operatorSeal?.method)} size="small" />
                           ) : guardSeal ? (
                             <Chip 
-                              label={getMethodDisplay(guardSeal??.method)}
-                              color={getMethodColor(guardSeal??.method)} 
-                              size="small" />
+                              label={getMethodDisplay(guardSeal?.method)}
+                              color={getMethodColor(guardSeal?.method)} size="small" />
                       ) : (
                             <Chip label="Unknown" color="default" size="small" />
                           )}
                           </TableCell>
                         <TableCell onClick={() => toggleRowExpansion(sealId)}>
-                          {operatorSeal && guardSeal != null ? (
+                          {operatorSeal && guardSeal ? (
                             <Box>
                               <Chip size="small" label="Both" color="success" sx={{ mr: 1 }} />
                             </Box>
@@ -2601,8 +2588,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <Chip 
                             icon={statusIcon}
                             label={statusLabel}
-                            color={statusColor}
-                          size="small" />
+                            color={statusColor} size="small" />
                       </TableCell>
                       <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -2611,7 +2597,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           size="small"
                                 onClick={() => toggleRowExpansion(sealId)}
                               >
-                                {isExpanded != null ? (
+                                {isExpanded ? (
                                   <KeyboardArrowUp fontSize="small" />
                                 ) : (
                                   <KeyboardArrowDown fontSize="small" />
@@ -2653,7 +2639,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     Operator Information
                 </Typography>
           
-                      {operatorSeal != null ? (
+                      {operatorSeal ? (
                         <>
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
@@ -2663,9 +2649,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                                                               <Box sx={{ mb: 2 }}>
                                           <Typography variant="body2" color="text.secondary">Method:</Typography>
                             <Chip 
-                                            label={getMethodDisplay(operatorSeal??.method)} 
-                              size="small"
-                                            color={getMethodColor(operatorSeal??.method)}
+                                            label={getMethodDisplay(operatorSeal?.method)} size="small"
+                                            color={getMethodColor(operatorSeal?.method)}
                             />
                                         </Box>
                                       
@@ -2674,12 +2659,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                         <Typography variant="body2">{operatorSeal?.timestamp ? formatDate(operatorSeal.timestamp) : "N/A"}</Typography>
                                       </Box>
                                       
-                                      {operatorSeal.imageData && (
+                                      {operatorSeal?.imageData && (
                                         <Box>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>Image:</Typography>
                                           <Box 
                                             component="img" 
-                                            src={operatorSeal.imageData} 
+                                            src={operatorSeal?.imageData} 
                                             alt={`Seal ${operatorSeal?.id || "Unknown"}`}
                                             sx={{ 
                                               maxWidth: '100%', 
@@ -2708,7 +2693,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     Guard Information
                                   </Typography>
                                   
-                      {guardSeal != null ? (
+                      {guardSeal ? (
                         <>
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
@@ -2718,9 +2703,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                                                               <Box sx={{ mb: 2 }}>
                                           <Typography variant="body2" color="text.secondary">Method:</Typography>
                             <Chip 
-                                            label={getMethodDisplay(guardSeal??.method)} 
-                              size="small"
-                                            color={getMethodColor(guardSeal??.method)}
+                                            label={getMethodDisplay(guardSeal?.method)} size="small"
+                                            color={getMethodColor(guardSeal?.method)}
                             />
                                         </Box>
                                       
@@ -2729,7 +2713,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                         <Typography variant="body2">{guardSeal?.timestamp ? formatDate(guardSeal.timestamp) : "N/A"}</Typography>
                                       </Box>
                                       
-                            {guardSeal.imagePreview != null ? (
+                            {guardSeal.imagePreview ? (
                                         <Box>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>Image:</Typography>
                                           <Box 
@@ -2819,8 +2803,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                         !operatorSeal ? "error" : 
                                         !guardSeal ? "warning" : 
                                         "success"
-                                      }
-                          size="small"
+                                      } size="small"
                                       sx={{ ml: 1 }}
                                     />
                                   </Typography>
@@ -2882,7 +2865,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Box>
         
         {/* Tab content */}
-        {activeSealTab === 0 != null ? (
+        {activeSealTab === 0 ? (
           /* Verification Summary Tab */
           <>
         {/* Seal verification information */}
@@ -2914,16 +2897,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
                         <Chip
-                            label={seal?.method && seal?.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
-                            color={seal?.method && seal?.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'}
-                            size="small"
+                            label={seal?.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
+                            color={seal?.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} size="small"
                           />
                       </TableCell>
                       <TableCell>
-                              {seal.imageData != null ? (
+                              {seal?.imageData ? (
                           <Box 
                             component="img" 
-                                  src={seal.imageData} 
+                                  src={seal?.imageData} 
                             alt={`Seal tag ${index+1}`}
                             sx={{ 
                               width: 60, 
@@ -2938,7 +2920,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     setDetailsDialogOpen(true);
                                   }}
                                   onError={(e) => {
-                                    console.error(`Failed to load image for seal ${seal.id}:`, seal.imageData);
+                                    console.error(`Failed to load image for seal ${seal.id}:`, seal?.imageData);
                                     // Try alternative image URL formats
                                     const img = e.target as HTMLImageElement;
                                     if (session?.id) {
@@ -4014,8 +3996,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     : "Verified")
                                 : "Unverified"
                             } 
-                            color={statusColor as "success" | "warning" | "default"}
-                            size="small"
+                            color={statusColor as "success" | "warning" | "default"} size="small"
                             icon={
                               seal.verified 
                                 ? (allMatch === false 
@@ -4026,7 +4007,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           />
                         </TableCell>
                         <TableCell>
-                          {seal.verifiedBy != null ? (
+                          {seal.verifiedBy ? (
                             <Tooltip title={`User ID: ${seal.verifiedBy.id}`}>
                       <Typography variant="body2">
                                 {seal.verifiedBy.name || (seal.verifiedById ? 'Guard' : 'Unknown')} 
@@ -4042,7 +4023,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           )}
                         </TableCell>
                         <TableCell>
-                          {seal.scannedAt != null ? (
+                          {seal.scannedAt ? (
                             <Tooltip title={new Date(seal.scannedAt).toLocaleString()}>
                               <Typography variant="body2">
                                 {formatDate(seal.scannedAt)}
@@ -4146,8 +4127,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                             <Chip 
                               label={selectedSeal.verified ? "Verified" : "Unverified"} 
-                              color={selectedSeal.verified ? "success" : "default"}
-                              size="small"
+                              color={selectedSeal.verified ? "success" : "default"} size="small"
                               icon={selectedSeal.verified ? <CheckCircle fontSize="small" /> : <RadioButtonUnchecked fontSize="small" />}
                             />
                           </Box>
@@ -4190,8 +4170,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                                <Chip 
                                  label={selectedSeal.verificationDetails.allMatch ? "All Fields Match" : "Some Fields Mismatched"} 
-                                 color={selectedSeal.verificationDetails.allMatch ? "success" : "warning"}
-                                 size="small"
+                                 color={selectedSeal.verificationDetails.allMatch ? "success" : "warning"} size="small"
                                  icon={selectedSeal.verificationDetails.allMatch ? 
                                    <CheckCircle fontSize="small" /> : 
                                    <Warning fontSize="small" />
@@ -4243,11 +4222,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                 <TableCell>{data.operatorValue !== undefined ? String(data.operatorValue) : 'N/A'}</TableCell>
                                 <TableCell>{data.guardValue !== undefined ? String(data.guardValue) : 'N/A'}</TableCell>
                                 <TableCell>
-                                  {isVerified != null ? (
+                                  {isVerified ? (
                                     <Chip 
                                       label={matches ? "Match" : "Mismatch"} 
-                                      color={matches ? "success" : "warning"}
-                                      size="small"
+                                      color={matches ? "success" : "warning"} size="small"
                                       icon={matches ? <CheckCircle fontSize="small" /> : <Warning fontSize="small" />}
                                     />
                                   ) : (
@@ -4490,8 +4468,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   )}
                   <Chip 
                     label={session.status} 
-                    color={getStatusColor(session.status)}
-                    size="medium"
+                    color={getStatusColor(session.status)} size="medium"
                   />
                 </Box>
                     </Box>
@@ -4747,8 +4724,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             )}
             <Chip 
               label={session.status} 
-              color={getStatusColor(session.status)}
-              size="medium"
+              color={getStatusColor(session.status)} size="medium"
             />
           </Box>
                     </Box>
@@ -4928,7 +4904,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {seal.image != null ? (
+                        {seal.image ? (
                           <Tooltip title="Click to view image">
                             <Box 
                               component="img" 
@@ -4955,7 +4931,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         )}
                       </TableCell>
                       <TableCell>
-                        {seal.timestamp ? formatDate(seal.timestamp) : "N/A"}
+                        {seal?.timestamp ? formatDate(seal.timestamp) : "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -5023,11 +4999,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {tag.imageData != null ? (
+                        {tag?.imageData ? (
                           <Tooltip title="Click to view image">
                             <Box 
                               component="img" 
-                              src={tag.imageData}
+                              src={tag?.imageData}
                               alt={`Guard seal tag ${tag.barcode}`}
                               sx={{ 
                                 width: 60, 
@@ -5039,8 +5015,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               }}
                               onClick={() => {
                                 // Open image in modal
-                                if (tag.imageData) {
-                                  setSelectedImage(tag.imageData);
+                                if (tag?.imageData) {
+                                  setSelectedImage(tag?.imageData);
                                   setOpenImageModal(true);
                                 }
                               }}
@@ -5058,7 +5034,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {tag.verifiedBy != null ? (
+                        {tag.verifiedBy ? (
                           <Typography variant="body2">
                             {tag.verifiedBy.name || 'Guard'} 
                           </Typography>

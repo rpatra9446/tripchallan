@@ -77,4 +77,33 @@ content = content.replace(/amount\?: number;/, "amount?: string | number;");
 
 // Save the changes
 fs.writeFileSync(filePath, content);
-console.log('Fixed syntax errors in activity logs page'); 
+console.log('Fixed syntax errors in activity logs page');
+
+// Read the file
+const filePathClient = path.join('app', 'dashboard', 'sessions', '[id]', 'client.tsx');
+let contentClient = fs.readFileSync(filePathClient, 'utf8');
+
+// Fix double question marks which is a syntax error
+contentClient = contentClient.replace(/\?\?\.method/g, '?.method');
+
+// Fix incorrect use of != null in ternary operators
+contentClient = contentClient.replace(/activeSealTab === 0 != null/g, 'activeSealTab === 0');
+contentClient = contentClient.replace(/isExpanded != null/g, 'isExpanded');
+
+// Fix unnecessary != null comparisons while keeping the intent
+contentClient = contentClient.replace(/operatorSeal != null \? \(/g, 'operatorSeal ? (');
+contentClient = contentClient.replace(/guardSeal != null \? \(/g, 'guardSeal ? (');
+contentClient = contentClient.replace(/seal\.verifiedBy != null/g, 'seal.verifiedBy');
+contentClient = contentClient.replace(/seal\.scannedAt != null/g, 'seal.scannedAt');
+contentClient = contentClient.replace(/seal\.image != null/g, 'seal.image');
+contentClient = contentClient.replace(/guardSeal.imagePreview != null/g, 'guardSeal.imagePreview');
+contentClient = contentClient.replace(/seal\.imageData != null/g, 'seal.imageData');
+contentClient = contentClient.replace(/tag\.imageData != null/g, 'tag.imageData');
+contentClient = contentClient.replace(/tag\.verifiedBy != null/g, 'tag.verifiedBy');
+contentClient = contentClient.replace(/isVerified != null/g, 'isVerified');
+contentClient = contentClient.replace(/operatorSeal && guardSeal != null/g, 'operatorSeal && guardSeal');
+
+// Write the fixed content back to the file
+fs.writeFileSync(filePathClient, contentClient);
+
+console.log('Fixed syntax errors in client.tsx'); 
