@@ -4793,7 +4793,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             }}
                           />
                         </Tooltip>
-                      }
                       </TableCell>
                       <TableCell>
                         <Chip 
