@@ -929,8 +929,282 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     });
   };
 
-  // The handleScanComplete function is moved below after the compressImage function to avoid reference errors
-
+  // Handle QR/barcode scanner input
+  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
+    // Don't process empty input
+    if (!barcodeData.trim()) {
+      setScanError('Please enter a valid Seal Tag ID');
+      setTimeout(() => setScanError(''), 3000);
+      return;
+    }
+    
+    try {
+      const trimmedData = barcodeData.trim();
+      
+      // Check if already scanned by guard (case insensitive)
+      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
+        setScanError('This seal has already been scanned');
+        setTimeout(() => setScanError(''), 3000);
+        return;
+      }
+      
+      // Check if this seal matches an operator seal (case insensitive)
+      const isVerified = operatorSeals.some(seal => 
+        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
+      );
+      
+      let imageDataBase64 = null;
+      
+      // Process image if we have one (from digital scan)
+      if (imageFile) {
+        const reader = new FileReader();
+        imageDataBase64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = async () => {
+            try {
+              const base64Image = reader.result as string;
+              
+              // Compress image if it's too large
+              let compressedImageData = base64Image;
+              if (base64Image.length > 1000000) { // 1MB
+                console.log('[Client] Image is large, compressing...');
+                compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
+              }
+              
+              // More aggressive compression if still too large
+              if (compressedImageData.length > 800000) { // 800KB
+                console.log('[Client] Image still large, compressing further...');
+                compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
+              }
+              
+              // Maximum compression for very large images
+              if (compressedImageData.length > 500000) { // 500KB
+                console.log('[Client] Image size critical, applying maximum compression...');
+                compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
+              }
+              
+              resolve(compressedImageData);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(imageFile);
+        });
+      }
+      
+      // Construct URL for API call
+      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
+      
+      // Use same-origin fetch with explicit cors mode
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        mode: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          barcode: trimmedData,
+          method: method,
+          imageData: imageDataBase64
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        
+        // Check if it's a duplicate error
+        if (response.status === 409) {
+          // Parse the error response to get the existing tag
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData.existingTag) {
+              // Update state with existing tag info
+              toast.success(`Seal tag ${trimmedData} was already scanned previously`);
+              fetchGuardSealTags();
+              return;
+            }
+          } catch (e) {
+            // If parsing fails, just show the generic error
+          }
+        }
+        
+        throw new Error(`Failed to save guard seal tag: ${response.status}`);
+      }
+      
+      const savedTag = await response.json();
+      console.log('Guard seal tag saved:', savedTag);
+      
+      // Refresh the guard seal tags from the server
+      fetchGuardSealTags();
+      toast.success(`Seal tag ${trimmedData} saved successfully!`);
+      
+      // Create temporary seal for UI feedback only
+      const newSeal = {
+        id: trimmedData,
+        method: method,
+        image: imageFile || null,
+        imagePreview: null,
+        timestamp: new Date().toISOString(),
+        verified: isVerified
+      };
+      
+      // Update state with the new seal
+      const updatedSeals = [...guardScannedSeals, newSeal];
+      setGuardScannedSeals(updatedSeals);
+      
+      // Update comparison with the updated list
+      updateSealComparison(updatedSeals);
+      
+      // Reset scan input
+      setScanInput('');
+      
+    } catch (error) {
+      console.error('Error saving guard seal tag:', error);
+      toast.error('Failed to save guard seal tag. Please try again.');
+    }
+  };
+  
+  // Implementation of handleScanComplete
+  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
+    // Don't process empty input
+    if (!barcodeData.trim()) {
+      setScanError('Please enter a valid Seal Tag ID');
+      setTimeout(() => setScanError(''), 3000);
+      return;
+    }
+    
+    try {
+      const trimmedData = barcodeData.trim();
+      
+      // Check if already scanned by guard (case insensitive)
+      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
+        setScanError('This seal has already been scanned');
+        setTimeout(() => setScanError(''), 3000);
+        return;
+      }
+      
+      // Check if this seal matches an operator seal (case insensitive)
+      const isVerified = operatorSeals.some(seal => 
+        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
+      );
+      
+      let imageDataBase64 = null;
+      
+      // Process image if we have one (from digital scan)
+      if (imageFile) {
+        const reader = new FileReader();
+        imageDataBase64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = async () => {
+            try {
+              const base64Image = reader.result as string;
+              
+              // Compress image if it's too large
+              let compressedImageData = base64Image;
+              if (base64Image.length > 1000000) { // 1MB
+                console.log('[Client] Image is large, compressing...');
+                compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
+              }
+              
+              // More aggressive compression if still too large
+              if (compressedImageData.length > 800000) { // 800KB
+                console.log('[Client] Image still large, compressing further...');
+                compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
+              }
+              
+              // Maximum compression for very large images
+              if (compressedImageData.length > 500000) { // 500KB
+                console.log('[Client] Image size critical, applying maximum compression...');
+                compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
+              }
+              
+              resolve(compressedImageData);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(imageFile);
+        });
+      }
+      
+      // Construct URL for API call
+      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
+      
+      // Use same-origin fetch with explicit cors mode
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        mode: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          barcode: trimmedData,
+          method: method,
+          imageData: imageDataBase64
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        
+        // Check if it's a duplicate error
+        if (response.status === 409) {
+          // Parse the error response to get the existing tag
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData.existingTag) {
+              // Update state with existing tag info
+              alert(`Seal tag ${trimmedData} was already scanned previously`);
+              fetchGuardSealTags();
+              return;
+            }
+          } catch (e) {
+            // If parsing fails, just show the generic error
+          }
+        }
+        
+        throw new Error(`Failed to save guard seal tag: ${response.status}`);
+      }
+      
+      const savedTag = await response.json();
+      console.log('Guard seal tag saved:', savedTag);
+      
+      // Refresh the guard seal tags from the server
+      fetchGuardSealTags();
+      alert(`Seal tag ${trimmedData} saved successfully!`);
+      
+      // Create temporary seal for UI feedback only
+      const newSeal = {
+        id: trimmedData,
+        method: method,
+        image: imageFile || null,
+        imagePreview: null,
+        timestamp: new Date().toISOString(),
+        verified: isVerified
+      };
+      
+      // Update state with the new seal
+      const updatedSeals = [...guardScannedSeals, newSeal];
+      setGuardScannedSeals(updatedSeals);
+      
+      // Update comparison with the updated list
+      updateSealComparison(updatedSeals);
+      
+      // Reset scan input
+      setScanInput('');
+      
+    } catch (error) {
+      console.error('Error saving guard seal tag:', error);
+      alert('Failed to save guard seal tag. Please try again.');
+    }
+  };
+  
   // Handle image upload for a seal
   const handleSealImageUpload = useCallback(async (index: number, file: File | null) => {
     if (!file) return;
@@ -1271,6 +1545,143 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     });
   };
 
+  // Handle QR/barcode scanner input - this is the correct implementation
+  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
+    // Don't process empty input
+    if (!barcodeData.trim()) {
+      setScanError('Please enter a valid Seal Tag ID');
+      setTimeout(() => setScanError(''), 3000);
+      return;
+    }
+    
+    try {
+      const trimmedData = barcodeData.trim();
+      
+      // Check if already scanned by guard (case insensitive)
+      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
+        setScanError('This seal has already been scanned');
+        setTimeout(() => setScanError(''), 3000);
+        return;
+      }
+      
+      // Check if this seal matches an operator seal (case insensitive)
+      const isVerified = operatorSeals.some(seal => 
+        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
+      );
+      
+      let imageDataBase64 = null;
+      
+      // Process image if we have one (from digital scan)
+      if (imageFile) {
+        const reader = new FileReader();
+        imageDataBase64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = async () => {
+            try {
+              const base64Image = reader.result as string;
+              
+              // Compress image if it's too large
+              let compressedImageData = base64Image;
+              if (base64Image.length > 1000000) { // 1MB
+                console.log('[Client] Image is large, compressing...');
+                compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
+              }
+              
+              // More aggressive compression if still too large
+              if (compressedImageData.length > 800000) { // 800KB
+                console.log('[Client] Image still large, compressing further...');
+                compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
+              }
+              
+              // Maximum compression for very large images
+              if (compressedImageData.length > 500000) { // 500KB
+                console.log('[Client] Image size critical, applying maximum compression...');
+                compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
+              }
+              
+              resolve(compressedImageData);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(imageFile);
+        });
+      }
+      
+      // Construct URL for API call
+      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
+      
+      // Use same-origin fetch with explicit cors mode
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        mode: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          barcode: trimmedData,
+          method: method,
+          imageData: imageDataBase64
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        
+        // Check if it's a duplicate error
+        if (response.status === 409) {
+          // Parse the error response to get the existing tag
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData.existingTag) {
+              // Update state with existing tag info
+              toast.info(`Seal tag ${trimmedData} was already scanned previously`);
+              fetchGuardSealTags();
+              return;
+            }
+          } catch (e) {
+            // If parsing fails, just show the generic error
+          }
+        }
+        
+        throw new Error(`Failed to save guard seal tag: ${response.status}`);
+      }
+      
+      const savedTag = await response.json();
+      console.log('Guard seal tag saved:', savedTag);
+      
+      // Refresh the guard seal tags from the server
+      fetchGuardSealTags();
+      toast.success(`Seal tag ${trimmedData} saved successfully!`);
+      
+      // Create temporary seal for UI feedback only
+      const newSeal = {
+        id: trimmedData,
+        method: method,
+        image: imageFile || null,
+        imagePreview: null,
+        timestamp: new Date().toISOString(),
+        verified: isVerified
+      };
+      
+      // Update state with the new seal
+      const updatedSeals = [...guardScannedSeals, newSeal];
+      setGuardScannedSeals(updatedSeals);
+      
+      // Update comparison with the updated list
+      updateSealComparison(updatedSeals);
+      
+      // Reset scan input
+      setScanInput('');
+      
+    } catch (error) {
+      console.error('Error saving guard seal tag:', error);
+      toast.error('Failed to save guard seal tag. Please try again.');
+    }
+  }, [guardScannedSeals, operatorSeals, sessionId, fetchGuardSealTags, updateSealComparison, toast]);
 
   const getStatusColor = (status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (status?.toLowerCase()) {
@@ -2338,21 +2749,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <InputLabel id="scan-method-label">Select Method:</InputLabel>
-                  <Select
-                    labelId="scan-method-label"
-                    value={scanMethod}
-                    label="Select Method:"
-                    onChange={(e) => setScanMethod(e.target.value as 'manual' | 'digital')}
-                  >
-                    <MenuItem value="manual">Manual Entry</MenuItem>
-                    <MenuItem value="digital">Digital Scan</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -2367,8 +2763,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Button 
                   variant="contained" 
                   onClick={() => {
-                    // Set method to manual since user is manually entering data
-                    handleScanComplete(scanInput, 'manual');
+                    if (typeof handleScanComplete === 'function') {
+                      // Set method to manual since user is manually entering data
+                      handleScanComplete(scanInput, 'manual');
+                    } else {
+                      console.error('handleScanComplete is not a function');
+                      setScanError('System error. Please try again.');
+                      setTimeout(() => setScanError(''), 3000);
+                    }
                   }}
                   disabled={!scanInput.trim()}
                 >
@@ -2377,26 +2779,36 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 
                 <ClientSideQrScanner
                   onScanWithImage={(data, imageFile) => {
-                    const trimmedData = data.trim();
-                    
-                    // Check if already scanned by guard (case insensitive)
-                    if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
-                      setScanError('This seal has already been scanned');
-                      setTimeout(() => setScanError(''), 3000);
-                      return;
+                    try {
+                      const trimmedData = data.trim();
+                      
+                      // Check if already scanned by guard (case insensitive)
+                      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
+                        setScanError('This seal has already been scanned');
+                        setTimeout(() => setScanError(''), 3000);
+                        return;
+                      }
+                      
+                      // Check if this seal matches an operator seal (case insensitive)
+                      const isVerified = operatorSeals.some(seal => 
+                        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
+                      );
+                      
+                      console.log('Scanning seal ID (QR):', trimmedData);
+                      console.log('Operator seals:', operatorSeals.map(s => s.id));
+                      console.log('Is verified:', isVerified);
+                      
+                      if (typeof handleScanComplete === 'function') {
+                        // Pass method as digital and imageFile to handleScanComplete
+                        handleScanComplete(trimmedData, 'digital', imageFile);
+                      } else {
+                        console.error('handleScanComplete is not a function');
+                        setScanError('System error. Please try again.');
+                        setTimeout(() => setScanError(''), 3000);
+                      }
+                    } catch (error) {
+                      console.error('Error in QR scan handler:', error);
                     }
-                    
-                    // Check if this seal matches an operator seal (case insensitive)
-                    const isVerified = operatorSeals.some(seal => 
-                      seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
-                    );
-                    
-                    console.log('Scanning seal ID (QR):', trimmedData);
-                    console.log('Operator seals:', operatorSeals.map(s => s.id));
-                    console.log('Is verified:', isVerified);
-                    
-                    // Pass method as digital and imageFile to handleScanComplete
-                    handleScanComplete(trimmedData, 'digital', imageFile);
                   }}
                   buttonText="Scan QR/Barcode"
                   scannerTitle="Scan Seal Tag"
