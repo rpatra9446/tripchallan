@@ -238,6 +238,7 @@ model GuardSealTag {
   sessionId     String
   method        String
   imageUrl      String?
+  imageData     String?  // Store base64 image data directly like operator side
   mediaId       String?  @unique
   createdAt     DateTime @default(now())
   verifiedById  String?

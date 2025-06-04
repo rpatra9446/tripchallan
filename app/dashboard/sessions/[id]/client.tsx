@@ -179,6 +179,7 @@ type SessionType = {
      barcode: string;
      method: string;
      imageUrl?: string | null;
+     imageData?: string | null;
      createdAt: string;
      status?: string;
      verifiedById?: string;
@@ -453,6 +454,49 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     console.log("Component mounted, fetching session details...");
       fetchSessionDetails();
   }, [fetchSessionDetails]);
+
+  // Add function to fetch guard seal tags
+  const fetchGuardSealTags = useCallback(async () => {
+    try {
+      console.log("Fetching guard seal tags...");
+      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags?nocache=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch guard seal tags');
+      }
+      
+      const guardSealTagsData = await response.json();
+      console.log("Guard seal tags received:", guardSealTagsData);
+      
+      // Update session with new guard seal tags
+      setSession(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          guardSealTags: guardSealTagsData
+        };
+      });
+      
+      return guardSealTagsData;
+    } catch (error) {
+      console.error("Error fetching guard seal tags:", error);
+      toast.error("Failed to refresh seal tags");
+      return [];
+    }
+  }, [sessionId, toast]);
+
+  // Format field names for display
+  const formatFieldName = (field: string) => {
+    return field.replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase());
+  };
   
   // Add useEffect to extract verification data from session when it's loaded
   useEffect(() => {
@@ -4807,9 +4851,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                 cursor: 'pointer'
                               }}
                               onClick={() => {
-                                // Open image in new tab
+                                // Open image in modal
                                 if (seal.image) {
-                                  window.open(seal.image, '_blank');
+                                  setSelectedImage(seal.image);
+                                  setOpenImageModal(true);
                                 }
                               }}
                             />
@@ -4883,32 +4928,30 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {/* The API now returns the raw image data directly */}
-                        <Tooltip title="Click to view image">
-                          <Box 
-                            component="img" 
-                            src={`/api/media/guardSealTag/${tag.id}?t=${new Date().getTime()}`}
-                            alt={`Guard seal tag ${tag.barcode}`}
-                            sx={{ 
-                              width: 60, 
-                              height: 60, 
-                              objectFit: 'cover',
-                              borderRadius: 1,
-                              cursor: 'pointer',
-                              border: '1px solid #eee'
-                            }}
-                            onClick={() => {
-                              // Open image in new tab
-                              window.open(`/api/media/guardSealTag/${tag.id}`, '_blank');
-                            }}
-                            onError={(e) => {
-                              console.error(`Error loading guard seal tag image`, e);
-                              const img = e.target as HTMLImageElement;
-                              img.onerror = null; // Prevent infinite loop
-                              img.src = '/images/driver-placeholder.svg';
-                            }}
-                          />
-                        </Tooltip>
+                        {tag.imageData ? (
+                          <Tooltip title="Click to view image">
+                            <Box 
+                              component="img" 
+                              src={tag.imageData}
+                              alt={`Guard seal tag ${tag.barcode}`}
+                              sx={{ 
+                                width: 60, 
+                                height: 60, 
+                                objectFit: 'cover',
+                                borderRadius: 1,
+                                cursor: 'pointer',
+                                border: '1px solid #eee'
+                              }}
+                              onClick={() => {
+                                // Open image in modal
+                                setSelectedImage(tag.imageData);
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          </Tooltip>
+                        ) : (
+                          <Typography variant="caption">No image</Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Chip 

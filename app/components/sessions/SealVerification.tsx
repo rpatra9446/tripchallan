@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import {
   Box,
@@ -22,7 +22,8 @@ import {
   Alert,
   AlertTitle,
   CircularProgress,
-  Grid
+  Grid,
+  IconButton
 } from "@mui/material";
 import { 
   QrCodeScanner as QrCodeScannerIcon,
@@ -33,6 +34,8 @@ import {
   Done as DoneIcon
 } from "@mui/icons-material";
 import { SealStatus } from "@/prisma/enums";
+import ClientSideQrScanner from "../ClientSideQrScanner";
+import { processMultipleImages, resizeAndCompressImage } from "@/lib/imageUtils";
 
 interface SealVerificationProps {
   sessionId: string;
@@ -79,6 +82,10 @@ export default function SealVerification({
   
   // Add ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Add state for image modal
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [openImageModal, setOpenImageModal] = useState(false);
   
   // Load initial state
   useEffect(() => {
@@ -194,21 +201,29 @@ export default function SealVerification({
   };
   
   // Function to handle photo upload for status evidence
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
     
-    const file = event.target.files[0];
-    const reader = new FileReader();
-    
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setStatusEvidence({
-        ...statusEvidence,
-        photos: [...(statusEvidence.photos || []), base64String]
-      });
-    };
-    
-    reader.readAsDataURL(file);
+    try {
+      // Use the image utility to compress the image
+      const file = event.target.files[0];
+      const processedFile = await resizeAndCompressImage(file, 800, 800, 0.6, 2);
+      
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setStatusEvidence({
+          ...statusEvidence,
+          photos: [...(statusEvidence.photos || []), base64String]
+        });
+      };
+      
+      reader.readAsDataURL(processedFile);
+    } catch (error) {
+      console.error("Error processing image:", error);
+      toast.error("Failed to process the image. Please try again with a smaller image.");
+    }
   };
   
   // Function to handle status update submission
@@ -534,8 +549,9 @@ export default function SealVerification({
                             cursor: 'pointer'
                           }}
                           onClick={() => {
-                            // Open image in new tab
-                            window.open(seal.imageData, '_blank');
+                            // Open image in modal
+                            setSelectedImage(seal.imageData);
+                            setOpenImageModal(true);
                           }}
                         />
                       ) : (
@@ -852,6 +868,42 @@ export default function SealVerification({
             )}
           </Button>
         </DialogActions>
+      </Dialog>
+      
+      {/* Image Modal */}
+      <Dialog 
+        open={openImageModal} 
+        onClose={() => setOpenImageModal(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogContent sx={{ p: 0, position: 'relative' }}>
+          <IconButton 
+            onClick={() => setOpenImageModal(false)}
+            sx={{ 
+              position: 'absolute', 
+              top: 8, 
+              right: 8, 
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: 'rgba(0,0,0,0.7)',
+              }
+            }}
+          >
+            <Close />
+          </IconButton>
+          <Box
+            component="img"
+            src={selectedImage}
+            alt="Full size image"
+            sx={{
+              width: '100%',
+              maxHeight: '80vh',
+              objectFit: 'contain'
+            }}
+          />
+        </DialogContent>
       </Dialog>
     </Box>
   );

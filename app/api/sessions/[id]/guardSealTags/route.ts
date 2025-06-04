@@ -35,13 +35,6 @@ export async function GET(
             name: true,
             email: true,
           },
-        },
-        media: {
-          select: {
-            id: true,
-            type: true,
-            mimeType: true,
-          }
         }
       },
       orderBy: {
@@ -118,36 +111,7 @@ export async function POST(
       return NextResponse.json({ error: "Guard seal tag with this barcode already exists" }, { status: 409 });
     }
 
-    // Create media record if image data is provided
-    let mediaId = null;
-    if (imageData) {
-      try {
-        // Parse the base64 image data
-        const matches = imageData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        
-        if (matches && matches.length === 3) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const buffer = Buffer.from(base64Data, 'base64');
-          
-          // Create media record
-          const media = await prisma.media.create({
-            data: {
-              type: 'GUARD_SEAL_TAG',
-              mimeType,
-              data: buffer
-            }
-          });
-          
-          mediaId = media.id;
-        }
-      } catch (error) {
-        console.error(`Error creating media for guard seal tag:`, error);
-        // Continue without media if there's an error
-      }
-    }
-
-    // Create guard seal tag
+    // Store directly in imageData field
     const guardSealTag = await prisma.guardSealTag.create({
       data: {
         barcode,
@@ -155,7 +119,7 @@ export async function POST(
         sessionId,
         verifiedById: user.id,
         status: "VERIFIED",
-        mediaId
+        imageData: imageData // Store base64 image directly
       },
       include: {
         verifiedBy: {
@@ -163,13 +127,6 @@ export async function POST(
             id: true,
             name: true,
             email: true,
-          }
-        },
-        media: {
-          select: {
-            id: true,
-            type: true,
-            mimeType: true,
           }
         }
       }
