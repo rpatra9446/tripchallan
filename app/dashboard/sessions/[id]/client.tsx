@@ -79,6 +79,50 @@ import { processMultipleImages, resizeAndCompressImage } from "@/lib/imageUtils"
 import { useTheme } from "@mui/material/styles";
 import { compressImage } from "@/lib/imageUtils";
 
+// Create a custom useToast hook since it's missing
+
+};
+
+// Utility functions
+function getFieldLabel(field: string): string {
+  // Add custom mappings as needed
+  const map: Record<string, string> = {
+    driverName: "Driver Name",
+    vehicleNumber: "Vehicle Number",
+    transporterName: "Transporter Name",
+    materialName: "Material Name",
+    receiverPartyName: "Receiver Party Name",
+    gpsImeiNumber: "GPS IMEI Number",
+    driverContactNumber: "Driver Contact Number",
+    createdById: "Created By ID",
+    createdByName: "Created By Name",
+    source: "Source",
+    destination: "Destination",
+    challanRoyaltyNumber: "Challan/Royalty Number",
+    doNumber: "DO Number",
+    freight: "Freight",
+    qualityOfMaterials: "Quality of Materials",
+    tpNumber: "TP Number",
+    grossWeight: "Gross Weight",
+    tareWeight: "Tare Weight",
+    netMaterialWeight: "Net Material Weight",
+    loaderMobileNumber: "Loader Mobile Number",
+    loadingSite: "Loading Site"
+  };
+  // Fallback: convert camelCase to Title Case
+  return map[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+}
+
+// Method display helpers
+function getMethodDisplay(method?: string) {
+  if (!method) return "Unknown";
+  return method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
+}
+
+function getMethodColor(method?: string): "primary" | "secondary" | "default" {
+  if (!method) return "default";
+  return method.toLowerCase().includes('manual') ? 'secondary' : 'primary';
+}
 
 // Types
 type SealType = {
@@ -98,8 +142,6 @@ type SealType = {
     sealBarcode?: string | null;
     allMatch?: boolean;
     verificationTimestamp?: string;
-    // Add the missing properties
-    guardScannedSeals?: Array<any>;
     sealTags?: Record<string, any>;
   };
 };
@@ -224,106 +266,9 @@ const printStyles = `
 `;
 
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
-  // Helper function to display method consistently
-  const getMethodDisplay = (methodVar: string | null | undefined): string => {
-    if (!methodVar) return 'Unknown';
-    if (typeof methodVar !== 'string') return 'Unknown';
-    return methodVar.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
-  };
-  const getMethodColor = (methodVar: string | null | undefined): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
-    if (!methodVar) return 'default';
-    if (typeof methodVar !== 'string') return 'default';
-    return methodVar.toLowerCase().includes('manual') ? 'secondary' : 'primary';
-  };
-
-  const { data: authSession, status: authStatus } = useSession();
-  const [session, setSession] = useState<SessionType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [verificationSuccess, setVerificationSuccess] = useState(false);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const router = useRouter();
-  const [userRole, setUserRole] = useState("");
-  const [userSubrole, setUserSubrole] = useState("");
-  const [reportLoading, setReportLoading] = useState<string | null>(null);
-  const [canEdit, setCanEdit] = useState(false);
+  const { toast } = useToast();
   
-  // New state for guard verification
-  const [verificationFormOpen, setVerificationFormOpen] = useState(false);
-  const [verificationFields, setVerificationFields] = useState<{[key: string]: {
-    operatorValue: any;
-    guardValue: any;
-    comment: string;
-    isVerified: boolean;
-  }}>({});
-  const [verificationStep, setVerificationStep] = useState(0);
-  const [verificationProgress, setVerificationProgress] = useState(0);
-  const [sealInput, setSealInput] = useState("");
-  const [sealError, setSealError] = useState("");
-  const [imageVerificationStatus, setImageVerificationStatus] = useState<Record<string, boolean>>({});
-  const [imageComments, setImageComments] = useState<Record<string, string>>({});
-  
-  // Add new state for verification tabs
-  const [activeTab, setActiveTab] = useState(0);
-  const verificationTabs = ['Loading Details', 'Session Info', 'Seal Tags', 'Driver Details', 'Images'];
-  
-  // State for seal verification results tabs
-  const [activeSealTab, setActiveSealTab] = useState(0);
-  
-  // Add new state for guard's uploaded images
-  const [guardImages, setGuardImages] = useState<{
-    driverPicture?: File | null;
-    vehicleNumberPlatePicture?: File | null;
-    gpsImeiPicture?: File | null;
-    sealingImages?: File[];
-    vehicleImages?: File[];
-    additionalImages?: File[];
-  }>({
-    driverPicture: null,
-    vehicleNumberPlatePicture: null,
-    gpsImeiPicture: null,
-    sealingImages: [],
-    vehicleImages: [],
-    additionalImages: []
-  });
-
-  // Add state for image previews
-  const [imagePreviews, setImagePreviews] = useState<{
-    driverPicture?: string;
-    vehicleNumberPlatePicture?: string;
-    gpsImeiPicture?: string;
-    sealingImages?: string[];
-    vehicleImages?: string[];
-    additionalImages?: string[];
-  }>({
-    sealingImages: [],
-    vehicleImages: [],
-    additionalImages: []
-  });
-  
-  // Add state for expandable rows in seal verification
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  
-  // Add state for verification results to display matched/mismatched fields
-  const [verificationResults, setVerificationResults] = useState<{
-    matches: string[];
-    mismatches: string[];
-    unverified: string[];
-    allFields: Record<string, {
-      operatorValue: any;
-      guardValue: any;
-      matches: boolean;
-      comment: string;
-      isVerified: boolean;
-    }>;
-    timestamp: string;
-  } | null>(null);
-  
-  // New state for seal tag verification
-  const [scanInput, setScanInput] = useState('');
-  const [scanMethod, setScanMethod] = useState('manual');
-  const [scanError, setScanError] = useState('');
+  // State declarations
   const [guardScannedSeals, setGuardScannedSeals] = useState<Array<{
     id: string;
     method: string;
@@ -332,539 +277,162 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     timestamp: string;
     verified: boolean;
   }>>([]);
-  const [sealComparison, setSealComparison] = useState<{
-    matched: string[];
-    mismatched: string[];
-  }>({
+  
+  const [operatorSeals, setOperatorSeals] = useState<Array<{
+    id: string;
+    method: string;
+    image: File | null;
+    imagePreview: string | null;
+    timestamp: string;
+    verified: boolean;
+  }>>([]);
+
+  const [imageVerificationStatus, setImageVerificationStatus] = useState<Record<string, boolean>>({});
+  const [session, setSession] = useState<SessionType | null>(null);
+  const [imageComments, setImageComments] = useState<Record<string, string>>({});
+  
+  // Core state for verification process
+  const [verificationFields, setVerificationFields] = useState<Record<string, any>>({});
+  const [sealComparison, setSealComparison] = useState<{matched: string[], mismatched: string[]}>({
+    matched: [], mismatched: []
+  });
+  const [scanInput, setScanInput] = useState('');
+  const [scanError, setScanError] = useState('');
+  const [verificationFormOpen, setVerificationFormOpen] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(0);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [verificationProgress, setVerificationProgress] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState('');
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [verificationResults, setVerificationResults] = useState<any>(null);
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [openImageModal, setOpenImageModal] = useState(false);
+  const [selectedSeal, setSelectedSeal] = useState<any>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [activeSealTab, setActiveSealTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
+  const [userRole, setUserRole] = useState('');
+  const [userSubrole, setUserSubrole] = useState('');
+  const [canEdit, setCanEdit] = useState(false);
+  const [reportLoading, setReportLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sessionSeals, setSessionSeals] = useState<any[]>([]);
+  const [loadingSeals, setLoadingSeals] = useState(false);
+  const [sealsError, setSealsError] = useState('');
+  const [guardImages, setGuardImages] = useState<Record<string, any>>({});
+  const [imagePreviews, setImagePreviews] = useState<Record<string, any>>({});
+  
+  // Auth session from next-auth
+  const { data: authSession, status: authStatus } = useSession();
+  
+  // Missing state variables for the verification process
+  const [verificationFields, setVerificationFields] = useState<Record<string, any>>({});
+  const [sealComparison, setSealComparison] = useState<{matched: string[], mismatched: string[]}>({
     matched: [],
     mismatched: []
   });
-  
-  // Add new state for session seals
-  const [sessionSeals, setSessionSeals] = useState<any[]>([]);
-  const [loadingSeals, setLoadingSeals] = useState(false);
-  const [sealsError, setSealsError] = useState("");
-  
-  // Add a new state for the details dialog
-  const [selectedSeal, setSelectedSeal] = useState<any>(null);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  
-  // Add state for image modal
+  const [scanInput, setScanInput] = useState('');
+  const [scanError, setScanError] = useState('');
+  const [verificationFormOpen, setVerificationFormOpen] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(0);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [verificationProgress, setVerificationProgress] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState('');
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [verificationResults, setVerificationResults] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [openImageModal, setOpenImageModal] = useState(false);
+  const [selectedSeal, setSelectedSeal] = useState<any>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [activeSealTab, setActiveSealTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
+  const [userRole, setUserRole] = useState('');
+  const [userSubrole, setUserSubrole] = useState('');
+  const [canEdit, setCanEdit] = useState(false);
+  const [reportLoading, setReportLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sessionSeals, setSessionSeals] = useState<any[]>([]);
+  const [loadingSeals, setLoadingSeals] = useState(false);
+  const [sealsError, setSealsError] = useState('');
+  const [guardImages, setGuardImages] = useState<Record<string, any>>({});
+  const [imagePreviews, setImagePreviews] = useState<Record<string, any>>({});
   
-  // Utility functions needed before other definitions
-  const getFieldLabel = useCallback((key: string): string => {
-    // Define custom labels for specific fields
-    const customLabels: Record<string, string> = {
-      'transporterName': 'Transporter Name',
-      'materialName': 'Material Name',
-      'vehicleNumber': 'Vehicle Number',
-      'gpsImeiNumber': 'GPS/IMEI Number',
-      'driverName': 'Driver Name',
-      'driverContactNumber': 'Driver Contact Number',
-      'loaderName': 'Loader Name',
-      'challanRoyaltyNumber': 'Challan Royalty Number',
-      'doNumber': 'DO Number',
-      'freight': 'Freight',
-      'qualityOfMaterials': 'Quality of Materials',
-      'tpNumber': 'TP Number',
-      'grossWeight': 'Gross Weight',
-      'tareWeight': 'Tare Weight',
-      'netMaterialWeight': 'Net Material Weight',
-      'loaderMobileNumber': 'Loader Mobile Number',
-      'loadingSite': 'Loading Site',
-      'receiverPartyName': 'Receiver Party Name',
-      'source': 'Source',
-      'destination': 'Destination',
-      'cargoType': 'Cargo Type',
-      'numberOfPackages': 'Number of Packages',
-      'createdById': 'Created By ID',
-      'createdByName': 'Created By Name'
-    };
-    
-    // Return custom label if exists, otherwise convert camelCase to Title Case
-    return customLabels[key] || key.replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase());
-  }, []);
-
-  // Define fetchSessionDetails function
+  // Verification tabs
+  const verificationTabs = [
+    "Trip Details", 
+    "Session Info", 
+    "Seal Tags", 
+    "Driver Details", 
+    "Images"
+  ];
+  
+  // Simplified function to fetch session details
   const fetchSessionDetails = useCallback(async () => {
-    if (!sessionId) {
-      console.log("No session ID available yet, skipping fetch");
-      return;
-    }
+    if (!sessionId) return;
     
     setLoading(true);
-    setError("");
-
     try {
-      console.log("Fetching session details for ID:", sessionId);
-      
-      // Try both API endpoints to provide redundancy with cache-busting
-      const apiUrls = [
-        `/api/session/${sessionId}?nocache=${Date.now()}`,
-        `/api/sessions/${sessionId}?nocache=${Date.now()}`
-      ];
-      
-      let response;
-      let errorText = '';
-      
-      // Try each endpoint until one works
-      for (const url of apiUrls) {
-        console.log(`Attempting to fetch from ${url}`);
-        try {
-          response = await fetch(url, {
-            cache: 'no-store',
-            headers: {
-              'Pragma': 'no-cache',
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Expires': '0'
-            }
-          });
-          if (response.ok) {
-            console.log(`Successfully fetched data from ${url}`);
-            break;
-          } else {
-            const error = await response.text();
-            errorText += `${url}: ${response.status} - ${error}\n`;
-            console.error(`API Error (${response.status}) from ${url}:`, error);
-          }
-        } catch (err) {
-          errorText += `${url}: ${err}\n`;
-          console.error(`Fetch error from ${url}:`, err);
-        }
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch session: ${response.status}`);
       }
-      
-      if (!response || !response.ok) {
-        throw new Error(`Failed to fetch session details: ${errorText}`);
-      }
-      
       const data = await response.json();
-      console.log("Session data received:", data);
-      
-      // Fetch guard seal tags separately
-      try {
-        const guardSealsResponse = await fetch(`/api/sessions/${sessionId}/guardSealTags?nocache=${Date.now()}`, {
-          cache: 'no-store',
-          headers: {
-            'Pragma': 'no-cache',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Expires': '0'
-          }
-        });
-        
-        if (guardSealsResponse.ok) {
-          const guardSealsData = await guardSealsResponse.json();
-          console.log("Guard seal tags received:", guardSealsData);
-          // Add guard seal tags to session data
-          data.guardSealTags = guardSealsData;
-        }
-      } catch (err) {
-        console.error("Error fetching guard seal tags:", err);
-        // Continue without guard seal tags
-      }
-      
       setSession(data);
-    } catch (err) {
-      console.error("Error fetching session details:", err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      
+      // Extract operator seals from session if available
+      if (data.sealTags && Array.isArray(data.sealTags)) {
+        const formattedSeals = data.sealTags.map((tag: any) => ({
+          id: tag.barcode,
+          method: tag.method || 'manual',
+          image: null,
+          imagePreview: tag.imageUrl || null,
+          timestamp: tag.createdAt,
+          verified: false
+        }));
+        setOperatorSeals(formattedSeals);
+      }
+    } catch (error) {
+      console.error('Error fetching session:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load session');
     } finally {
       setLoading(false);
     }
   }, [sessionId]);
-
-  // Add useEffect to fetch session details when component mounts
+  
+  // Load session data when component mounts
   useEffect(() => {
-    console.log("Component mounted, fetching session details...");
-      fetchSessionDetails();
+    fetchSessionDetails();
   }, [fetchSessionDetails]);
-
-  // Add function to fetch guard seal tags
+  
+  // Callbacks
   const fetchGuardSealTags = useCallback(async () => {
     try {
       console.log("Fetching guard seal tags...");
       const response = await fetch(`/api/sessions/${sessionId}/guardSealTags?nocache=${Date.now()}`, {
-        cache: 'no-store',
+        method: 'GET',
         headers: {
-          'Pragma': 'no-cache',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Expires': '0'
-        }
+          'Content-Type': 'application/json',
+        },
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch guard seal tags');
+        throw new Error(`Failed to fetch guard seal tags: ${response.status}`);
       }
-      
-      const guardSealTagsData = await response.json();
-      console.log("Guard seal tags received:", guardSealTagsData);
-      
-      // Update session with new guard seal tags
-      setSession(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          guardSealTags: guardSealTagsData
-        };
-      });
-      
-      return guardSealTagsData;
+
+      const data = await response.json();
+      console.log("Guard seal tags fetched:", data);
+      return data;
     } catch (error) {
       console.error("Error fetching guard seal tags:", error);
-      toast.error("Failed to refresh seal tags");
+      toast.error("Failed to fetch guard seal tags");
       return [];
     }
   }, [sessionId, toast]);
 
-  // Format field names for display
-  const formatFieldName = (field: string): string => {
-    return field.replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase());
-  };
-  
-  // Add useEffect to extract verification data from session when it's loaded
-  useEffect(() => {
-    if (session && session.status === SessionStatus.COMPLETED) {
-      console.log("Extracting verification data from completed session");
-      
-      // Look for verification data in activity logs or seal
-      let foundVerificationData = false;
-      
-      // First check if there are any activity logs with verification data
-      if (session.activityLogs && session.activityLogs.length > 0) {
-        const verificationLog = session.activityLogs.find(log => {
-          const details = log.details as any;
-          return details?.verification?.fieldVerifications;
-        });
-        
-        if (verificationLog && verificationLog.details) {
-          console.log("Found verification data in activity log");
-          const verificationDetails = (verificationLog.details as any).verification;
-          
-          if (verificationDetails && verificationDetails.fieldVerifications) {
-            // Process verification data
-            const fieldVerifications = verificationDetails.fieldVerifications;
-            
-    const matches: string[] = [];
-    const mismatches: string[] = [];
-    const unverified: string[] = [];
-            const allFields: Record<string, any> = {};
-    
-            // Process each field
-    Object.entries(fieldVerifications).forEach(([field, data]: [string, any]) => {
-              allFields[field] = data;
-              
-              if (data.isVerified) {
-                if (data?.matches) {
-          matches.push(field);
-        } else {
-          mismatches.push(field);
-        }
-      } else {
-        unverified.push(field);
-      }
-    });
-    
-            // Set verification results
-            setVerificationResults({
-              matches,
-              mismatches,
-              unverified,
-              allFields,
-              timestamp: verificationDetails.verificationTimestamp || verificationLog.createdAt || new Date().toISOString()
-            });
-            
-            foundVerificationData = true;
-          }
-        }
-      }
-      
-      // If no data in activity logs, check seal verificationData
-      if (!foundVerificationData && session.seal?.verificationData) {
-        console.log("Found verification data in seal");
-        const verificationData = session.seal.verificationData;
-        
-        if (verificationData.fieldVerifications) {
-          // Process verification data
-          const fieldVerifications = verificationData.fieldVerifications;
-          
-          const matches: string[] = [];
-          const mismatches: string[] = [];
-          const unverified: string[] = [];
-          const allFields: Record<string, any> = {};
-          
-          // Process each field
-          Object.entries(fieldVerifications).forEach(([field, data]: [string, any]) => {
-            allFields[field] = data;
-            
-            if (data.isVerified) {
-              if (data?.matches) {
-                matches.push(field);
-              } else {
-                mismatches.push(field);
-              }
-            } else {
-              unverified.push(field);
-            }
-          });
-          
-          // Set verification results
-    setVerificationResults({
-      matches,
-      mismatches,
-      unverified,
-            allFields,
-            timestamp: verificationData.verificationTimestamp || session.seal.scannedAt || new Date().toISOString()
-          });
-          
-          foundVerificationData = true;
-        }
-      }
-      
-      // Check system seals for verification data if we haven't found any yet
-      if (!foundVerificationData && sessionSeals && sessionSeals.length > 0) {
-        console.log("Looking for verification data in session seals");
-        
-        // Find the first verification seal with verification details
-        const verificationSeal = sessionSeals.find(seal => 
-          seal.verificationDetails && seal.verificationDetails.fieldVerifications
-        );
-        
-        if (verificationSeal && verificationSeal.verificationDetails) {
-          console.log("Found verification data in session seal");
-          const verificationDetails = verificationSeal.verificationDetails;
-          
-          if (verificationDetails.fieldVerifications) {
-            // Process verification data
-            const fieldVerifications = verificationDetails.fieldVerifications;
-            
-            const matches: string[] = [];
-            const mismatches: string[] = [];
-            const unverified: string[] = [];
-            const allFields: Record<string, any> = {};
-            
-            // Process each field
-            Object.entries(fieldVerifications).forEach(([field, data]: [string, any]) => {
-              allFields[field] = data;
-              
-              if (data.isVerified) {
-                if (data?.matches) {
-                  matches.push(field);
-                } else {
-                  mismatches.push(field);
-                }
-              } else {
-                unverified.push(field);
-              }
-            });
-            
-            // Set verification results
-            setVerificationResults({
-              matches,
-              mismatches,
-              unverified,
-              allFields,
-              timestamp: verificationDetails.verificationTimestamp || verificationSeal.scannedAt || new Date().toISOString()
-            });
-            
-            foundVerificationData = true;
-          }
-        }
-      }
-      
-      if (!foundVerificationData) {
-        console.log("No verification data found for completed session");
-      }
-    }
-  }, [session, sessionSeals]);
-   
-  // Extract operator seals from session data - pulling from activity logs and sessionSeals
-  const operatorSeals = useMemo(() => {
-    // Add debug logging
-    console.log("[DEBUG] Session sealTags:", session?.sealTags);
-    console.log("[DEBUG] Session images:", session?.images);
-    console.log("[DEBUG] SessionSeals data:", sessionSeals);
-    
-    // Initialize our merged seals array
-    let mergedSeals: Array<{
-      id: string;
-      method: string;
-      image: string | null;
-      imageData: string | null;
-      timestamp: string;
-    }> = [];
-    
-    // First, create a map of all seal tags from session.sealTags for method data
-    const sealTagsMap = new Map<string, { method: string, timestamp: string }>();
-    
-    // Populate from session.sealTags (Table A - has correct Method values)
-    if (session?.sealTags && session.sealTags.length > 0) {
-      console.log("[DEBUG] Extracting methods from sealTags:", session.sealTags.length);
-      
-      session.sealTags.forEach(tag => {
-        // Generate unique timestamps for each tag if they don't have their own
-        const tagTimestamp = tag.createdAt || 
-          // Add a slight offset to each tag's timestamp if using session.createdAt
-          (session.createdAt ? new Date(new Date(session.createdAt).getTime()).toISOString() : new Date().toISOString());
-          
-        sealTagsMap.set(tag.barcode, {
-          method: tag?.method,
-          timestamp: tagTimestamp
-        });
-        console.log(`[DEBUG] Method for ${tag.barcode} from sealTags: ${tag?.method}, timestamp: ${tagTimestamp}`);
-      });
-    }
-    
-    // Check if verification data contains GUARD's scan of OPERATOR method
-    if (session?.seal?.verificationData && 'guardScannedSeals' in (session.seal.verificationData as any)) {
-      const guardScannedSeals = (session.seal.verificationData as any).guardScannedSeals;
-      console.log("[DEBUG] Found guardScannedSeals in verification data:", guardScannedSeals);
-      
-      // Update method from guard verification if available
-      guardScannedSeals.forEach((guardSeal: any) => {
-        if (guardSeal.id && sealTagsMap.has(guardSeal.id)) {
-          const existing = sealTagsMap.get(guardSeal.id);
-          if (existing) {
-            console.log(`[DEBUG] Using method from guard verification for ${guardSeal.id}: ${guardSeal?.method}`);
-            if (existing && guardSeal?.method) {
-              existing.method = guardSeal.method;
-            }
-          }
-        }
-      });
-    }
-    
-    // If verification data exists, check if it has method information
-    if (session?.seal?.verificationData?.sealTags) {
-      const verificationSealTags = session.seal.verificationData.sealTags;
-      // Update the method information from guard verification data if available
-      Object.keys(verificationSealTags).forEach(key => {
-        const tag = verificationSealTags[key];
-        if (tag && tag.barcode && tag?.method) {
-          if (sealTagsMap.has(tag.barcode)) {
-            // Update the method if it exists
-            const existing = sealTagsMap.get(tag.barcode);
-            if (existing) {
-              // Create a new object to avoid modifying the existing one directly
-              sealTagsMap.set(tag.barcode, {
-                ...existing,
-                method: tag?.method
-              });
-              console.log(`[DEBUG] Updated method for ${tag.barcode} from verification data: ${tag?.method}`);
-            }
-          }
-        }
-      });
-    }
-    
-    // Next, create a map of all seal tags from sessionSeals for image data
-    const sessionSealsMap = new Map<string, string | null>();
-    
-    // Populate from sessionSeals (Table B - has correct Image values)
-    if (sessionSeals && sessionSeals.length > 0) {
-      console.log("[DEBUG] Extracting images from sessionSeals:", sessionSeals.length);
-      
-      const tagSeals = sessionSeals.filter(seal => seal.type === 'tag');
-      tagSeals.forEach(seal => {
-        sessionSealsMap.set(seal.barcode, seal?.imageData || null);
-        console.log(`[DEBUG] Image for ${seal.barcode} from sessionSeals: ${seal?.imageData ? 'present' : 'null'}`);
-      });
-    }
-    
-    // Now merge the data - Start with sealTags as primary source
-    if (sealTagsMap.size > 0) {
-      console.log("[DEBUG] Merging data from sealTags and sessionSeals");
-      
-      sealTagsMap.forEach((data, barcode) => {
-        mergedSeals.push({
-          id: barcode,
-          method: data?.method, // From Table A
-          image: sessionSealsMap.get(barcode) || null, // From Table B
-          imageData: sessionSealsMap.get(barcode) || null, // From Table B
-          timestamp: data.timestamp
-        });
-      });
-      
-      console.log(`[DEBUG] Merged ${mergedSeals.length} seals from sealTags`);
-    } 
-    // If no sealTags, use sessionSeals
-    else if (sessionSeals && sessionSeals.length > 0) {
-      console.log("[DEBUG] Using sessionSeals as primary source");
-      
-      const tagSeals = sessionSeals.filter(seal => seal.type === 'tag');
-      
-      if (tagSeals.length > 0) {
-        console.log("[DEBUG] Found tag seals in sessionSeals:", tagSeals.length);
-        
-        mergedSeals = tagSeals.map((seal, index) => {
-          let imageUrl = seal?.imageData || null;
-          
-          // For debug only
-          console.log(`[DEBUG] Using seal from sessionSeals: ${seal.barcode}, method: ${seal?.method}`);
-          
-          // Use seal's createdAt if available, or create a unique timestamp with offset
-          const uniqueTimestamp = seal.createdAt || 
-            (session?.createdAt ? 
-              new Date(new Date(session.createdAt).getTime() + (index * 1000)).toISOString() : 
-              new Date(Date.now() + (index * 1000)).toISOString());
-          
-          return {
-            id: seal.barcode,
-            method: seal?.method, // Use method from sessionSeals if sealTags isn't available
-            image: imageUrl,
-            imageData: imageUrl,
-            timestamp: uniqueTimestamp
-          };
-        });
-      }
-    }
-    
-    // Fallback to tripDetails if we still have no seals
-    if (mergedSeals.length === 0 && session?.tripDetails?.sealTagIds) {
-      console.log("[DEBUG] Using sealTagIds from tripDetails");
-      
-      const sealTagIds = Array.isArray(session.tripDetails.sealTagIds) 
-        ? session.tripDetails.sealTagIds 
-        : [session.tripDetails.sealTagIds];
-      
-      const sealTagMethods = session.tripDetails.sealTagMethods || {};
-      
-      // Check if we have any sealing images to use
-      const hasImages = session?.images?.sealingImages && session.images.sealingImages.length > 0;
-      
-      mergedSeals = sealTagIds.map((id, index) => {
-        // Try to get an image for this tag
-        let imageUrl = null;
-        if (hasImages && session?.images?.sealingImages) {
-          imageUrl = session.images.sealingImages[index % session.images.sealingImages.length];
-        }
-        
-        // Create a unique timestamp for each seal tag by adding a slight offset (index * 1 second)
-        const uniqueTimestamp = session?.createdAt ? 
-          new Date(new Date(session.createdAt).getTime() + (index * 1000)).toISOString() : 
-          new Date(Date.now() + (index * 1000)).toISOString();
-        
-        return {
-            id,
-          method: sealTagMethods[id] || 'manually entered', // Default to manually entered if no method provided
-          image: imageUrl,
-          imageData: imageUrl,
-          timestamp: uniqueTimestamp
-        };
-        });
-    }
-    
-    // Log the final result
-    console.log(`[DEBUG] Final merged seals count: ${mergedSeals.length}`);
-    mergedSeals.forEach(seal => {
-      console.log(`[DEBUG] Final seal ${seal.id}, method: ${seal?.method}, has image: ${seal.image ? 'yes' : 'no'}`);
-    });
-    
-    return mergedSeals;
-  }, [session, sessionSeals]);
-
-  // Update seal comparison data
   const updateSealComparison = useCallback((scannedSeals: any[]) => {
     const guardSealIds = scannedSeals.map(seal => seal.id.trim());
     const operatorSealIds = operatorSeals.map(seal => seal.id.trim());
@@ -930,623 +498,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   };
 
   // Handle QR/barcode scanner input
-  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
-    // Don't process empty input
-    if (!barcodeData.trim()) {
-      setScanError('Please enter a valid Seal Tag ID');
-      setTimeout(() => setScanError(''), 3000);
-      return;
-    }
-    
-    try {
-      const trimmedData = barcodeData.trim();
-      
-      // Check if already scanned by guard (case insensitive)
-      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
-        setScanError('This seal has already been scanned');
-        setTimeout(() => setScanError(''), 3000);
-        return;
-      }
-      
-      // Check if this seal matches an operator seal (case insensitive)
-      const isVerified = operatorSeals.some(seal => 
-        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
-      );
-      
-      let imageDataBase64 = null;
-      
-      // Process image if we have one (from digital scan)
-      if (imageFile) {
-        const reader = new FileReader();
-        imageDataBase64 = await new Promise<string>((resolve, reject) => {
-          reader.onloadend = async () => {
-            try {
-              const base64Image = reader.result as string;
-              
-              // Compress image if it's too large
-              let compressedImageData = base64Image;
-              if (base64Image.length > 1000000) { // 1MB
-                console.log('[Client] Image is large, compressing...');
-                compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
-              }
-              
-              // More aggressive compression if still too large
-              if (compressedImageData.length > 800000) { // 800KB
-                console.log('[Client] Image still large, compressing further...');
-                compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
-              }
-              
-              // Maximum compression for very large images
-              if (compressedImageData.length > 500000) { // 500KB
-                console.log('[Client] Image size critical, applying maximum compression...');
-                compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
-              }
-              
-              resolve(compressedImageData);
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(imageFile);
-        });
-      }
-      
-      // Construct URL for API call
-      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
-      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
-      
-      // Use same-origin fetch with explicit cors mode
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        credentials: 'same-origin',
-        mode: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          barcode: trimmedData,
-          method: method,
-          imageData: imageDataBase64
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        
-        // Check if it's a duplicate error
-        if (response.status === 409) {
-          // Parse the error response to get the existing tag
-          try {
-            const errorData = JSON.parse(errorText);
-            if (errorData.existingTag) {
-              // Update state with existing tag info
-              toast.success(`Seal tag ${trimmedData} was already scanned previously`);
-              fetchGuardSealTags();
-              return;
-            }
-          } catch (e) {
-            // If parsing fails, just show the generic error
-          }
-        }
-        
-        throw new Error(`Failed to save guard seal tag: ${response.status}`);
-      }
-      
-      const savedTag = await response.json();
-      console.log('Guard seal tag saved:', savedTag);
-      
-      // Refresh the guard seal tags from the server
-      fetchGuardSealTags();
-      toast.success(`Seal tag ${trimmedData} saved successfully!`);
-      
-      // Create temporary seal for UI feedback only
-      const newSeal = {
-        id: trimmedData,
-        method: method,
-        image: imageFile || null,
-        imagePreview: null,
-        timestamp: new Date().toISOString(),
-        verified: isVerified
-      };
-      
-      // Update state with the new seal
-      const updatedSeals = [...guardScannedSeals, newSeal];
-      setGuardScannedSeals(updatedSeals);
-      
-      // Update comparison with the updated list
-      updateSealComparison(updatedSeals);
-      
-      // Reset scan input
-      setScanInput('');
-      
-    } catch (error) {
-      console.error('Error saving guard seal tag:', error);
-      toast.error('Failed to save guard seal tag. Please try again.');
-    }
-  };
-  
-  // Implementation of handleScanComplete
-  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
-    // Don't process empty input
-    if (!barcodeData.trim()) {
-      setScanError('Please enter a valid Seal Tag ID');
-      setTimeout(() => setScanError(''), 3000);
-      return;
-    }
-    
-    try {
-      const trimmedData = barcodeData.trim();
-      
-      // Check if already scanned by guard (case insensitive)
-      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
-        setScanError('This seal has already been scanned');
-        setTimeout(() => setScanError(''), 3000);
-        return;
-      }
-      
-      // Check if this seal matches an operator seal (case insensitive)
-      const isVerified = operatorSeals.some(seal => 
-        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
-      );
-      
-      let imageDataBase64 = null;
-      
-      // Process image if we have one (from digital scan)
-      if (imageFile) {
-        const reader = new FileReader();
-        imageDataBase64 = await new Promise<string>((resolve, reject) => {
-          reader.onloadend = async () => {
-            try {
-              const base64Image = reader.result as string;
-              
-              // Compress image if it's too large
-              let compressedImageData = base64Image;
-              if (base64Image.length > 1000000) { // 1MB
-                console.log('[Client] Image is large, compressing...');
-                compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
-              }
-              
-              // More aggressive compression if still too large
-              if (compressedImageData.length > 800000) { // 800KB
-                console.log('[Client] Image still large, compressing further...');
-                compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
-              }
-              
-              // Maximum compression for very large images
-              if (compressedImageData.length > 500000) { // 500KB
-                console.log('[Client] Image size critical, applying maximum compression...');
-                compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
-              }
-              
-              resolve(compressedImageData);
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(imageFile);
-        });
-      }
-      
-      // Construct URL for API call
-      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
-      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
-      
-      // Use same-origin fetch with explicit cors mode
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        credentials: 'same-origin',
-        mode: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          barcode: trimmedData,
-          method: method,
-          imageData: imageDataBase64
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        
-        // Check if it's a duplicate error
-        if (response.status === 409) {
-          // Parse the error response to get the existing tag
-          try {
-            const errorData = JSON.parse(errorText);
-            if (errorData.existingTag) {
-              // Update state with existing tag info
-              alert(`Seal tag ${trimmedData} was already scanned previously`);
-              fetchGuardSealTags();
-              return;
-            }
-          } catch (e) {
-            // If parsing fails, just show the generic error
-          }
-        }
-        
-        throw new Error(`Failed to save guard seal tag: ${response.status}`);
-      }
-      
-      const savedTag = await response.json();
-      console.log('Guard seal tag saved:', savedTag);
-      
-      // Refresh the guard seal tags from the server
-      fetchGuardSealTags();
-      alert(`Seal tag ${trimmedData} saved successfully!`);
-      
-      // Create temporary seal for UI feedback only
-      const newSeal = {
-        id: trimmedData,
-        method: method,
-        image: imageFile || null,
-        imagePreview: null,
-        timestamp: new Date().toISOString(),
-        verified: isVerified
-      };
-      
-      // Update state with the new seal
-      const updatedSeals = [...guardScannedSeals, newSeal];
-      setGuardScannedSeals(updatedSeals);
-      
-      // Update comparison with the updated list
-      updateSealComparison(updatedSeals);
-      
-      // Reset scan input
-      setScanInput('');
-      
-    } catch (error) {
-      console.error('Error saving guard seal tag:', error);
-      alert('Failed to save guard seal tag. Please try again.');
-    }
-  };
-  
-  // Handle image upload for a seal
-  const handleSealImageUpload = useCallback(async (index: number, file: File | null) => {
-    if (!file) return;
-    
-    const updatedSeals = [...guardScannedSeals];
-    updatedSeals[index].image = file;
-    
-    // Don't create blob URLs anymore - read the file and upload to server directly
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64Image = reader.result as string;
-      
-      try {
-        // Get the seal ID
-        const sealId = updatedSeals[index].id;
-        
-        // Compress image if it's too large
-        let compressedImageData = base64Image;
-        if (base64Image.length > 1000000) { // 1MB
-          console.log('Image is large, compressing...');
-          compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
-          console.log(`Compressed image from ${base64Image.length} to ${compressedImageData.length} bytes`);
-        }
-                              
-        // Upload the guard seal tag directly to the server - use relative URL to work in all environments
-        const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
-        console.log('Posting to API URL:', apiUrl);
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            barcode: sealId,
-            method: updatedSeals[index].method || 'manual',
-            imageData: compressedImageData
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to save guard seal tag');
-        }
-        
-        const savedTag = await response.json();
-        console.log('Guard seal tag saved:', savedTag);
-        
-        // Refresh the guard seal tags from the server
-        fetchGuardSealTags();
-        toast.success(`Seal tag image uploaded successfully!`);
-      } catch (error) {
-        console.error('Error saving guard seal tag:', error);
-        toast.error('Failed to upload seal tag image. Please try again.');
-      }
-    };
-    reader.readAsDataURL(file);
-    
-    // Update the state with null preview (we'll load from server)
-    updatedSeals[index].imagePreview = null;
-    setGuardScannedSeals(updatedSeals);
-  }, [guardScannedSeals, sessionId, fetchGuardSealTags]);
-
-  // Remove a scanned seal
-  const removeSealTag = useCallback((index: number) => {
-    const updatedSeals = [...guardScannedSeals];
-    
-    // Revoke object URL if exists to prevent memory leaks
-    if (updatedSeals[index].imagePreview) {
-      URL.revokeObjectURL(updatedSeals[index].imagePreview as string);
-    }
-    
-    updatedSeals.splice(index, 1);
-    setGuardScannedSeals(updatedSeals);
-    
-    // Update comparison
-    updateSealComparison(updatedSeals);
-  }, [guardScannedSeals, updateSealComparison]);
-  
-  // Check if user is a guard
-  const isGuard = useMemo(() => 
-    userRole === "EMPLOYEE" && userSubrole === EmployeeSubrole.GUARD, 
-    [userRole, userSubrole]
-  );
-  
-  // Check if user can access reports (non-GUARD users)
-  const canAccessReports = useMemo(() => 
-    userRole === "SUPERADMIN" || 
-    userRole === "ADMIN" || 
-    userRole === "COMPANY", 
-    [userRole]
-  );
-  
-  // Check if the session can be verified - only using operator-entered seal tags
-  const canVerify = useMemo(() => {
-    console.log("Calculating canVerify:");
-    console.log("- isGuard:", isGuard);
-    console.log("- session status:", session?.status);
-    console.log("- operator seals:", operatorSeals?.length || 0);
-    
-    // For debugging: log the raw values
-    console.log("- userRole:", userRole);
-    console.log("- userSubrole:", userSubrole);
-    console.log("- EmployeeSubrole.GUARD:", EmployeeSubrole.GUARD);
-    
-    return isGuard && 
-      session?.status === SessionStatus.IN_PROGRESS && 
-      (operatorSeals.length > 0 || session?.seal?.barcode);
-  }, [isGuard, session, operatorSeals]);
-  
-  // Check if user has edit permission
-  useEffect(() => {
-    // Only OPERATOR users with canModify permission can edit
-    if (userRole === "EMPLOYEE" && userSubrole === EmployeeSubrole.OPERATOR && authSession?.user?.id) {
-      fetch(`/api/employees/${authSession.user.id}/permissions`)
-        .then(response => response.json())
-        .then(data => {
-          setCanEdit(data.canModify || false);
-        })
-        .catch(error => {
-          console.error("Error checking edit permission:", error);
-          setCanEdit(false);
-        });
-    } else {
-      setCanEdit(false);
-    }
-  }, [userRole, userSubrole, authSession?.user?.id]);
-
-  useEffect(() => {
-    // Initialize verification fields when session data is loaded
-    if (session && isGuard) {
-      const fields: {[key: string]: any} = {};
-      
-      // Add trip details fields for verification
-      if (session.tripDetails) {
-        Object.entries(session.tripDetails).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            fields[key] = {
-              operatorValue: value,
-              guardValue: '',
-              comment: '',
-              isVerified: false
-            };
-          }
-        });
-      }
-      
-      // Add system fields like createdBy
-      if (session.createdBy) {
-        fields['createdById'] = {
-          operatorValue: session.createdBy.id,
-          guardValue: '',
-          comment: '',
-          isVerified: false
-        };
-        
-        fields['createdByName'] = {
-          operatorValue: session.createdBy.name,
-          guardValue: '',
-          comment: '',
-          isVerified: false
-        };
-      }
-      
-      // Ensure source and destination are added from either tripDetails or session
-      if (session.source && !fields['source']) {
-        fields['source'] = {
-          operatorValue: session.source,
-          guardValue: '',
-          comment: '',
-          isVerified: false
-        };
-      }
-      
-      if (session.destination && !fields['destination']) {
-        fields['destination'] = {
-          operatorValue: session.destination,
-          guardValue: '',
-          comment: '',
-          isVerified: false
-        };
-      }
-      
-      // Make sure driver contact number is included
-      if (session.tripDetails?.driverContactNumber && !fields['driverContactNumber']) {
-        fields['driverContactNumber'] = {
-          operatorValue: session.tripDetails.driverContactNumber,
-          guardValue: '',
-          comment: '',
-          isVerified: false
-        };
-      }
-      
-      setVerificationFields(fields);
-      
-      // Initialize image verification status
-      const imageStatus: {[key: string]: boolean} = {};
-      if (session.images) {
-        if (session.images.driverPicture) imageStatus['driverPicture'] = false;
-        if (session.images.vehicleNumberPlatePicture) imageStatus['vehicleNumberPlatePicture'] = false;
-        if (session.images.gpsImeiPicture) imageStatus['gpsImeiPicture'] = false;
-        if (session.images.sealingImages?.length) imageStatus['sealingImages'] = false;
-        if (session.images.vehicleImages?.length) imageStatus['vehicleImages'] = false;
-        if (session.images.additionalImages?.length) imageStatus['additionalImages'] = false;
-      }
-      
-      setImageVerificationStatus(imageStatus);
-    }
-  }, [session, isGuard]);
-
-  // Calculate verification progress
-  useEffect(() => {
-    if (Object.keys(verificationFields).length === 0) return;
-    
-    const verified = Object.values(verificationFields).filter(f => f.isVerified).length;
-    const total = Object.keys(verificationFields).length;
-    
-    const imagesVerified = Object.values(imageVerificationStatus).filter(status => status).length;
-    const totalImages = Object.keys(imageVerificationStatus).length;
-    
-    // Add 1 for seal verification at the end
-    const progress = Math.round(
-      ((verified + imagesVerified) / (total + totalImages + 1)) * 100
-    );
-    
-    setVerificationProgress(progress);
-  }, [verificationFields, imageVerificationStatus]);
-
-  // Add useEffect to get user role and subrole when auth session is available
-  useEffect(() => {
-    if (authStatus === "authenticated" && authSession?.user?.id) {
-      // Fetch user role and subrole
-      console.log("Fetching user role for user ID:", authSession.user.id);
-      
-      // First try to use the role directly from the auth session if available
-      if (authSession.user.role) {
-        console.log("Using role from auth session:", authSession.user.role);
-        setUserRole(authSession.user.role);
-        
-        // Also set subrole if available
-        if (authSession.user.subrole) {
-          console.log("Using subrole from auth session:", authSession.user.subrole);
-          setUserSubrole(authSession.user.subrole);
-        }
-      }
-      
-      // Always fetch from API as well to ensure we have the latest data
-      fetch(`/api/users/${authSession.user.id}/role`)
-        .then(response => {
-          console.log("Role API response status:", response.status);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch role: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log("User role data received:", data);
-          setUserRole(data.role || "");
-          setUserSubrole(data.subrole || "");
-          
-          // Log if this is a guard for debugging
-          const isThisGuard = data.role === "EMPLOYEE" && data.subrole === EmployeeSubrole.GUARD;
-          console.log("Is this user a GUARD?", isThisGuard);
-          console.log("EmployeeSubrole.GUARD value:", EmployeeSubrole.GUARD);
-          
-          // Check if operator seals exist
-          console.log("Operator seals count:", operatorSeals.length);
-          console.log("Session status:", session?.status);
-          
-          // Calculate canVerify manually for debugging
-          const shouldCanVerify = isThisGuard && 
-            session?.status === SessionStatus.IN_PROGRESS && 
-            (operatorSeals.length > 0 || session?.seal?.barcode);
-          console.log("Should canVerify be true?", shouldCanVerify);
-        })
-        .catch(error => {
-          console.error("Error fetching user role:", error);
-        });
-    } else if (authStatus === "unauthenticated") {
-      console.log("User is not authenticated");
-      setUserRole("");
-      setUserSubrole("");
-    }
-  }, [authStatus, authSession?.user?.id, session, operatorSeals]);
-
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString();
-  };
-
-
-  // Utility function to compress images
-  const compressImage = async (base64Image: string, quality = 0.8): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      try {
-        const img = new Image();
-        img.src = base64Image;
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          
-          // Calculate size - respect aspect ratio but limit max dimensions
-          const MAX_SIZE = 1200;
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > height && width > MAX_SIZE) {
-            height = Math.round((height * MAX_SIZE) / width);
-            width = MAX_SIZE;
-          } else if (height > MAX_SIZE) {
-            width = Math.round((width * MAX_SIZE) / height);
-            height = MAX_SIZE;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
-          
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Convert to webp format for better compression if supported
-          const mimeType = 'image/jpeg';
-          
-          // Get compressed base64
-          const compressedBase64 = canvas.toDataURL(mimeType, quality);
-          resolve(compressedBase64);
-        };
-        
-        img.onerror = () => {
-          reject(new Error('Error loading image for compression'));
-        };
-      } catch (error) {
-        reject(error);
-      }
-    });
-  };
-
-  // Handle QR/barcode scanner input - this is the correct implementation
-  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
+  const handleGuardScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
     // Don't process empty input
     if (!barcodeData.trim()) {
       setScanError('Please enter a valid Seal Tag ID');
@@ -1681,7 +633,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       console.error('Error saving guard seal tag:', error);
       toast.error('Failed to save guard seal tag. Please try again.');
     }
-  }, [guardScannedSeals, operatorSeals, sessionId, fetchGuardSealTags, updateSealComparison, toast]);
+  };
 
   const getStatusColor = (status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (status?.toLowerCase()) {
@@ -2763,9 +1715,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Button 
                   variant="contained" 
                   onClick={() => {
-                    if (typeof handleScanComplete === 'function') {
+                    if (typeof handleGuardScanComplete === 'function') {
                       // Set method to manual since user is manually entering data
-                      handleScanComplete(scanInput, 'manual');
+                      handleGuardScanComplete(scanInput, 'manual');
                     } else {
                       console.error('handleScanComplete is not a function');
                       setScanError('System error. Please try again.');
@@ -2798,9 +1750,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       console.log('Operator seals:', operatorSeals.map(s => s.id));
                       console.log('Is verified:', isVerified);
                       
-                      if (typeof handleScanComplete === 'function') {
+                      if (typeof handleGuardScanComplete === 'function') {
                         // Pass method as digital and imageFile to handleScanComplete
-                        handleScanComplete(trimmedData, 'digital', imageFile);
+                        handleGuardScanComplete(trimmedData, 'digital', imageFile);
                       } else {
                         console.error('handleScanComplete is not a function');
                         setScanError('System error. Please try again.');
