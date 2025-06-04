@@ -906,6 +906,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
   }, [guardScannedSeals, scanMethod, operatorSeals, updateSealComparison]);
 
+  // Fetch verified seal tags from the server
+  const fetchVerifiedSealTags = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/seals`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch verified seal tags');
+      }
+      const data = await response.json();
+      console.log('Fetched verified seal tags:', data);
+      
+      // Update the session data to refresh the seals
+      fetchSession();
+    } catch (error) {
+      console.error('Error fetching verified seal tags:', error);
+      toast.error('Failed to refresh verified seal tags');
+    }
+  }, [sessionId, fetchSession]);
+
   // Handle image upload for a seal
   const handleSealImageUpload = useCallback(async (index: number, file: File | null) => {
     if (!file) return;
@@ -922,8 +940,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Get the seal ID
         const sealId = updatedSeals[index].id;
         
-        // Upload the guard seal tag directly to the server
-        const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+        // Upload the guard seal tag verification directly to the server
+        const response = await fetch(`/api/sessions/${sessionId}/sealTags/verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -942,8 +960,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         const savedTag = await response.json();
         console.log('Guard seal tag saved:', savedTag);
         
-        // Refresh the guard seal tags from the server
-        fetchGuardSealTags();
+        // Refresh the verified seal tags from the server
+        fetchVerifiedSealTags();
         toast.success(`Seal tag image uploaded successfully!`);
       } catch (error) {
         console.error('Error saving guard seal tag:', error);
@@ -955,7 +973,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     // Update the state with null preview (we'll load from server)
     updatedSeals[index].imagePreview = null;
     setGuardScannedSeals(updatedSeals);
-  }, [guardScannedSeals, sessionId, fetchGuardSealTags]);
+  }, [guardScannedSeals, sessionId, fetchVerifiedSealTags]);
 
   // Remove a scanned seal
   const removeSealTag = useCallback((index: number) => {
@@ -2302,8 +2320,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     const base64Image = reader.result as string;
                     
                     try {
-                      // Upload the guard seal tag directly to the server
-                      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+                      // Upload the guard seal tag verification directly to the server
+                      const response = await fetch(`/api/sessions/${sessionId}/sealTags/verify`, {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
