@@ -94,6 +94,9 @@ type SealType = {
     sealBarcode?: string | null;
     allMatch?: boolean;
     verificationTimestamp?: string;
+    // Add the missing properties
+    guardScannedSeals?: Array<any>;
+    sealTags?: Record<string, any>;
   };
 };
 
@@ -705,8 +708,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
     
     // Check if verification data contains GUARD's scan of OPERATOR method
-    if (session?.seal?.verificationData?.guardScannedSeals) {
-      const guardScannedSeals = session.seal.verificationData.guardScannedSeals;
+    if (session?.seal?.verificationData && 'guardScannedSeals' in (session.seal.verificationData as any)) {
+      const guardScannedSeals = (session.seal.verificationData as any).guardScannedSeals;
       console.log("[DEBUG] Found guardScannedSeals in verification data:", guardScannedSeals);
       
       // Update method from guard verification if available
@@ -715,7 +718,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           const existing = sealTagsMap.get(guardSeal.id);
           if (existing) {
             console.log(`[DEBUG] Using method from guard verification for ${guardSeal.id}: ${guardSeal?.method}`);
-            existing?.method = guardSeal?.method;
+            if (existing && guardSeal?.method) {
+              existing.method = guardSeal.method;
+            }
           }
         }
       });
@@ -732,6 +737,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             // Update the method if it exists
             const existing = sealTagsMap.get(tag.barcode);
             if (existing) {
+              // Create a new object to avoid modifying the existing one directly
               sealTagsMap.set(tag.barcode, {
                 ...existing,
                 method: tag?.method
