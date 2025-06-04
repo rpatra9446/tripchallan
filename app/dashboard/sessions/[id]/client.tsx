@@ -217,6 +217,20 @@ const printStyles = `
 `;
 
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
+  // Helper function to display method consistently
+  const getMethodDisplay = 
+  (methodVar) => {
+    if (!methodVar) return 'Unknown';
+    if (typeof methodVar !== 'string') return 'Unknown';
+    return methodVar.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
+  }
+;
+  const getMethodColor = (methodVar: any) => {
+    if (!methodVar) return 'default';
+    if (typeof methodVar !== 'string') return 'default';
+    return methodVar.toLowerCase().includes('manual') ? 'secondary' : 'primary';
+  };
+
   const { data: authSession, status: authStatus } = useSession();
   const [session, setSession] = useState<SessionType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1917,7 +1931,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     style={{ width: '100%', height: 'auto', display: 'block' }}
                   />
                 </Box>
-              </Box>
+                    </Box>
             )}
             
             {/* Verification radio button and comment */}
@@ -1946,9 +1960,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 sx={{ mt: 2 }}
               />
             </Box>
-          </Box>
+                    </Box>
         </Box>
-      </Box>
+                    </Box>
     );
   };
 
@@ -2002,7 +2016,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   sx={{ mt: 2 }}
                 />
                 </Box>
-              </Box>
+                    </Box>
             </Paper>
         )}
 
@@ -2045,7 +2059,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   sx={{ mt: 2 }}
                 />
                 </Box>
-              </Box>
+                    </Box>
             </Paper>
         )}
 
@@ -2088,7 +2102,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   sx={{ mt: 2 }}
                 />
                 </Box>
-            </Box>
+                    </Box>
           </Paper>
         )}
 
@@ -2432,7 +2446,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 buttonVariant="contained"
               />
                 </Box>
-                </Box>
+                    </Box>
                   </Paper>
 
         {/* Seal Verification Summary */}
@@ -2455,11 +2469,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
                 Verification Progress:
                 </Typography>
-                        <Chip 
-                label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                color={sealComparison.matched.length === operatorSeals.length ? "success" : "primary"}
-                          size="small"
-                            />
+                        <Chip
+                            label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
+                            color={sealComparison.matched.length === operatorSeals.length ? "success" : "primary"}
+                            size="small"
+                          />
                           </Box>
             
             {/* Status indicators */}
@@ -2469,16 +2483,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 label={`${sealComparison.matched.length} Matched`}
                 color="success" 
                             variant="outlined"
-                            size="small"
-              />
+                            size="small" />
               {operatorSeals.length - sealComparison.matched.length > 0 && (
                 <Chip 
                   icon={<Warning fontSize="small" />}
                   label={`${operatorSeals.length - sealComparison.matched.length} Not Scanned`}
                   color="warning" 
                   variant="outlined"
-                  size="small"
-                />
+                  size="small" />
               )}
               {sealComparison.mismatched.length > 0 && (
                         <Chip 
@@ -2486,11 +2498,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   label={`${sealComparison.mismatched.length} Extra Tags`}
                   color="error" 
                   variant="outlined"
-                          size="small"
-                />
+                          size="small" />
               )}
                 </Box>
-                </Box>
+                    </Box>
               </Paper>
 
         {/* Unified Seal Verification Table with Expandable Rows */}
@@ -2560,24 +2571,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <TableCell onClick={() => toggleRowExpansion(sealId)}>
                           {operatorSeal ? (
                         <Chip 
-                              label={operatorSeal.method && typeof operatorSeal.method === 'string' && 
-                                     operatorSeal.method.toLowerCase().includes('manual') ? 
-                                     'Manually Entered' : 'Digitally Scanned'}
-                              color={operatorSeal.method && typeof operatorSeal.method === 'string' && 
-                                     operatorSeal.method.toLowerCase().includes('manual') ? 
-                                     'secondary' : 'primary'} 
-                          size="small"
-                            />
+                              label={getMethodDisplay(operatorSeal.method)}
+                              color={getMethodColor(operatorSeal.method)} 
+                          size="small" />
                           ) : guardSeal ? (
                             <Chip 
-                              label={guardSeal.method && typeof guardSeal.method === 'string' && 
-                                     guardSeal.method.toLowerCase().includes('manual') ? 
-                                     'Manually Entered' : 'Digitally Scanned'}
-                              color={guardSeal.method && typeof guardSeal.method === 'string' && 
-                                     guardSeal.method.toLowerCase().includes('manual') ? 
-                                     'secondary' : 'primary'} 
-                              size="small"
-                            />
+                              label={getMethodDisplay(guardSeal.method)}
+                              color={getMethodColor(guardSeal.method)} 
+                              size="small" />
                       ) : (
                             <Chip label="Unknown" color="default" size="small" />
                           )}
@@ -2598,8 +2599,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             icon={statusIcon}
                             label={statusLabel}
                             color={statusColor}
-                          size="small"
-                        />
+                          size="small" />
                       </TableCell>
                       <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -2660,13 +2660,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                                                               <Box sx={{ mb: 2 }}>
                                           <Typography variant="body2" color="text.secondary">Method:</Typography>
                             <Chip 
-                                            label={operatorSeal.method && typeof operatorSeal.method === 'string' && 
-                                                  operatorSeal.method.toLowerCase().includes('manual') ? 
-                                                  'Manually Entered' : 'Digitally Scanned'} 
+                                            label={getMethodDisplay(operatorSeal.method)} 
                               size="small"
-                                            color={operatorSeal.method && typeof operatorSeal.method === 'string' && 
-                                                  operatorSeal.method.toLowerCase().includes('manual') ? 
-                                                  'secondary' : 'primary'}
+                                            color={getMethodColor(operatorSeal.method)}
                             />
                                         </Box>
                                       
@@ -2719,13 +2715,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                                                               <Box sx={{ mb: 2 }}>
                                           <Typography variant="body2" color="text.secondary">Method:</Typography>
                             <Chip 
-                                            label={guardSeal.method && typeof guardSeal.method === 'string' && 
-                                                  guardSeal.method.toLowerCase().includes('manual') ? 
-                                                  'Manually Entered' : 'Digitally Scanned'} 
+                                            label={getMethodDisplay(guardSeal.method)} 
                               size="small"
-                                            color={guardSeal.method && typeof guardSeal.method === 'string' && 
-                                                  guardSeal.method.toLowerCase().includes('manual') ? 
-                                                  'secondary' : 'primary'}
+                                            color={getMethodColor(guardSeal.method)}
                             />
                                         </Box>
                                       
@@ -2796,7 +2788,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                               />
                                             </Button>
                                           </Box>
-                                        </Box>
+                    </Box>
                                       )}
                         </>
                       ) : (
@@ -2807,7 +2799,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     </Box>
                       )}
                                 </Box>
-                              </Box>
+                    </Box>
                               
                               {/* Verification status and actions */}
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
@@ -2839,7 +2831,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                   Close Details
                                 </Button>
                               </Box>
-                            </Box>
+                    </Box>
                       </TableCell>
                     </TableRow>
                       )}
@@ -2918,11 +2910,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{seal.id}</TableCell>
                       <TableCell>
-                        <Chip 
-                                label={seal.method && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
-                                color={seal.method && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'} 
-                          size="small"
-                        />
+                        <Chip
+                            label={seal.method && seal.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned'}
+                            color={seal.method && seal.method.toLowerCase().includes('manual') ? 'secondary' : 'primary'}
+                            size="small"
+                          />
                       </TableCell>
                       <TableCell>
                               {seal.imageData ? (
@@ -3190,7 +3182,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </Box>
                 )}
               </Box>
-            </Box>
+                    </Box>
             
             {/* Field verification summary */}
             <Box sx={{ mt: 3 }}>
@@ -3215,7 +3207,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <Typography variant="body2" align="center">Unverified Fields</Typography>
                   </Paper>
                 </Box>
-              </Box>
+                    </Box>
             </Box>
             
             {/* Guard Verification Images - Show other image types */}
@@ -3282,7 +3274,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     return null;
                   })}
                 </Box>
-              </Box>
+                    </Box>
             )}
           </>
         ) : (
@@ -4156,7 +4148,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               icon={selectedSeal.verified ? <CheckCircle fontSize="small" /> : <RadioButtonUnchecked fontSize="small" />}
                             />
                           </Box>
-                        </Box>
+                    </Box>
                         <Box sx={{ flex: '1 0 45%', minWidth: '200px' }}>
                           <Typography variant="body2" color="text.secondary">Created At</Typography>
                           <Typography variant="body1">{new Date(selectedSeal.createdAt).toLocaleString()}</Typography>
@@ -4165,7 +4157,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <Typography variant="body2" color="text.secondary">Seal ID</Typography>
                           <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>{selectedSeal.id}</Typography>
                         </Box>
-                     </Box>
+                    </Box>
                   </Box>
                   
                   {selectedSeal.verified && (
@@ -4203,7 +4195,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                  }
                                />
                              </Box>
-                           </Box>
+                    </Box>
                          )}
                          {selectedSeal.verificationDetails?.verificationTimestamp && (
                            <Box sx={{ flex: '1 0 45%', minWidth: '200px' }}>
@@ -4214,7 +4206,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                            </Box>
                          )}
             </Box>
-          </Box>
+                    </Box>
         )}
       </Paper>
                 
@@ -4259,8 +4251,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                     <Chip 
                                       label="Unverified" 
                                       color="default"
-                                      size="small"
-                                    />
+                                      size="small" />
                                   )}
                                 </TableCell>
                                 <TableCell>{data.comment || 'No comment'}</TableCell>
@@ -4500,7 +4491,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     size="medium"
                   />
                 </Box>
-              </Box>
+                    </Box>
               
               {/* Basic information */}
               <Box mb={3}>
@@ -4516,7 +4507,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Source:</strong> {session.tripDetails?.source || session.source || "LoadingSite"}
                       </Typography>
                     </Box>
-                  </Box>
+                    </Box>
                   <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                     <Box display="flex" alignItems="center" mb={1}>
                       <LocationOn color="primary" sx={{ mr: 1 }} />
@@ -4524,7 +4515,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Destination:</strong> {session.tripDetails?.destination || session.destination || "ReceiverPartyName"}
                       </Typography>
                     </Box>
-                  </Box>
+                    </Box>
                   <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                     <Box display="flex" alignItems="center" mb={1}>
                       <AccessTime color="primary" sx={{ mr: 1 }} />
@@ -4532,7 +4523,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <strong>Created:</strong> {formatDate(session.createdAt)}
                       </Typography>
                     </Box>
-                  </Box>
+                    </Box>
                   <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                     <Box display="flex" alignItems="center" mb={1}>
                       <BusinessCenter color="primary" sx={{ mr: 1 }} />
@@ -4540,7 +4531,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <strong>Company:</strong> {session.company?.name || "N/A"}
                       </Typography>
                     </Box>
-                  </Box>
+                    </Box>
                   <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                     <Box display="flex" alignItems="center" mb={1}>
                       <Person color="primary" sx={{ mr: 1 }} />
@@ -4548,7 +4539,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <strong>Operator Created:</strong> {session.createdBy?.name || "N/A"}
                       </Typography>
                 </Box>
-              </Box>
+                    </Box>
                     <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
                     <Box display="flex" alignItems="center" mb={1}>
                       <DirectionsCar color="primary" sx={{ mr: 1 }} />
@@ -4556,9 +4547,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || "N/A"}
                       </Typography>
                     </Box>
-                  </Box>
+                    </Box>
                 </Box>
-              </Box>
+                    </Box>
             </Paper>
 
             {/* Verification Results */}
@@ -4757,7 +4748,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               size="medium"
             />
           </Box>
-        </Box>
+                    </Box>
 
         <Box mb={3}>
           <Typography variant="h6" gutterBottom>
@@ -4772,7 +4763,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Source:</strong> {session.source || "N/A"}
                 </Typography>
               </Box>
-            </Box>
+                    </Box>
             <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <LocationOn color="primary" sx={{ mr: 1 }} />
@@ -4780,7 +4771,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Destination:</strong> {session.destination || "N/A"}
                 </Typography>
               </Box>
-            </Box>
+                    </Box>
             <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <AccessTime color="primary" sx={{ mr: 1 }} />
@@ -4788,7 +4779,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Created:</strong> {formatDate(session.createdAt)}
                 </Typography>
               </Box>
-            </Box>
+                    </Box>
             <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <BusinessCenter color="primary" sx={{ mr: 1 }} />
@@ -4796,7 +4787,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Company:</strong> {session.company?.name || "N/A"}
                 </Typography>
               </Box>
-            </Box>
+                    </Box>
             <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <Person color="primary" sx={{ mr: 1 }} />
@@ -4804,7 +4795,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Operator Created:</strong> {session.createdBy?.name || "N/A"}
                 </Typography>
               </Box>
-            </Box>
+                    </Box>
             <Box sx={{ flex: '1 0 45%', minWidth: '250px' }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <DirectionsCar color="primary" sx={{ mr: 1 }} />
@@ -4812,9 +4803,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || "N/A"}
                 </Typography>
               </Box>
-            </Box>
+                    </Box>
           </Box>
-        </Box>
+                    </Box>
 
         {session.tripDetails && Object.keys(session.tripDetails).length > 0 && (
           <Box mb={3}>
@@ -4874,7 +4865,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <strong>Number of Packages:</strong> {session.tripDetails.numberOfPackages || "N/A"}
                 </Typography>
               </Box>
-            </Box>
+                    </Box>
           </Box>
         )}
 
@@ -5385,7 +5376,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 </>
               )}
             </Box>
-          </Box>
+                    </Box>
         )}
 
         {/* Report Download Section - Only shown to authorized users */}
@@ -5430,7 +5421,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 Print this page
               </Button>
             </Box>
-          </Box>
+                    </Box>
         )}
 
         {/* Verification Results for completed sessions */}
