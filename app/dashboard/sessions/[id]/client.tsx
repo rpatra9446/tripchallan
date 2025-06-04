@@ -906,7 +906,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
   }, [guardScannedSeals, scanMethod, operatorSeals, updateSealComparison]);
 
-
+  // Handle image upload for a seal
+  const handleSealImageUpload = useCallback(async (index: number, file: File | null) => {
+    if (!file) return;
+    
+    const updatedSeals = [...guardScannedSeals];
+    updatedSeals[index].image = file;
+    
+    // Don't create blob URLs anymore - read the file and upload to server directly
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Image = reader.result as string;
+      
+      try {
+        // Get the seal ID
+        const sealId = updatedSeals[index].id;
         
         // Upload the guard seal tag verification directly to the server
         const response = await fetch(`/api/sessions/${sessionId}/sealTags/verify`, {
@@ -928,8 +942,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         const savedTag = await response.json();
         console.log('Guard seal tag saved:', savedTag);
         
-        // Refresh the verified seal tags from the server
-        fetchVerifiedSealTags();
+        // Refresh the session data to get updated seal tags
+        fetchSessionDetails();
         toast.success(`Seal tag image uploaded successfully!`);
       } catch (error) {
         console.error('Error saving guard seal tag:', error);
@@ -941,7 +955,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     // Update the state with null preview (we'll load from server)
     updatedSeals[index].imagePreview = null;
     setGuardScannedSeals(updatedSeals);
-  }, [guardScannedSeals, sessionId, fetchVerifiedSealTags]);
+  }, [guardScannedSeals, sessionId, fetchSessionDetails]);
 
   // Remove a scanned seal
   const removeSealTag = useCallback((index: number) => {
@@ -2308,9 +2322,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       const savedTag = await response.json();
                       console.log('Guard seal tag saved:', savedTag);
                       
-                      // Refresh the guard seal tags from the server
-                      fetchSession();
-                      toast.success(`Seal tag ${trimmedData} saved successfully!`);
+                      // Refresh the session data to get updated seal tags
+                      fetchSessionDetails();
+                      toast.success(`Seal tag saved successfully!`);
                     } catch (error) {
                       console.error('Error saving guard seal tag:', error);
                       toast.error('Failed to save guard seal tag. Please try again.');
