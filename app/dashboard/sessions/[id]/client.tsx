@@ -797,7 +797,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
     // Add to scanned seals
     const newSeal = {
-      id: trimmedSealId,
+      id: trimmedData,
       method: scanMethod,
       image: null,
       imagePreview: null,
@@ -823,14 +823,55 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   }, [guardScannedSeals, scanMethod, operatorSeals, updateSealComparison]);
 
   // Handle image upload for a seal
-  const handleSealImageUpload = useCallback((index: number, file: File | null) => {
+  const handleSealImageUpload = useCallback(async (index: number, file: File | null) => {
     if (!file) return;
     
     const updatedSeals = [...guardScannedSeals];
     updatedSeals[index].image = file;
-    updatedSeals[index].imagePreview = URL.createObjectURL(file);
+    
+    // Don't create blob URLs anymore - read the file and upload to server directly
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Image = reader.result as string;
+      
+      try {
+        // Get the seal ID
+        const sealId = updatedSeals[index].id;
+        
+        // Upload the guard seal tag directly to the server
+        const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            barcode: sealId,
+            method: updatedSeals[index].method || 'manual',
+            imageData: base64Image
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save guard seal tag');
+        }
+        
+        const savedTag = await response.json();
+        console.log('Guard seal tag saved:', savedTag);
+        
+        // Refresh the guard seal tags from the server
+        fetchGuardSealTags();
+        toast.success(`Seal tag image uploaded successfully!`);
+      } catch (error) {
+        console.error('Error saving guard seal tag:', error);
+        toast.error('Failed to upload seal tag image. Please try again.');
+      }
+    };
+    reader.readAsDataURL(file);
+    
+    // Update the state with null preview (we'll load from server)
+    updatedSeals[index].imagePreview = null;
     setGuardScannedSeals(updatedSeals);
-  }, [guardScannedSeals]);
+  }, [guardScannedSeals, sessionId, fetchGuardSealTags]);
 
   // Remove a scanned seal
   const removeSealTag = useCallback((index: number) => {
@@ -2171,11 +2212,49 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   console.log('Is verified:', isVerified);
                   
                   // Add the seal with the scanned data and captured image
+                  // Convert image to base64 for server storage
+                  const reader = new FileReader();
+                  reader.onloadend = async () => {
+                    const base64Image = reader.result as string;
+                    
+                    try {
+                      // Upload the guard seal tag directly to the server
+                      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          barcode: trimmedData,
+                          method: 'digital',
+                          imageData: base64Image
+                        }),
+                      });
+                      
+                      if (!response.ok) {
+                        throw new Error('Failed to save guard seal tag');
+                      }
+                      
+                      const savedTag = await response.json();
+                      console.log('Guard seal tag saved:', savedTag);
+                      
+                      // Refresh the guard seal tags from the server
+                      fetchGuardSealTags();
+                      toast.success(`Seal tag ${trimmedData} saved successfully!`);
+                    } catch (error) {
+                      console.error('Error saving guard seal tag:', error);
+                      toast.error('Failed to save guard seal tag. Please try again.');
+                    }
+                  };
+                  reader.readAsDataURL(imageFile);
+                  
+                  // Create temporary seal for UI feedback only
                   const newSeal = {
                     id: trimmedData,
                     method: 'digital',
                     image: imageFile,
-                    imagePreview: URL.createObjectURL(imageFile),
+                    // Don't create a blob URL anymore
+                    imagePreview: null,
                     timestamp: new Date().toISOString(),
                     verified: isVerified
                   };
@@ -4761,18 +4840,19 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                       </TableCell>
                       <TableCell>
-                        {/* Always use the media endpoint for all guard seal tags since we've updated the API */}
+                        {/* The API now returns the raw image data directly */}
                         <Tooltip title="Click to view image">
                           <Box 
                             component="img" 
-                            src={`/api/media/guardSealTag/${tag.id}`}
+                            src={`/api/media/guardSealTag/${tag.id}?t=${new Date().getTime()}`}
                             alt={`Guard seal tag ${tag.barcode}`}
                             sx={{ 
                               width: 60, 
                               height: 60, 
                               objectFit: 'cover',
                               borderRadius: 1,
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              border: '1px solid #eee'
                             }}
                             onClick={() => {
                               // Open image in new tab
@@ -4781,15 +4861,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             onError={(e) => {
                               console.error(`Error loading guard seal tag image`, e);
                               const img = e.target as HTMLImageElement;
-                              img.style.display = 'none';
-                              
-                              // Try the imageUrl as fallback if available
-                              if (tag.imageUrl) {
-                                setTimeout(() => {
-                                  img.src = tag.imageUrl as string;
-                                  img.style.display = 'block';
-                                }, 100);
-                              }
+                              img.onerror = null; // Prevent infinite loop
+                              img.src = '/images/driver-placeholder.svg';
                             }}
                           />
                         </Tooltip>
