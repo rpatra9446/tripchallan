@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback , CheckCircle, Cancel} from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import React from 'react';
@@ -70,7 +70,7 @@ import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
 import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
-import { toast } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { processMultipleImages, resizeAndCompressImage } from "@/lib/imageUtils";
 import { useTheme } from "@mui/material/styles";
 import { compressImage } from "@/lib/imageUtils";
@@ -881,6 +881,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     console.log('Mismatched Seal IDs:', mismatched);
     
     setSealComparison({ matched, mismatched });
+
+
+  // Update seal comparison when operator seals or guard scanned seals change
+  useEffect(() => {
+    if (operatorSeals.length > 0 || guardScannedSeals.length > 0) {
+      updateSealComparison();
+    }
+  }, [operatorSeals, guardScannedSeals, updateSealComparison]);
+
   }, [operatorSeals]);
 
   // Input handlers
@@ -917,55 +926,98 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   };
 
   // Handle QR/barcode scanner input
-  const handleScanComplete = useCallback((sealId: string) => {
-    if (!sealId.trim()) {
+  const handleScanComplete = useCallback(async (barcodeData: string) => {
+    // Don't process empty input
+    if (!barcodeData.trim()) {
       setScanError('Please enter a valid Seal Tag ID');
       return;
     }
     
-    const trimmedSealId = sealId.trim();
+    const trimmedData = barcodeData.trim();
+    console.log('Processing manual seal entry:', trimmedData);
     
-    // Check if already scanned by guard
-    if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedSealId.toLowerCase())) {
+    // Check if already scanned by guard (case insensitive)
+    if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
       setScanError('This seal has already been scanned');
+      setTimeout(() => setScanError(''), 3000);
       return;
     }
     
     // Check if this seal matches an operator seal (case insensitive)
     const isVerified = operatorSeals.some(seal => 
-      seal.id.trim().toLowerCase() === trimmedSealId.toLowerCase()
+      seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
     );
     
-    console.log('Scanning seal ID:', trimmedSealId);
+    console.log('Entering seal ID (Manual):', trimmedData);
     console.log('Operator seals:', operatorSeals.map(s => s.id));
     console.log('Is verified:', isVerified);
-          
-    // Add to scanned seals
-    const newSeal = {
-      id: trimmedSealId,
-      method: scanMethod,
-      image: null,
-      imagePreview: null,
-      timestamp: new Date().toISOString(),
-      verified: isVerified
-    };
     
-    // Update state with the new seal
-    const updatedSeals = [...guardScannedSeals, newSeal];
-    setGuardScannedSeals(updatedSeals);
-    setScanInput('');
-    setScanError('');
-    
-    // Update comparison with the updated list
-    updateSealComparison(updatedSeals);
-    
-    // Show success or warning message based on match
-    if (isVerified) {
-      console.log("Seal tag matched with operator seals");
-    } else {
-      console.log("Seal tag does not match any operator seals");
+    try {
+      // Construct URL
+      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
+      
+      // Use same-origin fetch with explicit cors mode
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        mode: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          barcode: trimmedData,
+          method: scanMethod, // Use the selected method
+          imageData: null // No image for manual entry
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`Failed to save guard seal tag: ${response.status}`);
+      }
+      
+      const savedTag = await response.json();
+      console.log('Guard seal tag saved:', savedTag);
+      
+      // Refresh the guard seal tags from the server
+      fetchGuardSealTags();
+      toast.success(`Seal tag ${trimmedData} saved successfully!`);
+      
+      // Clear the input field
+      setScanInput('');
+      setScanError('');
+      
+      // Create temporary seal for UI feedback only
+      const newSeal = {
+        id: trimmedData,
+        method: 'manual',
+        image: null,
+        imagePreview: null,
+        timestamp: new Date().toISOString(),
+        verified: isVerified
+      };
+      
+      // Update state with the new seal
+      const updatedSeals = [...guardScannedSeals, newSeal];
+      setGuardScannedSeals(updatedSeals);
+      
+      // Update comparison with the updated list
+      updateSealComparison(updatedSeals);
+      
+      // Show success or warning message based on match
+      if (isVerified) {
+        toast.success(`Seal tag ${trimmedData} matched with operator records!`);
+      } else {
+        toast.error(`Seal tag ${trimmedData} doesn't match any operator seal tags!`);
+      }
+    } catch (error) {
+      console.error('Error saving guard seal tag:', error);
+      toast.error('Failed to save guard seal tag. Please try again.');
+      setScanError('Failed to save. Please try again.');
     }
-  }, [guardScannedSeals, scanMethod, operatorSeals, updateSealComparison]);
+  }, [guardScannedSeals, operatorSeals, sessionId, fetchGuardSealTags, toast, setScanError, setScanInput, setGuardScannedSeals, updateSealComparison]);
 
   // Handle image upload for a seal
   const handleSealImageUpload = useCallback(async (index: number, file: File | null) => {
@@ -1254,6 +1306,59 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString();
   };
+
+
+  // Utility function to compress images
+  const compressImage = async (base64Image, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new Image();
+        img.src = base64Image;
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          
+          // Calculate size - respect aspect ratio but limit max dimensions
+          const MAX_SIZE = 1200;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height && width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          } else if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to webp format for better compression if supported
+          const mimeType = 'image/jpeg';
+          
+          // Get compressed base64
+          const compressedBase64 = canvas.toDataURL(mimeType, quality);
+          resolve(compressedBase64);
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Error loading image for compression'));
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+
 
   const getStatusColor = (status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (status?.toLowerCase()) {
@@ -2042,7 +2147,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 />
                 </Box>
                     </Box>
-            </Paper>
+                  </Box>
+                </Paper>
         )}
 
         {/* Vehicle Number Plate Verification */}
@@ -2319,7 +2425,23 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Typography>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel id="scan-method-label">Select Method:</InputLabel>
+                  <Select
+                    labelId="scan-method-label"
+                    value={scanMethod}
+                    label="Select Method:"
+                    onChange={(e) => setScanMethod(e.target.value as 'manual' | 'digital')}
+                  >
+                    <MenuItem value="manual">Manual Entry</MenuItem>
+                    <MenuItem value="digital">Digital Scan</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <TextField
                 fullWidth
                 size="small"
@@ -2333,7 +2455,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               
               <Button 
                 variant="contained" 
-                onClick={() => handleScanComplete(scanInput)}
+                onClick={() => {
+                  setScanMethod('manual');
+                  handleScanComplete(scanInput);
+                }}
                 disabled={!scanInput.trim()}
               >
                 Add Manually
@@ -2341,6 +2466,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               
               <ClientSideQrScanner
                 onScanWithImage={(data, imageFile) => {
+                  // Set method to digital since this was scanned with camera
+                  setScanMethod('digital');
                   // Set method to digital since this was scanned
                   setScanMethod('digital');
                   
@@ -5007,7 +5134,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <Box 
                           sx={{ 
                             border: '1px solid',
-                            borderColor: 'divider',
+                            borderColor: operatorSeals.some(opSeal => opSeal.id.toLowerCase() === tag.barcode.toLowerCase()) 
+                              ? 'success.main' 
+                              : 'error.main',
                             borderRadius: 1,
                             p: 0.75,
                             bgcolor: 'background.paper',
@@ -5023,12 +5152,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={tag?.method && typeof tag?.method === 'string' && 
-                                 tag?.method.toLowerCase().includes('manual') ? 
-                                 'Manually Entered' : 'Digitally Scanned'}
-                          color={tag?.method && typeof tag?.method === 'string' && 
-                                 tag?.method.toLowerCase().includes('manual') ? 
-                                 'secondary' : 'primary'} 
+                          label={tag?.method === 'manual' ? 'Manually Entered' : 'Digitally Scanned'}
+                          color={tag?.method === 'manual' ? 'secondary' : 'primary'} 
                         />
                       </TableCell>
                       <TableCell>
