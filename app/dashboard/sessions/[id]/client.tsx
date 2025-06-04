@@ -2341,7 +2341,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       console.log('Guard seal tag saved:', savedTag);
                       
                       // Refresh the guard seal tags from the server
-                      fetchGuardSealTags();
+                      fetchSession();
                       toast.success(`Seal tag ${trimmedData} saved successfully!`);
                     } catch (error) {
                       console.error('Error saving guard seal tag:', error);
