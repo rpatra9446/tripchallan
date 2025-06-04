@@ -275,6 +275,14 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
         const video = videoRef.current;
         const canvas = canvasRef.current;
         
+        // Make sure video is ready
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+          console.log('Video not ready yet, waiting for data...');
+          // Wait a moment and try again
+          setTimeout(() => captureFrame(decodedText), 100);
+          return;
+        }
+        
         // Set canvas dimensions to match video but reduce size to improve performance
         // Use smaller dimensions for better performance and reduced file size
         const scaleFactor = 0.8; // 80% of original size
@@ -285,6 +293,10 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
         // Draw the current video frame to the canvas
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          // Clear canvas first
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw video frame
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           
           // Convert canvas to blob with reduced quality for smaller file size
@@ -294,9 +306,7 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
               const imageFile = new File([blob], `qr-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
               console.log('Image captured successfully, size:', blob.size);
               
-              // Use a consistent, lower quality setting
-              const lowerQualityJpeg = 0.6; // 60% quality
-              
+              // Call the callback with the decoded text and image file
               onScanWithImage(decodedText, imageFile);
             } else if (onScan) {
               console.log('No blob created or onScanWithImage not provided, falling back to onScan');

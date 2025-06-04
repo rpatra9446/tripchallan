@@ -136,11 +136,17 @@ export async function POST(
 
     if (existingTag) {
       console.log(`[API] Guard seal tag already exists for barcode: ${barcode}`);
-      return NextResponse.json({ error: "Guard seal tag with this barcode already exists" }, { status: 409 });
+      return NextResponse.json({ 
+        error: "Guard seal tag with this barcode already exists",
+        existingTag 
+      }, { status: 409 });
     }
 
     console.log(`[API] Creating guard seal tag with barcode: ${barcode}, method: ${method}`);
-    console.log(`[API] Image data size: ${imageData ? (typeof imageData === 'string' ? imageData.length : 'not a string') : 'none'} bytes`);
+    console.log(`[API] Image data present: ${imageData ? 'Yes' : 'No'}`);
+    if (imageData) {
+      console.log(`[API] Image data size: ${typeof imageData === 'string' ? imageData.length : 'not a string'} bytes`);
+    }
 
     // Store directly in imageData field
     try {
