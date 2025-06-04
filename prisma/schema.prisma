@@ -27,8 +27,7 @@ model User {
   comments             Comment[]
   operatorPermissions  OperatorPermissions?
   verifiedSeals        Seal[]               @relation("SealVerifiedBy")
-  createdSealTags      SealTag[]           @relation("SealTagCreatedBy")
-  verifiedSealTags     SealTag[]           @relation("SealTagVerifiedBy")
+  verifiedGuardSealTags GuardSealTag[]      @relation("GuardSealTagVerifiedBy")
   createdSessions      Session[]            @relation("SessionCreatedBy")
   company              Company?             @relation("CompanyEmployees", fields: [companyId], references: [id])
   createdBy            User?                @relation("UserCreatedBy", fields: [createdById], references: [id])
@@ -85,6 +84,7 @@ model Media {
   
   // Relations
   companyLogo Company? @relation("CompanyLogo")
+  guardSealTag GuardSealTag? @relation("GuardSealTagMedia")
   
   @@map("media")
 }
@@ -134,6 +134,7 @@ model Session {
   comments             Comment[]
   seal                 Seal?
   sealTags             SealTag[]
+  guardSealTags        GuardSealTag[] @relation("GuardSealTags")
   company              Company       @relation(fields: [companyId], references: [id])
   createdBy            User          @relation("SessionCreatedBy", fields: [createdById], references: [id])
 
@@ -220,29 +221,33 @@ model Vehicle {
 }
 
 model SealTag {
-  id               String    @id @default(uuid())
-  barcode          String
-  sessionId        String
-  // OPERATOR fields
-  method           String    // 'digital' or 'manual'
-  imageData        String?   // base64 encoded image
-  createdAt        DateTime  @default(now())
-  createdById      String
-  createdBy        User      @relation("SealTagCreatedBy", fields: [createdById], references: [id])
-  
-  // GUARD fields
-  guardMethod      String?   // 'digital' or 'manual'
-  guardImageData   String?   // base64 encoded image 
-  guardTimestamp   DateTime?
-  guardUserId      String?
-  guardUser        User?     @relation("SealTagVerifiedBy", fields: [guardUserId], references: [id])
-  guardStatus      String?   @default("UNVERIFIED") // UNVERIFIED, VERIFIED, BROKEN, TAMPERED
-  guardNotes       String?
-  
-  session          Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  barcode       String   @unique
+  sessionId     String
+  method        String
+  imageUrl      String?
+  createdAt     DateTime @default(now())
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  @@unique([sessionId, barcode])
   @@map("seal_tags")
+}
+
+model GuardSealTag {
+  id            String   @id @default(uuid())
+  barcode       String   @unique
+  sessionId     String
+  method        String
+  imageUrl      String?
+  imageData     String?  // Store base64 image data directly like operator side
+  mediaId       String?  @unique
+  createdAt     DateTime @default(now())
+  verifiedById  String?
+  status        String?  @default("VERIFIED")
+  session       Session  @relation("GuardSealTags", fields: [sessionId], references: [id], onDelete: Cascade)
+  verifiedBy    User?    @relation("GuardSealTagVerifiedBy", fields: [verifiedById], references: [id])
+  media         Media?   @relation("GuardSealTagMedia", fields: [mediaId], references: [id])
+
+  @@map("guard_seal_tags")
 }
 
 enum UserRole {

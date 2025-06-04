@@ -30,7 +30,25 @@ export async function GET(
       return NextResponse.json({ error: "Guard seal tag not found" }, { status: 404 });
     }
     
-    // If the guard seal tag has a media ID but no media record, return error
+    // First check for direct imageData (base64)
+    if (guardSealTag.imageData) {
+      // Extract content type from the data URL
+      const contentType = guardSealTag.imageData.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
+      
+      // Extract the base64 part
+      const base64Data = guardSealTag.imageData.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'X-Content-Type-Options': 'nosniff'
+        }
+      });
+    }
+    
+    // If no imageData, check for media
     if (guardSealTag.mediaId && !guardSealTag.media) {
       return NextResponse.json({ error: "Media record not found for this guard seal tag" }, { status: 404 });
     }

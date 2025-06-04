@@ -881,15 +881,13 @@ export const POST = withAuth(
                     scannedAt: null
                   }
                 },
-                // Create SealTag records for each seal tag with the updated schema
+                // Create SealTag records for each seal tag
                 sealTags: {
                   create: sealTagIds.map((tagId: string) => ({
                     barcode: tagId,
                     method: sealTagMethods[tagId] || 'digitally scanned',
-                    imageData: null, // Will be updated with base64 data
-                    createdById: userId,
-                    // Use the timestamp provided for this tag, or current time if not available
-                    ...(sealTagTimestamps[tagId] ? { createdAt: new Date(sealTagTimestamps[tagId]) } : {})
+                    // Store image URL - can be updated later when images are processed
+                    imageUrl: null
                   }))
                 }
               },

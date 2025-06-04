@@ -35,13 +35,6 @@ export async function GET(
             name: true,
             email: true,
           },
-        },
-        media: {
-          select: {
-            id: true,
-            type: true,
-            mimeType: true,
-          }
         }
       },
       orderBy: {
@@ -59,29 +52,91 @@ export async function GET(
   }
 }
 
-// This is a compatibility endpoint that forwards to the new sealTags/verify endpoint
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const sessionId = params.id;
-    // Forward the request to the new endpoint
-    const response = await fetch(`${req.nextUrl.origin}/api/sessions/${sessionId}/sealTags/verify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': req.headers.get('cookie') || '',
-      },
-      body: req.body
-    });
+    const session = await getServerSession(authOptions);
     
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, name: true, email: true, role: true, subrole: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Only guards can create guard seal tags
+    if (user.role !== UserRole.EMPLOYEE || user.subrole !== EmployeeSubrole.GUARD) {
+      return NextResponse.json(
+        { error: "Only guards can create guard seal tags" },
+        { status: 403 }
+      );
+    }
+
+    const sessionId = params.id;
+
+    // Check if session exists
+    const existingSession = await prisma.session.findUnique({
+      where: { id: sessionId }
+    });
+
+    if (!existingSession) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    // Parse request body
+    const body = await req.json();
+    const { barcode, method, imageData } = body;
+
+    if (!barcode || !method) {
+      return NextResponse.json({ error: "Barcode and method are required" }, { status: 400 });
+    }
+
+    // Check if this guard seal tag already exists
+    const existingTag = await prisma.guardSealTag.findFirst({
+      where: {
+        sessionId,
+        barcode
+      }
+    });
+
+    if (existingTag) {
+      return NextResponse.json({ error: "Guard seal tag with this barcode already exists" }, { status: 409 });
+    }
+
+    // Store directly in imageData field
+    const guardSealTag = await prisma.guardSealTag.create({
+      data: {
+        barcode,
+        method,
+        sessionId,
+        verifiedById: user.id,
+        status: "VERIFIED",
+        imageData: imageData // Store base64 image directly
+      },
+      include: {
+        verifiedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          }
+        }
+      }
+    });
+
+    return NextResponse.json(guardSealTag);
   } catch (error) {
-    console.error("Error in compatibility endpoint:", error);
+    console.error("Error creating guard seal tag:", error);
     return NextResponse.json(
-      { error: "Failed to verify seal tag" },
+      { error: "Failed to create guard seal tag" },
       { status: 500 }
     );
   }

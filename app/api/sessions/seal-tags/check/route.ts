@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
 
     console.log(`[API DEBUG] Checking if seal tag '${tagId}' exists`);
 
-    // Check if the seal tag exists in any session using the updated SealTag model
-    const existingSealTag = await prisma.sealTag.findFirst({
+    // Check if the seal tag exists in any session using the new SealTag model
+    const existingSealTag = await prisma.sealTag.findUnique({
       where: {
-        barcode: tagId,
+        barcode: tagId, // Using barcode which is now a unique field
       },
     });
 

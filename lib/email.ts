@@ -143,7 +143,7 @@ export const sendVerificationEmail = async ({
         ${formatVerificationResults(verificationDetails)}
         
         <p style="margin-top: 20px;">
-          <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://tripchallan-mu.vercel.app'}/dashboard/sessions/${sessionId}" style="background-color: #1976d2; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
+          <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://cbums.alphabetsoftware.in'}/dashboard/sessions/${sessionId}" style="background-color: #1976d2; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
             View Session Details
           </a>
         </p>
