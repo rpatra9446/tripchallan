@@ -22,7 +22,8 @@ import {
   Alert,
   AlertTitle,
   CircularProgress,
-  Grid
+  Grid,
+  IconButton
 } from "@mui/material";
 import { 
   QrCodeScanner as QrCodeScannerIcon,
@@ -33,6 +34,8 @@ import {
   Done as DoneIcon
 } from "@mui/icons-material";
 import { SealStatus } from "@/prisma/enums";
+import ClientSideQrScanner from "../ClientSideQrScanner";
+import { processMultipleImages } from "@/lib/imageUtils";
 
 interface SealVerificationProps {
   sessionId: string;
@@ -79,6 +82,10 @@ export default function SealVerification({
   
   // Add ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Add state for image modal
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [openImageModal, setOpenImageModal] = useState(false);
   
   // Load initial state
   useEffect(() => {
@@ -534,8 +541,9 @@ export default function SealVerification({
                             cursor: 'pointer'
                           }}
                           onClick={() => {
-                            // Open image in new tab
-                            window.open(seal.imageData, '_blank');
+                            // Open image in modal
+                            setSelectedImage(seal.imageData);
+                            setOpenImageModal(true);
                           }}
                         />
                       ) : (
@@ -852,6 +860,42 @@ export default function SealVerification({
             )}
           </Button>
         </DialogActions>
+      </Dialog>
+      
+      {/* Image Modal */}
+      <Dialog 
+        open={openImageModal} 
+        onClose={() => setOpenImageModal(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogContent sx={{ p: 0, position: 'relative' }}>
+          <IconButton 
+            onClick={() => setOpenImageModal(false)}
+            sx={{ 
+              position: 'absolute', 
+              top: 8, 
+              right: 8, 
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: 'rgba(0,0,0,0.7)',
+              }
+            }}
+          >
+            <Close />
+          </IconButton>
+          <Box
+            component="img"
+            src={selectedImage}
+            alt="Full size image"
+            sx={{
+              width: '100%',
+              maxHeight: '80vh',
+              objectFit: 'contain'
+            }}
+          />
+        </DialogContent>
       </Dialog>
     </Box>
   );

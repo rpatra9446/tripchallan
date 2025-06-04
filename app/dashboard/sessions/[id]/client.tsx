@@ -4841,9 +4841,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                 cursor: 'pointer'
                               }}
                               onClick={() => {
-                                // Open image in new tab
+                                // Open image in modal
                                 if (seal.image) {
-                                  window.open(seal.image, '_blank');
+                                  setSelectedImage(seal.image);
+                                  setOpenImageModal(true);
                                 }
                               }}
                             />
@@ -4932,8 +4933,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               border: '1px solid #eee'
                             }}
                             onClick={() => {
-                              // Open image in new tab
-                              window.open(`/api/media/guardSealTag/${tag.id}`, '_blank');
+                              // Open image in modal
+                              setSelectedImage(`/api/media/guardSealTag/${tag.id}`);
+                              setOpenImageModal(true);
                             }}
                             onError={(e) => {
                               console.error(`Error loading guard seal tag image`, e);
