@@ -24,6 +24,14 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
   skipMiddlewareUrlNormalize: true,
   
+  // Increase bodyParser limit for API routes to handle larger image uploads
+  api: {
+    bodyParser: {
+      sizeLimit: '8mb', // Increase to 8MB
+    },
+    responseLimit: '8mb', // Also increase response limit
+  },
+  
   // Add redirects for company and employee detail pages
   async redirects() {
     return [
@@ -63,6 +71,21 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  
+  // Add headers to handle CORS issues
+  async headers() {
+    return [
+      {
+        // Apply these headers to all routes
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
+      },
+    ];
   },
 };
 

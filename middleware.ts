@@ -95,6 +95,31 @@ export async function middleware(request: NextRequest) {
       }
     }
 
+    // Get the hostname from the request
+    const hostname = request.headers.get('host') || '';
+    const url = request.nextUrl.clone();
+    
+    // Check if the URL includes a hard-coded absolute URL to tripchallan-mu.vercel.app
+    const apiPath = '/api/sessions/';
+    if (url.pathname.includes(apiPath) && 
+        (url.pathname.includes('tripchallan-mu.vercel.app') || 
+         url.pathname.includes('tripchallan.vercel.app'))) {
+      
+      // Extract the actual API path from the URL
+      const match = url.pathname.match(/\/api\/sessions\/([^\/]+)\/([^\/]+)/);
+      if (match) {
+        const sessionId = match[1];
+        const endpoint = match[2];
+        
+        // Rewrite to the correct relative URL
+        const newPath = `/api/sessions/${sessionId}/${endpoint}`;
+        url.pathname = newPath;
+        
+        console.log(`Middleware rewrote URL from ${request.nextUrl.pathname} to ${newPath}`);
+        return NextResponse.rewrite(url);
+      }
+    }
+
     return NextResponse.next();
   } catch (error) {
     // Global error handler for middleware

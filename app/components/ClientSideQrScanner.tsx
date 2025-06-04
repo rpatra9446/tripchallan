@@ -247,7 +247,7 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
     };
 
     // Function to capture a frame from the video as an image
-    const captureFrame = (decodedText: string) => {
+    const captureFrame = async (decodedText: string) => {
       try {
         console.log('Attempting to capture frame from video...');
         if (!videoRef.current) {
@@ -275,9 +275,11 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
         const video = videoRef.current;
         const canvas = canvasRef.current;
         
-        // Set canvas dimensions to match video
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Set canvas dimensions to match video but reduce size to improve performance
+        // Use smaller dimensions for better performance and reduced file size
+        const scaleFactor = 0.8; // 80% of original size
+        canvas.width = video.videoWidth * scaleFactor;
+        canvas.height = video.videoHeight * scaleFactor;
         console.log(`Canvas dimensions set to ${canvas.width}x${canvas.height}`);
         
         // Draw the current video frame to the canvas
@@ -285,18 +287,22 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
         if (ctx) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           
-          // Convert canvas to blob
+          // Convert canvas to blob with reduced quality for smaller file size
           canvas.toBlob((blob) => {
             if (blob && onScanWithImage) {
               // Create a file from the blob
               const imageFile = new File([blob], `qr-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
               console.log('Image captured successfully, size:', blob.size);
+              
+              // Use a consistent, lower quality setting
+              const lowerQualityJpeg = 0.6; // 60% quality
+              
               onScanWithImage(decodedText, imageFile);
             } else if (onScan) {
               console.log('No blob created or onScanWithImage not provided, falling back to onScan');
               onScan(decodedText);
             }
-          }, 'image/jpeg', 0.8);
+          }, 'image/jpeg', 0.6); // Use 60% JPEG quality for better compression
         } else if (onScan) {
           console.error('Could not get canvas context');
           onScan(decodedText);
