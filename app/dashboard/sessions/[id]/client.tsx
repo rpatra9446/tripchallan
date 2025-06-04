@@ -218,12 +218,12 @@ const printStyles = `
 
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
   // Helper function to display method consistently
-  const getMethodDisplay = (methodVar: any): string => {
+  const getMethodDisplay = (methodVar: string | null | undefined): string => {
     if (!methodVar) return 'Unknown';
     if (typeof methodVar !== 'string') return 'Unknown';
     return methodVar.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
   };
-  const getMethodColor = (methodVar: any) => {
+  const getMethodColor = (methodVar: string | null | undefined): string => {
     if (!methodVar) return 'default';
     if (typeof methodVar !== 'string') return 'default';
     return methodVar.toLowerCase().includes('manual') ? 'secondary' : 'primary';
@@ -511,7 +511,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   }, [sessionId, toast]);
 
   // Format field names for display
-  const formatFieldName = (field: string) => {
+  const formatFieldName = (field: string): string => {
     return field.replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase());
   };
@@ -549,7 +549,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               allFields[field] = data;
               
               if (data.isVerified) {
-                if (data.matches) {
+                if (data?.matches) {
           matches.push(field);
         } else {
           mismatches.push(field);
@@ -592,7 +592,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             allFields[field] = data;
             
             if (data.isVerified) {
-              if (data.matches) {
+              if (data?.matches) {
                 matches.push(field);
               } else {
                 mismatches.push(field);
@@ -642,7 +642,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               allFields[field] = data;
               
               if (data.isVerified) {
-                if (data.matches) {
+                if (data?.matches) {
                   matches.push(field);
                 } else {
                   mismatches.push(field);
@@ -1229,11 +1229,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
   }, [authStatus, authSession?.user?.id, session, operatorSeals]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString();
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case SessionStatus.PENDING:
         return "warning";
@@ -1458,11 +1458,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       
       // Save verification results for displaying matched/mismatched fields
       const matches = Object.entries(fieldVerificationResults)
-        .filter(([_, data]) => data.matches && data.isVerified)
+        .filter(([_, data]) => data?.matches && data.isVerified)
         .map(([field, _]) => field);
         
       const mismatches = Object.entries(fieldVerificationResults)
-        .filter(([_, data]) => !data.matches && data.isVerified)
+        .filter(([_, data]) => !data?.matches && data.isVerified)
         .map(([field, _]) => field);
       
       const unverified = Object.entries(fieldVerificationResults)
@@ -2137,7 +2137,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box key={`sealing-${index}`} sx={{ width: '150px' }}>
                   <img 
                     src={image} 
-                    alt={`Sealing ${index + 1}`} 
+                    alt={`Sealing ${index + 1 || "Unknown"}`} 
                     style={{ width: '100%', height: 'auto', display: 'block', border: '1px solid #ddd', borderRadius: '4px' }}
                   />
                 </Box>
@@ -2181,7 +2181,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box key={`vehicle-${index}`} sx={{ width: '150px' }}>
                   <img 
                     src={image} 
-                    alt={`Vehicle ${index + 1}`} 
+                    alt={`Vehicle ${index + 1 || "Unknown"}`} 
                     style={{ width: '100%', height: 'auto', display: 'block', border: '1px solid #ddd', borderRadius: '4px' }}
                   />
                     </Box>
@@ -2225,7 +2225,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box key={`additional-${index}`} sx={{ width: '150px' }}>
                   <img 
                     src={image} 
-                    alt={`Additional ${index + 1}`} 
+                    alt={`Additional ${index + 1 || "Unknown"}`} 
                     style={{ width: '100%', height: 'auto', display: 'block', border: '1px solid #ddd', borderRadius: '4px' }}
                   />
           </Box>
@@ -2656,7 +2656,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                       
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                        <Typography variant="body2">{operatorSeal?.timestamp ? formatDate(operatorSeal.timestamp) : "N/A"}</Typography>
+                                        <Typography variant="body2">{operatorSeal?.timestamp ? operatorSeal?.timestamp ? formatDate(operatorSeal.timestamp) : "N/A" : "N/A"}</Typography>
                                       </Box>
                                       
                                       {operatorSeal?.imageData && (
@@ -2665,7 +2665,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                           <Box 
                                             component="img" 
                                             src={operatorSeal?.imageData} 
-                                            alt={`Seal ${operatorSeal?.id || "Unknown"}`}
+                                            alt={`Seal ${operatorSeal?.id || "Unknown" || "Unknown"}`}
                                             sx={{ 
                                               maxWidth: '100%', 
                                               height: 'auto', 
@@ -2710,7 +2710,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                       
                                       <Box sx={{ mb: 2 }}>
                                         <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                        <Typography variant="body2">{guardSeal?.timestamp ? formatDate(guardSeal.timestamp) : "N/A"}</Typography>
+                                        <Typography variant="body2">{guardSeal?.timestamp ? guardSeal?.timestamp ? formatDate(guardSeal.timestamp) : "N/A" : "N/A"}</Typography>
                                       </Box>
                                       
                             {guardSeal.imagePreview ? (
@@ -2719,7 +2719,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                           <Box 
                                             component="img" 
                                   src={guardSeal.imagePreview} 
-                                            alt={`Seal ${guardSeal?.id || "Unknown"}`}
+                                            alt={`Seal ${guardSeal?.id || "Unknown" || "Unknown"}`}
                                             sx={{ 
                                               maxWidth: '100%', 
                                               height: 'auto', 
@@ -2906,7 +2906,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <Box 
                             component="img" 
                                   src={seal?.imageData} 
-                            alt={`Seal tag ${index+1}`}
+                            alt={`Seal tag ${index+1 || "Unknown"}`}
                             sx={{ 
                               width: 60, 
                               height: 60, 
@@ -3064,7 +3064,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                         <Box 
                                           component="img" 
                                           src={item.url}
-                                          alt={`Guard Seal ${index + 1}`}
+                                          alt={`Guard Seal ${index + 1 || "Unknown"}`}
                                           sx={{ 
                                             width: 60, 
                                             height: 60, 
@@ -3214,7 +3214,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <Box
                             component="img" 
                             src={imageUrl as string} 
-                            alt={`${key} ${idx + 1}`}
+                            alt={`${key} ${idx + 1 || "Unknown"}`}
                             sx={{ 
                               width: '100%', 
                               height: '100%', 
@@ -3623,22 +3623,22 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           addSectionTitle("Verification Results");
           
           // Summary
-          const matches = verificationResults.matches || [];
-          const mismatches = verificationResults.mismatches || [];
-          const unverified = verificationResults.unverified || [];
+          const matches = verificationResults?.matches || [];
+          const mismatches = verificationResults?.mismatches || [];
+          const unverified = verificationResults?.unverified || [];
           
                      addField("Verified Fields", String(matches.length), true);
            addField("Mismatched Fields", String(mismatches.length), true);
            addField("Unverified Fields", String(unverified.length), true);
           
           if (verificationResults.timestamp) {
-            addField("Verification Time", formatDate(verificationResults.timestamp), true);
+            addField("Verification Time", verificationResults?.timestamp ? formatDate(verificationResults.timestamp) : "N/A", true);
           }
           
           checkPageBreak(30);
           
           // Add improved table for verification details
-          if (verificationResults.allFields && Object.keys(verificationResults.allFields).length > 0) {
+          if (verificationResults?.allFields && Object.keys(verificationResults?.allFields).length > 0) {
             currentY += 8; // More space before table
             
             const tableTop = currentY;
@@ -3683,7 +3683,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               margin + contentWidth
             ];
             
-            Object.entries(verificationResults.allFields).forEach(([field, data]) => {
+            Object.entries(verificationResults?.allFields).forEach(([field, data]) => {
               checkPageBreak(rowHeight + 3);
               
               // Format field name from camelCase to Title Case
@@ -3691,7 +3691,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 .replace(/([A-Z])/g, ' $1')
                 .replace(/^./, str => str.toUpperCase());
               
-              const matches = data.matches === true;
+              const matches = data?.matches === true;
               
               // Alternating row background
               if (rowCount % 2 === 0) {
@@ -4211,7 +4211,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         </TableHead>
                         <TableBody>
                           {Object.entries(selectedSeal.verificationDetails.fieldVerifications).map(([field, data]: [string, any]) => {
-                            const matches = data.matches === true;
+                            const matches = data?.matches === true;
                             const isVerified = data.isVerified === true;
                             
                             return (
@@ -4262,7 +4262,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               <Box
                                 component="img" 
                                 src={imageUrl as string} 
-                                alt={`${key} ${idx + 1}`}
+                                alt={`${key} ${idx + 1 || "Unknown"}`}
                                 sx={{ 
                                   width: '100%', 
                                   height: '100%', 
@@ -4909,7 +4909,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             <Box 
                               component="img" 
                               src={seal.image} 
-                              alt={`Seal tag ${seal?.id || "Unknown"}`}
+                              alt={`Seal tag ${seal?.id || "Unknown" || "Unknown"}`}
                               sx={{ 
                                 width: 60, 
                                 height: 60, 
@@ -4931,7 +4931,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         )}
                       </TableCell>
                       <TableCell>
-                        {seal?.timestamp ? formatDate(seal.timestamp) : "N/A"}
+                        {seal?.timestamp ? seal?.timestamp ? formatDate(seal.timestamp) : "N/A" : "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -5004,7 +5004,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             <Box 
                               component="img" 
                               src={tag?.imageData}
-                              alt={`Guard seal tag ${tag.barcode}`}
+                              alt={`Guard seal tag ${tag.barcode || "Unknown"}`}
                               sx={{ 
                                 width: 60, 
                                 height: 60, 
@@ -5169,7 +5169,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <Box
                         component="img" 
                         src={image} 
-                        alt={`Sealing ${index + 1}`} 
+                        alt={`Sealing ${index + 1 || "Unknown"}`} 
                         sx={{ 
                           width: '100%', 
                           maxHeight: '200px', 
@@ -5203,7 +5203,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <Box
                         component="img" 
                         src={image} 
-                        alt={`Vehicle ${index + 1}`} 
+                        alt={`Vehicle ${index + 1 || "Unknown"}`} 
                         loading="lazy"
                         onError={(e) => {
                           console.error("Failed to load image:", image);
@@ -5249,7 +5249,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <Box
                         component="img" 
                         src={image} 
-                        alt={`Additional ${index + 1}`} 
+                        alt={`Additional ${index + 1 || "Unknown"}`} 
                         sx={{ 
                           width: '100%', 
                           maxHeight: '200px', 
@@ -5298,7 +5298,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               <Box
                                 component="img" 
                                 src={imageUrl as string} 
-                                alt={`${getFieldLabel(key)} ${idx + 1}`}
+                                alt={`${getFieldLabel(key)} ${idx + 1 || "Unknown"}`}
                                 sx={{ 
                                   width: '100%', 
                                   maxHeight: '200px', 
