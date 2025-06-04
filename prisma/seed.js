@@ -73,6 +73,8 @@ async function main() {
       },
     });
 
+    console.log(`Found ${superAdminCount} existing SuperAdmin users`);
+
     if (superAdminCount === 0) {
       console.log('No SuperAdmin found, creating one...');
       // Create initial SuperAdmin user

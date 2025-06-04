@@ -177,6 +177,11 @@ export default function DashboardLayout({
     }
   }, [currentPath]);
 
+  const handleProfileClick = () => {
+    handleMenuClose();
+    router.push('/dashboard/profile');
+  };
+
   const renderMenu = (
     <Menu
       anchorEl={anchorEl}
@@ -185,7 +190,7 @@ export default function DashboardLayout({
       transformOrigin={{ horizontal: "right", vertical: "top" }}
       anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
     >
-      <MenuItem onClick={handleMenuClose}>
+      <MenuItem onClick={handleProfileClick}>
         <ListItemIcon>
           <AccountCircle fontSize="small" />
         </ListItemIcon>
@@ -328,6 +333,15 @@ export default function DashboardLayout({
               )}
               
               <Divider />
+              
+              <ListItem disablePadding>
+                <ListItemButton component={Link} href="/dashboard/profile">
+                  <ListItemIcon>
+                    <AccountCircle />
+                  </ListItemIcon>
+                  <ListItemText primary="My Profile" />
+                </ListItemButton>
+              </ListItem>
               
               <ListItem disablePadding>
                 <ListItemButton onClick={handleLogout}>
