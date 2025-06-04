@@ -687,6 +687,45 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       });
     }
     
+    // Check if verification data contains GUARD's scan of OPERATOR method
+    if (session?.seal?.verificationData?.guardScannedSeals) {
+      const guardScannedSeals = session.seal.verificationData.guardScannedSeals;
+      console.log("[DEBUG] Found guardScannedSeals in verification data:", guardScannedSeals);
+      
+      // Update method from guard verification if available
+      guardScannedSeals.forEach((guardSeal: any) => {
+        if (guardSeal.id && sealTagsMap.has(guardSeal.id)) {
+          const existing = sealTagsMap.get(guardSeal.id);
+          if (existing) {
+            console.log(`[DEBUG] Using method from guard verification for ${guardSeal.id}: ${guardSeal.method}`);
+            existing.method = guardSeal.method;
+          }
+        }
+      });
+    }
+    
+    // If verification data exists, check if it has method information
+    if (session?.seal?.verificationData?.sealTags) {
+      const verificationSealTags = session.seal.verificationData.sealTags;
+      // Update the method information from guard verification data if available
+      Object.keys(verificationSealTags).forEach(key => {
+        const tag = verificationSealTags[key];
+        if (tag && tag.barcode && tag.method) {
+          if (sealTagsMap.has(tag.barcode)) {
+            // Update the method if it exists
+            const existing = sealTagsMap.get(tag.barcode);
+            if (existing) {
+              sealTagsMap.set(tag.barcode, {
+                ...existing,
+                method: tag.method
+              });
+              console.log(`[DEBUG] Updated method for ${tag.barcode} from verification data: ${tag.method}`);
+            }
+          }
+        }
+      });
+    }
+    
     // Next, create a map of all seal tags from sessionSeals for image data
     const sessionSealsMap = new Map<string, string | null>();
     
@@ -864,7 +903,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
     // Add to scanned seals
     const newSeal = {
-      id: trimmedData,
+      id: trimmedSealId,
       method: scanMethod,
       image: null,
       imagePreview: null,
@@ -2296,26 +2335,49 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     const base64Image = reader.result as string;
                     
                     try {
+                      console.log(`[Client] Scan data processed, length: ${data.length}`);
+                      
+                      // Store the trimmed data for reference
+                      const trimmedData = data.trim();
+                      
                       // Compress image if it's too large
                       let compressedImageData = base64Image;
                       if (base64Image.length > 1000000) { // 1MB
-                        console.log('Image is large, compressing...');
+                        console.log('[Client] Image is large, compressing...');
                         compressedImageData = await compressImage(base64Image, 0.6); // Compress to 60% quality
-                        console.log(`Compressed image from ${base64Image.length} to ${compressedImageData.length} bytes`);
+                        console.log(`[Client] Compressed image from ${base64Image.length} to ${compressedImageData.length} bytes`);
                       }
                       
-                      // Upload the guard seal tag directly to the server - ensure relative URL is used
-                      // Avoid using window.location.origin as it causes domain mismatch when deployed
-                      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
-                      console.log('Posting to API URL:', apiUrl);
+                      // More aggressive compression if still too large
+                      if (compressedImageData.length > 800000) { // 800KB
+                        console.log('[Client] Image still large, compressing further...');
+                        compressedImageData = await compressImage(compressedImageData, 0.4); // Compress to 40% quality
+                        console.log(`[Client] Further compressed image to ${compressedImageData.length} bytes`);
+                      }
                       
+                      // Maximum compression for very large images
+                      if (compressedImageData.length > 500000) { // 500KB
+                        console.log('[Client] Image size critical, applying maximum compression...');
+                        compressedImageData = await compressImage(compressedImageData, 0.2); // Compress to 20% quality
+                        console.log(`[Client] Maximum compressed image to ${compressedImageData.length} bytes`);
+                      }
+                      
+                      // Handle potential CORS issues by using same-origin policy
+                      // Construct URL without using window.location to avoid cross-origin issues
+                      // Force using relative URL by starting with /
+                      const apiUrl = `/api/sessions/${sessionId}/guardSealTags`;
+                      console.log(`[Client] Posting to API URL: ${apiUrl} with barcode: ${trimmedData}`);
+                      
+                      // Use same-origin fetch with explicit cors mode
                       const response = await fetch(apiUrl, {
                         method: 'POST',
+                        credentials: 'same-origin',
+                        mode: 'same-origin',
                         headers: {
                           'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                          barcode: data.trim(), // Use data from the scan parameter
+                          barcode: trimmedData,
                           method: 'digital',
                           imageData: compressedImageData
                         }),
@@ -3884,6 +3946,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <TableCell>No.</TableCell>
                     <TableCell>Barcode/ID</TableCell>
                     <TableCell>Type</TableCell>
+                    <TableCell>Method</TableCell>
                     <TableCell>Created At</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Verified By</TableCell>
@@ -3932,6 +3995,19 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             label={seal.type === 'system' ? 'System' : 'Verification'} 
                             color={seal.type === 'system' ? 'primary' : 'secondary'}
                           />
+                        </TableCell>
+                        <TableCell>
+                          {seal.method && (
+                            <Chip 
+                              size="small" 
+                              label={seal.method && typeof seal.method === 'string' && 
+                                     seal.method.toLowerCase().includes('manual') ? 
+                                     'Manually Entered' : 'Digitally Scanned'}
+                              color={seal.method && typeof seal.method === 'string' && 
+                                     seal.method.toLowerCase().includes('manual') ? 
+                                     'secondary' : 'primary'} 
+                            />
+                          )}
                         </TableCell>
                         <TableCell>{formatDate(seal.createdAt)}</TableCell>
                         <TableCell>
@@ -4849,8 +4925,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={seal.method === 'digital' ? 'Scanned' : 'Manual'} 
-                          color={seal.method === 'digital' ? 'info' : 'default'}
+                          label={seal.method && typeof seal.method === 'string' && 
+                                 seal.method.toLowerCase().includes('manual') ? 
+                                 'Manually Entered' : 'Digitally Scanned'}
+                          color={seal.method && typeof seal.method === 'string' && 
+                                 seal.method.toLowerCase().includes('manual') ? 
+                                 'secondary' : 'primary'} 
                         />
                       </TableCell>
                       <TableCell>
@@ -4940,8 +5020,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>
                         <Chip 
                           size="small" 
-                          label={tag.method === 'digital' ? 'Scanned' : 'Manual'} 
-                          color={tag.method === 'digital' ? 'info' : 'default'}
+                          label={tag.method && typeof tag.method === 'string' && 
+                                 tag.method.toLowerCase().includes('manual') ? 
+                                 'Manually Entered' : 'Digitally Scanned'}
+                          color={tag.method && typeof tag.method === 'string' && 
+                                 tag.method.toLowerCase().includes('manual') ? 
+                                 'secondary' : 'primary'} 
                         />
                       </TableCell>
                       <TableCell>
@@ -4961,8 +5045,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               }}
                               onClick={() => {
                                 // Open image in modal
-                                setSelectedImage(tag.imageData);
-                                setOpenImageModal(true);
+                                if (tag.imageData) {
+                                  setSelectedImage(tag.imageData);
+                                  setOpenImageModal(true);
+                                }
                               }}
                             />
                           </Tooltip>
