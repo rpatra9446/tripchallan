@@ -223,7 +223,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     if (typeof methodVar !== 'string') return 'Unknown';
     return methodVar.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
   };
-  const getMethodColor = (methodVar: string | null | undefined): string => {
+  const getMethodColor = (methodVar: string | null | undefined): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     if (!methodVar) return 'default';
     if (typeof methodVar !== 'string') return 'default';
     return methodVar.toLowerCase().includes('manual') ? 'secondary' : 'primary';
@@ -1233,16 +1233,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     return new Date(dateString).toLocaleString();
   };
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case SessionStatus.PENDING:
-        return "warning";
-      case SessionStatus.IN_PROGRESS:
-        return "info";
-      case SessionStatus.COMPLETED:
-        return "success";
+  const getStatusColor = (status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+        return 'success';
+      case 'in_transit':
+      case 'in transit':
+        return 'primary';
+      case 'pending':
+        return 'warning';
+      case 'cancelled':
+        return 'error';
+      case 'verified':
+        return 'info';
       default:
-        return "default";
+        return 'default';
     }
   };
 
