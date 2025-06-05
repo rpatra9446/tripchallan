@@ -844,9 +844,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
       {/* Session Details */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Session Details
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5">
+            Session Details
+          </Typography>
+          <Chip 
+            label={session.status.replace('_', ' ')}
+            color={getStatusColor(session.status)}
+            sx={{ fontWeight: 'bold' }}
+          />
+        </Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
           <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -894,15 +901,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Typography variant="body1">
                 <strong>Created By:</strong> {session.createdBy?.name || 'N/A'}
               </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Chip 
-                label={session.status.replace('_', ' ')}
-                color={getStatusColor(session.status)}
-                sx={{ fontWeight: 'bold' }}
-              />
             </Box>
           </Box>
           <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
