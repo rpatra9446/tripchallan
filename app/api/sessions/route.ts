@@ -883,15 +883,29 @@ export const POST = withAuth(
                 },
                 // Create SealTag records for each seal tag
                 sealTags: {
-                  create: sealTagIds.map((tagId: string) => ({
-                    barcode: tagId,
-                    method: sealTagMethods[tagId] || 'digitally scanned',
-                    // Store image URL - can be updated later when images are processed
-                    imageUrl: null,
-                    // Add operator information
-                    scannedById: userId as string,
-                    scannedByName: session?.user?.name || 'Unknown Operator'
-                  }))
+                  create: sealTagIds.map((tagId: string) => {
+                    // Check if we have a timestamp for this tag
+                    let createdAt = undefined;
+                    if (sealTagTimestamps && sealTagTimestamps[tagId]) {
+                      try {
+                        createdAt = new Date(sealTagTimestamps[tagId]);
+                      } catch (e) {
+                        console.error(`Invalid timestamp format for seal tag ${tagId}:`, e);
+                      }
+                    }
+                    
+                    return {
+                      barcode: tagId,
+                      method: sealTagMethods[tagId] || 'digitally scanned',
+                      // Store image URL - can be updated later when images are processed
+                      imageUrl: null,
+                      // Add operator information
+                      scannedById: userId as string,
+                      scannedByName: session?.user?.name || 'Unknown Operator',
+                      // Use the individual timestamp if available
+                      ...(createdAt ? { createdAt } : {})
+                    };
+                  })
                 }
               },
               include: {

@@ -182,13 +182,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         if (data.sealTags && Array.isArray(data.sealTags)) {
           setOperatorSeals(data.sealTags.map((tag: any) => ({ id: tag.barcode })));
           
-          // Check if any seal tags have missing images
+          // Check for issues that need fixing
+          let needsReload = false;
+          
+          // 1. Check for missing images
           const hasMissingImages = data.sealTags.some((tag: any) => 
             (!tag.imageUrl && !tag.imageData) || 
             (tag.imageUrl === null && tag.imageData === null)
           );
           
-          // If seal tags are missing images, try to fix them
+          // 2. Check for identical timestamps
+          const timestamps = data.sealTags.map((tag: any) => new Date(tag.createdAt).getTime());
+          const uniqueTimestamps = new Set(timestamps);
+          const hasIdenticalTimestamps = uniqueTimestamps.size === 1 && data.sealTags.length > 1;
+          
+          // Fix missing images if needed
           if (hasMissingImages) {
             console.log("Detected missing seal tag images, attempting to fix...");
             try {
@@ -196,18 +204,40 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               if (fixResponse.ok) {
                 const fixResult = await fixResponse.json();
                 console.log("Fix seal images result:", fixResult);
-                
                 if (fixResult.fixed > 0) {
-                  // Refresh the session data to get the updated seal tags
-                  const refreshResponse = await fetch(`/api/sessions/${sessionId}`);
-                  if (refreshResponse.ok) {
-                    const refreshedData = await refreshResponse.json();
-                    setSession(refreshedData);
-                  }
+                  needsReload = true;
                 }
               }
             } catch (fixError) {
               console.error("Failed to fix seal tag images:", fixError);
+            }
+          }
+          
+          // Fix identical timestamps if needed
+          if (hasIdenticalTimestamps) {
+            console.log('Detected identical timestamps for all seal tags. Attempting to fix...');
+            try {
+              const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-seal-timestamps`);
+              if (fixResponse.ok) {
+                const fixResult = await fixResponse.json();
+                console.log('Fix seal timestamps result:', fixResult);
+                if (fixResult.fixed > 0) {
+                  needsReload = true;
+                }
+              }
+            } catch (fixError) {
+              console.error('Failed to fix seal tag timestamps:', fixError);
+            }
+          }
+          
+          // Reload session data if any fixes were applied
+          if (needsReload) {
+            console.log('Reloading session data after applying fixes...');
+            const updatedResponse = await fetch(`/api/sessions/${sessionId}`);
+            if (updatedResponse.ok) {
+              const updatedData = await updatedResponse.json();
+              setSession(updatedData);
+              console.log('Session data reloaded with fixes applied');
             }
           }
         }
@@ -215,10 +245,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Fetch guard seal tags
         fetchGuardSealTags();
         
+        setLoading(false);
       } catch (error) {
-        console.error('Error fetching session:', error);
-        setError('Failed to load session data');
-      } finally {
+        console.error('Error fetching session data:', error);
+        setError('Failed to load session details');
         setLoading(false);
       }
     };
