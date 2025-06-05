@@ -33,7 +33,9 @@ import {
   TableRow,
   TextField,
   InputAdornment,
-  IconButton
+  IconButton,
+  Tabs,
+  Tab
 } from "@mui/material";
 
 // Fix for TypeScript errors with Grid
