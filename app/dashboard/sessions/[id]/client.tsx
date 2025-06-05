@@ -644,29 +644,29 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Typography>
             
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
                 <Typography variant="subtitle1">
                   <LocationOn fontSize="small" /> Source: {session?.source}
                 </Typography>
-              </Grid>
+              </Box>
               
-              <Grid item xs={12} md={6}>
+              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
                 <Typography variant="subtitle1">
                   <LocationOn fontSize="small" /> Destination: {session?.destination}
                 </Typography>
-              </Grid>
+              </Box>
               
-              <Grid item xs={12} md={6}>
+              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
                 <Typography variant="subtitle1">
                   <AccessTime fontSize="small" /> Created: {session ? new Date(session.createdAt).toLocaleString() : ''}
                 </Typography>
-              </Grid>
+              </Box>
               
-              <Grid item xs={12} md={6}>
+              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
                 <Typography variant="subtitle1">
                   <BusinessCenter fontSize="small" /> Company: {session?.company?.name || 'N/A'}
                 </Typography>
-              </Grid>
+              </Box>
             </Grid>
           </Paper>
           
