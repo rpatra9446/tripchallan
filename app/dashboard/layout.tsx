@@ -114,7 +114,7 @@ export default function DashboardLayout({
 
   const handleLogout = () => {
     // Use our dedicated logout page with useRouter for better navigation
-    router.push('/logout?callbackUrl=/');
+    window.location.href = '/api/auth/logout?callbackUrl=/';
   };
 
   const toggleDrawer = () => {

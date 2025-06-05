@@ -385,7 +385,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     
     try {
       console.log("Fetching guard verification sessions");
-      const response = await fetch(`/api/sessions/${sessionId}/guard-seals`);
+      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch guard seal tags: ${response.status}`);
@@ -488,7 +488,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       const isVerified = operatorSeals.some(seal => seal.id === trimmedData);
       
       // Save the seal tag to the backend
-      const response = await fetch(`/api/sessions/${sessionId}/guard-seals`, {
+      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
