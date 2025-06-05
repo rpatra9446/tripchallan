@@ -3835,12 +3835,117 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                                             <Chip
                                               label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
                                               color="primary"
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* Comment Section */}
-      <CommentSection sessionId={sessionId} />
-    </Container>
-  );
-} 
+                                              variant="outlined"
+                                            />
+                                            
+                                            <Chip 
+                                              icon={<CheckCircle fontSize="small" />}
+                                              label={`${sealComparison.matched.length} Matched`}
+                                              color="success" 
+                                              variant="outlined"
+                                            />
+                                            
+                                            {sealComparison.mismatched.length > 0 && (
+                                              <Chip 
+                                                icon={<Warning fontSize="small" />}
+                                                label={`${sealComparison.mismatched.length} Not Scanned`}
+                                                color="warning" 
+                                                variant="outlined"
+                                              />
+                                            )}
+                                          </Box>
+                                        </Box>
+                                        
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                                          <Button
+                                            variant="outlined"
+                                            onClick={() => setActiveTab(0)}
+                                          >
+                                            Back: Trip Details
+                                          </Button>
+                                          
+                                          <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={() => setActiveTab(2)}
+                                          >
+                                            Next: Images
+                                          </Button>
+                                        </Box>
+                                      </Box>
+                                    )}
+                                    
+                                    {/* Images Tab */}
+                                    {activeTab === 2 && (
+                                      <Box sx={{ p: 3 }}>
+                                        <Typography variant="h6" gutterBottom>
+                                          Image Verification
+                                        </Typography>
+                                        
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                                          <Button
+                                            variant="outlined"
+                                            onClick={() => setActiveTab(1)}
+                                          >
+                                            Back: Seal Tags
+                                          </Button>
+                                          
+                                          <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={handleVerifySeal}
+                                            disabled={verifying}
+                                          >
+                                            Complete Verification
+                                          </Button>
+                                        </Box>
+                                      </Box>
+                                    )}
+                                  </Paper>
+                                </>
+                              ) : (
+                                // Regular UI for non-GUARD users or GUARD users not in verification mode
+                                <>
+                                  {/* Regular Session UI */}
+                                  <Paper sx={{ p: 3, mb: 3 }}>
+                                    <Typography variant="h5" gutterBottom>
+                                      Session Details
+                                    </Typography>
+                                    {/* ... Regular session details ... */}
+                                  </Paper>
+                                </>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* Image Modal - Used by all views */}
+                          <Dialog
+                            open={openImageModal}
+                            onClose={() => setOpenImageModal(false)}
+                            maxWidth="lg"
+                          >
+                            <DialogContent sx={{ p: 1 }}>
+                              {selectedImage && (
+                                <Box
+                                  component="img"
+                                  src={selectedImage}
+                                  alt="Full size"
+                                  sx={{
+                                    maxWidth: '100%',
+                                    maxHeight: '80vh',
+                                    display: 'block',
+                                    margin: '0 auto',
+                                  }}
+                                />
+                              )}
+                            </DialogContent>
+                            <DialogActions>
+                              <Button onClick={() => setOpenImageModal(false)}>Close</Button>
+                            </DialogActions>
+                          </Dialog>
+                          
+                          {/* Comment Section */}
+                          <CommentSection sessionId={sessionId} />
+                        </Container>
+                      );
+                    }
