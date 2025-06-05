@@ -798,6 +798,59 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       doc.text(`Source: ${session.source}`, leftMargin, yPos); yPos += 6;
       doc.text(`Destination: ${session.destination}`, leftMargin, yPos); yPos += 10;
       
+      // Function to add an image to PDF
+      const addImageToPdf = async (imageUrl: string, title: string) => {
+        if (!imageUrl) return;
+        
+        try {
+          addNewPageIfNeeded(70);
+          
+          // Add image title
+          doc.setFontSize(10);
+          doc.text(title, leftMargin, yPos);
+          yPos += 5;
+          
+          // Create a temporary image element to load the image
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          
+          // Wait for image to load
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = imageUrl;
+          });
+          
+          // Calculate image dimensions to fit in PDF
+          const maxWidth = 120;
+          const maxHeight = 60;
+          
+          let imgWidth = img.width;
+          let imgHeight = img.height;
+          
+          if (imgWidth > maxWidth) {
+            const ratio = maxWidth / imgWidth;
+            imgWidth = maxWidth;
+            imgHeight = imgHeight * ratio;
+          }
+          
+          if (imgHeight > maxHeight) {
+            const ratio = maxHeight / imgHeight;
+            imgHeight = maxHeight;
+            imgWidth = imgWidth * ratio;
+          }
+          
+          // Add image to PDF
+          doc.addImage(img, 'JPEG', leftMargin, yPos, imgWidth, imgHeight);
+          yPos += imgHeight + 10;
+          
+        } catch (error) {
+          console.error(`Error adding image to PDF: ${title}`, error);
+          doc.text(`[Error loading image: ${title}]`, leftMargin, yPos);
+          yPos += 10;
+        }
+      };
+      
       // Add trip details section
       if (session.tripDetails) {
         addNewPageIfNeeded(60);
@@ -864,60 +917,24 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         
         // Update yPos using the current autoTable object
         yPos = (doc as any).lastAutoTable.finalY + 10;
-      }
-      
-      // Function to add an image to PDF
-      const addImageToPdf = async (imageUrl: string, title: string) => {
-        if (!imageUrl) return;
         
-        try {
-          addNewPageIfNeeded(70);
-          
-          // Add image title
-          doc.setFontSize(10);
-          doc.text(title, leftMargin, yPos);
-          yPos += 5;
-          
-          // Create a temporary image element to load the image
-          const img = new Image();
-          img.crossOrigin = 'Anonymous';
-          
-          // Wait for image to load
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = imageUrl;
-          });
-          
-          // Calculate image dimensions to fit in PDF
-          const maxWidth = 120;
-          const maxHeight = 60;
-          
-          let imgWidth = img.width;
-          let imgHeight = img.height;
-          
-          if (imgWidth > maxWidth) {
-            const ratio = maxWidth / imgWidth;
-            imgWidth = maxWidth;
-            imgHeight = imgHeight * ratio;
+        // Add seal tag images
+        addNewPageIfNeeded(20);
+        doc.setFontSize(12);
+        doc.text('Seal Tag Images', leftMargin, yPos);
+        yPos += 8;
+        
+        // Process seal tag images
+        for (let i = 0; i < session.sealTags.length; i++) {
+          const tag = session.sealTags[i];
+          if (tag.imageUrl || tag.imageData) {
+            await addImageToPdf(
+              tag.imageUrl || tag.imageData || '', 
+              `Seal Tag ${i + 1}: ${tag.barcode}`
+            );
           }
-          
-          if (imgHeight > maxHeight) {
-            const ratio = maxHeight / imgHeight;
-            imgHeight = maxHeight;
-            imgWidth = imgWidth * ratio;
-          }
-          
-          // Add image to PDF
-          doc.addImage(img, 'JPEG', leftMargin, yPos, imgWidth, imgHeight);
-          yPos += imgHeight + 10;
-          
-        } catch (error) {
-          console.error(`Error adding image to PDF: ${title}`, error);
-          doc.text(`[Error loading image: ${title}]`, leftMargin, yPos);
-          yPos += 10;
         }
-      };
+      }
       
       // Add images section - vehicle and document images
       if (session.images) {
