@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
-import { UserRole, EmployeeSubrole } from "@/prisma/enums";
+import { UserRole, EmployeeSubrole, ActivityAction } from "@/prisma/enums";
+import { addActivityLog } from "@/lib/activity-logger";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 export async function GET(
   req: NextRequest,
@@ -111,7 +113,7 @@ export async function POST(
       );
     }
     
-    const { barcode, method, imageData } = body;
+    const { barcode, method, imageData, status = "VERIFIED" } = body;
 
     if (!barcode || !method) {
       console.log(`[API] Missing required fields - barcode: ${!!barcode}, method: ${!!method}`);
@@ -142,32 +144,81 @@ export async function POST(
       }, { status: 409 });
     }
 
-    console.log(`[API] Creating guard seal tag with barcode: ${barcode}, method: ${method}`);
+    console.log(`[API] Creating guard seal tag with barcode: ${barcode}, method: ${method}, status: ${status}`);
     console.log(`[API] Image data present: ${imageData ? 'Yes' : 'No'}`);
     if (imageData) {
       console.log(`[API] Image data size: ${typeof imageData === 'string' ? imageData.length : 'not a string'} bytes`);
     }
 
-    // Store directly in imageData field
+    const timestamp = new Date();
+
+    // Use a transaction to ensure we save everything together
     try {
-      const guardSealTag = await prisma.guardSealTag.create({
-        data: {
-          barcode,
-          method,
-          sessionId,
-          verifiedById: user.id,
-          status: "VERIFIED",
-          imageData: imageData // Store base64 image directly
-        },
-        include: {
-          verifiedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+      // Store directly in imageData field
+      const guardSealTag = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // 1. Create the GuardSealTag record
+        const tag = await tx.guardSealTag.create({
+          data: {
+            barcode,
+            method,
+            sessionId,
+            verifiedById: user.id,
+            status,
+            imageData: imageData, // Store base64 image directly
+            createdAt: timestamp
+          },
+          include: {
+            verifiedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
             }
           }
+        });
+
+        // 2. Create ActivityLog entry for verification details
+        await addActivityLog({
+          userId: user.id,
+          action: ActivityAction.UPDATE,
+          targetResourceId: sessionId,
+          targetResourceType: "session",
+          details: {
+            verification: {
+              guardSealTagData: {
+                sealTagIds: [barcode],
+                sealTagMethods: { [barcode]: method },
+                sealTagTimestamps: { [barcode]: timestamp.toISOString() },
+                sealTagStatuses: { [barcode]: status }
+              }
+            }
+          }
+        });
+
+        // 3. Create ActivityLog entry for image data (if provided)
+        if (imageData) {
+          await addActivityLog({
+            userId: user.id,
+            action: ActivityAction.UPDATE,
+            targetResourceId: sessionId,
+            targetResourceType: "session",
+            details: {
+              guardImageBase64Data: {
+                sealTagImages: {
+                  [barcode]: {
+                    data: imageData.replace(/^data:image\/\w+;base64,/, ''), // Strip the prefix
+                    contentType: imageData.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg',
+                    name: `guard-seal-tag-${barcode}.jpg`,
+                    method
+                  }
+                }
+              }
+            }
+          });
         }
+
+        return tag;
       });
 
       console.log(`[API] Guard seal tag created successfully with ID: ${guardSealTag.id}`);

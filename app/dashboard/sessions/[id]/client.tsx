@@ -230,6 +230,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             }
           }
           
+          // Check guard seal tags if they exist
+          if (data.guardSealTags && Array.isArray(data.guardSealTags) && data.guardSealTags.length > 0) {
+            console.log("Processing guard seal tags:", data.guardSealTags.length);
+            
+            // 1. Check for missing guard images
+            const hasMissingGuardImages = data.guardSealTags.some((tag: any) => 
+              (!tag.imageUrl && !tag.imageData) || 
+              (tag.imageUrl === null && tag.imageData === null)
+            );
+            
+            // 2. Check for identical timestamps in guard tags
+            const guardTimestamps = data.guardSealTags.map((tag: any) => new Date(tag.createdAt).getTime());
+            const uniqueGuardTimestamps = new Set(guardTimestamps);
+            const hasIdenticalGuardTimestamps = uniqueGuardTimestamps.size === 1 && data.guardSealTags.length > 1;
+            
+            // Fix missing guard images if needed
+            if (hasMissingGuardImages) {
+              console.log("Detected missing guard seal tag images, attempting to fix...");
+              try {
+                const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-guard-seal-images`);
+                if (fixResponse.ok) {
+                  const fixResult = await fixResponse.json();
+                  console.log("Fix guard seal images result:", fixResult);
+                  if (fixResult.fixed > 0) {
+                    needsReload = true;
+                  }
+                }
+              } catch (fixError) {
+                console.error("Failed to fix guard seal tag images:", fixError);
+              }
+            }
+            
+            // Fix identical guard timestamps if needed
+            if (hasIdenticalGuardTimestamps) {
+              console.log('Detected identical timestamps for all guard seal tags. Attempting to fix...');
+              try {
+                const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-guard-seal-timestamps`);
+                if (fixResponse.ok) {
+                  const fixResult = await fixResponse.json();
+                  console.log('Fix guard seal timestamps result:', fixResult);
+                  if (fixResult.fixed > 0) {
+                    needsReload = true;
+                  }
+                }
+              } catch (fixError) {
+                console.error('Failed to fix guard seal tag timestamps:', fixError);
+              }
+            }
+          }
+          
           // Reload session data if any fixes were applied
           if (needsReload) {
             console.log('Reloading session data after applying fixes...');
