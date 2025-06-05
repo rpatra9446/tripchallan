@@ -4,42 +4,37 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import React from 'react';
-import { 
-  Container, 
-  Typography, 
-  Box, 
-  Paper, 
-  Divider, 
-  Chip, 
-  CircularProgress, 
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Alert,
-  AlertTitle,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Grid as MuiGrid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  InputAdornment,
-  IconButton,
-  Tabs,
-  Tab
-} from "@mui/material";
-
-// Fix for TypeScript errors with Grid
-const Grid = MuiGrid;
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import LinearProgress from '@mui/material/LinearProgress';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import Grid from '@mui/material/Grid';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Container from '@mui/material/Container';
 
 import { 
   LocationOn, 
@@ -67,7 +62,7 @@ import {
   Scale
 } from "@mui/icons-material";
 import Link from "next/link";
-import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
+import { SessionStatus, EmployeeSubrole, UserRole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
 import toast from "react-hot-toast";
@@ -934,7 +929,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </Box>
             </Box>
             <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              {(userRole === 'ADMIN' || userRole === 'COMPANY' || (userRole === 'EMPLOYEE' && userSubrole === EmployeeSubrole.GUARD)) ? (
+              {((userRole === UserRole.ADMIN) || (userRole === UserRole.COMPANY) || (userRole === UserRole.EMPLOYEE && userSubrole === EmployeeSubrole.GUARD)) ? (
                 <Button
                   variant="contained"
                   color="primary"
@@ -1112,14 +1107,17 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           </Typography>
                         )}
                       </TableCell>
+                      <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-          ) : (
-            <Alert severity="info">No seal tags available</Alert>
-          )}
+          </>
+        ) : (
+          <Alert severity="info">No seal tags available</Alert>
+        )}
         </Paper>
         
         {/* Images Section */}
