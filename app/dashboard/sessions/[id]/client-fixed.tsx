@@ -23,7 +23,8 @@ import {
   LinearProgress,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  Grid
 } from "@mui/material";
 import { 
   LocationOn, 
@@ -37,7 +38,9 @@ import {
   PictureAsPdf,
   TableChart,
   Description,
-  Edit
+  Edit,
+  Person,
+  Phone
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
@@ -94,6 +97,7 @@ type SessionType = {
     loaderMobileNumber?: string;
     loadingSite?: string;
     receiverPartyName?: string;
+    driverLicense?: string;
   };
   images?: {
     gpsImeiPicture?: string;
@@ -150,6 +154,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [sealInput, setSealInput] = useState("");
   const [sealError, setSealError] = useState("");
   const [imageVerificationStatus, setImageVerificationStatus] = useState<{[key: string]: boolean}>({});
+  const [selectedImage, setSelectedImage] = useState("");
+  const [openImageModal, setOpenImageModal] = useState(false);
 
   // Check if user is a guard
   const isGuard = useMemo(() => 
@@ -437,6 +443,64 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Box>
         </Paper>
       )}
+
+      {/* Driver Details Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Driver Details
+        </Typography>
+        
+        {session.tripDetails ? (
+          <Grid container spacing={2}>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Typography variant="subtitle1">
+                <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
+              </Typography>
+            </Box>
+            
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Typography variant="subtitle1">
+                <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
+              </Typography>
+            </Box>
+            
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Typography variant="subtitle1">
+                <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+              </Typography>
+            </Box>
+            
+            {session.images?.driverPicture && (
+              <Box sx={{ width: '100%', p: 1 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  <Person fontSize="small" /> Driver Photo
+                </Typography>
+                <Box 
+                  component="img" 
+                  src={session.images.driverPicture}
+                  alt="Driver Photo"
+                  sx={{ 
+                    maxWidth: '200px', 
+                    maxHeight: '200px',
+                    cursor: 'pointer',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    p: 1
+                  }}
+                  onClick={() => {
+                    setSelectedImage(session.images?.driverPicture || '');
+                    setOpenImageModal(true);
+                  }}
+                />
+              </Box>
+            )}
+          </Grid>
+        ) : (
+          <Alert severity="info">No driver details available</Alert>
+        )}
+      </Paper>
+      
+      {/* Seal Tags Section */}
 
       {/* Report Download Section - Only shown to authorized users */}
       {canAccessReports && (

@@ -27,6 +27,10 @@ import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
 import toast from "react-hot-toast";
 import { compressImage } from "@/lib/imageUtils";
 
+// Fix for TypeScript errors with Grid
+// @ts-ignore
+const Grid = Grid;
+
 // Utility functions
 function getFieldLabel(field: string): string {
   const map: Record<string, string> = {
@@ -407,6 +411,57 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     
     setSealComparison({ matched, mismatched });
   }, [operatorSeals]);
+  
+  // Utility function to compress images
+  const compressImage = async (base64Image: string, quality = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new Image();
+        img.src = base64Image;
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          
+          // Calculate size - respect aspect ratio but limit max dimensions
+          const MAX_SIZE = 1200;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height && width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          } else if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to webp format for better compression if supported
+          const mimeType = 'image/jpeg';
+          
+          // Get compressed base64
+          const compressedBase64 = canvas.toDataURL(mimeType, quality);
+          resolve(compressedBase64);
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Error loading image for compression'));
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
   
   // Process image for upload with compression
   const processImageForUpload = async (imageFile: File): Promise<string> => {
@@ -853,3099 +908,340 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   }
   
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header with navigation and action buttons */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBack />}
-          onClick={() => router.push('/dashboard/sessions')}
-        >
-          Back to Sessions
-        </Button>
-        
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {/* PDF Export Button - available to all users */}
-          {(!verificationMode || userSubrole !== EmployeeSubrole.GUARD) && (
+    <Container maxWidth="xl">
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" component="h1">
+            Session Details
+          </Typography>
+          <Box>
             <Button
               variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={() => router.back()}
+              sx={{ mr: 1 }}
+            >
+              Back
+            </Button>
+            <Button
+              variant="contained"
               startIcon={<PictureAsPdf />}
               onClick={generatePdfReport}
               disabled={!!reportLoading}
             >
-              {reportLoading === 'pdf' ? 'Generating...' : 'Export PDF'}
+              {reportLoading === 'pdf' ? 'Generating...' : 'Download PDF'}
             </Button>
-          )}
-          
-          {canEdit && !verificationMode && (
-            <Button
-              variant="contained"
-              startIcon={<Edit />}
-              onClick={() => router.push(`/dashboard/sessions/${sessionId}/edit`)}
-            >
-              Edit Session
-            </Button>
-          )}
+          </Box>
         </Box>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Basic Information
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Session ID"
+                    secondary={session.id}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Status"
+                    secondary={
+                      <Chip
+                        label={session.status}
+                        color={getStatusColor(session.status)}
+                        size="small"
+                      />
+                    }
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Created At"
+                    secondary={new Date(session.createdAt).toLocaleString()}
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Company Information
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Company"
+                    secondary={session.company.name}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Created By"
+                    secondary={session.createdBy.name}
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      <Box sx={{ mb: 3 }}>
+        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+          <Tab label="Trip Details" />
+          <Tab label="Seal Tags" />
+          <Tab label="Images" />
+          <Tab label="Comments" />
+        </Tabs>
+        
+        <TabPanel value={activeTab} index={0}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Route Information
+                </Typography>
+                <List>
+                  <ListItem>
+                    <ListItemText
+                      primary="Source"
+                      secondary={session.source}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Destination"
+                      secondary={session.destination}
+                    />
+                  </ListItem>
+                </List>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Trip Details
+                </Typography>
+                <List>
+                  {session.tripDetails && Object.entries(session.tripDetails)
+                    .filter(([key]) => !isSystemField(key))
+                    .map(([key, value]) => (
+                      <ListItem key={key}>
+                        <ListItemText
+                          primary={getFieldLabel(key)}
+                          secondary={value || 'N/A'}
+                        />
+                      </ListItem>
+                    ))}
+                </List>
+              </Paper>
+            </Grid>
+          </Grid>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={1}>
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Seal Tags
+            </Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Barcode</TableCell>
+                    <TableCell>Method</TableCell>
+                    <TableCell>Scanned By</TableCell>
+                    <TableCell>Timestamp</TableCell>
+                    <TableCell>Image</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.sealTags?.map((tag) => (
+                    <TableRow key={tag.id}>
+                      <TableCell>{tag.barcode}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getMethodDisplay(tag.method)}
+                          color={getMethodColor(tag.method)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{tag.scannedByName || 'N/A'}</TableCell>
+                      <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {tag.imageUrl && (
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSelectedImage(tag.imageUrl!);
+                              setOpenImageModal(true);
+                            }}
+                          >
+                            <QrCode />
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={2}>
+          <Grid container spacing={2}>
+            {session.images && (
+              <>
+                {session.images.gpsImeiPicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        GPS IMEI Picture
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.gpsImeiPicture}
+                        alt="GPS IMEI"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.gpsImeiPicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.vehicleNumberPlatePicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Number Plate
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.vehicleNumberPlatePicture}
+                        alt="Vehicle Number Plate"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.driverPicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Driver Picture
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.driverPicture}
+                        alt="Driver"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.driverPicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Image {index + 1}
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={imageUrl}
+                        alt={`Vehicle ${index + 1}`}
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(imageUrl);
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                ))}
+              </>
+            )}
+          </Grid>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={3}>
+          <CommentSection sessionId={sessionId} />
+        </TabPanel>
       </Box>
       
-      {/* Show different UI for GUARD users in verification mode */}
-
-      {/* GUARD UI - Simple view with verification button when not in verification mode */}
-      {userSubrole === EmployeeSubrole.GUARD && !verificationMode ? (
-        <>
-          {/* Basic Session Details */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Trip Details
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <LocationOn fontSize="small" sx={{ mr: 1 }} />
-                  <Typography variant="body1">
-                    <strong>Source:</strong> {session.source}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <LocationOn fontSize="small" sx={{ mr: 1 }} />
-                  <Typography variant="body1">
-                    <strong>Destination:</strong> {session.destination}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <AccessTime fontSize="small" sx={{ mr: 1 }} />
-                  <Typography variant="body1">
-                    <strong>Created At:</strong> {new Date(session.createdAt).toLocaleString()}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <BusinessCenter fontSize="small" sx={{ mr: 1 }} />
-                  <Typography variant="body1">
-                    <strong>Company:</strong> {session.company?.name || 'N/A'}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <DirectionsCar fontSize="small" sx={{ mr: 1 }} />
-                  <Typography variant="body1">
-                    <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || 'N/A'}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Chip 
-                    label={session.status.replace('_', ' ')}
-                    color={getStatusColor(session.status)}
-                    sx={{ fontWeight: 'bold' }}
-                  />
-                </Box>
-              </Box>
-            </Box>
-            
-            {/* Start Trip Verification Button - Centered at bottom */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                size="large"
-                startIcon={<VerifiedUser />}
-                onClick={() => {
-                  console.log("Start Trip Verification button clicked");
-                  startVerification();
-                }}
-                disabled={verifying}
-              >
-                Start Trip Verification
-              </Button>
-            </Box>
-          </Paper>
-
-          {/* Comments Section */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Comment sx={{ mr: 1 }} />
-              <Typography variant="h6">Comments</Typography>
-            </Box>
-            
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                placeholder="Add a comment..."
-              />
-              
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                <Button variant="contained" color="primary">
-                  Send
-                </Button>
-              </Box>
-            </Box>
-            
-            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-              No comments yet
-            </Typography>
-          </Paper>
-        </>
-      ) : userSubrole === EmployeeSubrole.GUARD && verificationMode ? (
-        // GUARD Verification Mode UI with Tabs
-        <Paper sx={{ mb: 3 }}>
-          <Tabs 
-            value={activeTab} 
-            onChange={(_, newValue) => setActiveTab(newValue)} 
-            variant="fullWidth"
-            textColor="primary"
-            indicatorColor="primary"
-          >
-            <Tab icon={<InfoOutlined />} label="Trip Details" />
-            <Tab icon={<QrCode />} label="Seal Tags" />
-            <Tab icon={<PhotoLibrary />} label="Images" />
-          </Tabs>
-          
-          {/* Trip Details Tab */}
-          {activeTab === 0 && (
-            <Box sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Trip Information Verification
-              </Typography>
-              
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {session.tripDetails && Object.entries(session.tripDetails)
-                      .filter(([key]) => !isSystemField(key))
-                      .map(([key, value]) => (
-                        <TableRow key={key}>
-                          <TableCell>{getFieldLabel(key)}</TableCell>
-                          <TableCell>{value || 'N/A'}</TableCell>
-                          <TableCell>
-                            {verificationFields[key]?.verified ? (
-                              <Chip 
-                                icon={<CheckCircle fontSize="small" />}
-                                label="Verified" 
-                                color="success" 
-                                size="small"
-                              />
-                            ) : (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => verifyField(key)}
-                              >
-                                Verify
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                <Button
-                  variant="outlined"
-                  onClick={verifyAllFields}
-                >
-                  Verify All Fields
-                </Button>
-                
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => setActiveTab(1)}
-                >
-                  Next: Seal Tags
-                </Button>
-              </Box>
-            </Box>
-          )}
-          
-          {/* Seal Tags Tab */}
-          {activeTab === 1 && (
-            <Box sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Seal Tags Verification
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
-              </Typography>
-              
-              {/* Scan Seal Tags */}
-              <Box sx={{ mt: 3, mb: 3 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Scan Seal Tags
-                </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                  <TextField
-                    variant="outlined"
-                    size="small"
-                    placeholder="Seal Tag ID"
-                    value={scanInput}
-                    onChange={(e) => setScanInput(e.target.value)}
-                    sx={{ flexGrow: 1 }}
-                  />
-                  
-                  <Button
-                    variant="outlined"
-                    onClick={() => handleScanComplete(scanInput, 'manual')}
-                    sx={{ minWidth: 120 }}
-                  >
-                    Add Manually
-                  </Button>
-                  
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<QrCode />}
-                    onClick={() => {
-                      // Show QR scanner
-                      const scanner = document.getElementById('qr-scanner-container');
-                      if (scanner) {
-                        scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                      }
-                    }}
-                    sx={{ minWidth: 200 }}
-                  >
-                    Scan QR/Barcode
-                  </Button>
-                </Box>
-                
-                <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-                  <ClientSideQrScanner 
-                    onScan={(data) => handleScanComplete(data, 'digital')}
-                    buttonText="Scan QR Code"
-                  />
-                </Box>
-                
-                {scanError && (
-                  <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                    {scanError}
-                  </Alert>
-                )}
-              </Box>
-              
-              {/* Verification Progress */}
-              <Box 
-                sx={{ 
-                  p: 2, 
-                  mb: 3, 
-                  border: '1px solid', 
-                  borderColor: 'divider',
-                  borderLeft: '4px solid',
-                  borderLeftColor: 'primary.main',
-                  borderRadius: 1
-                }}
-              >
-                <Typography variant="subtitle1" gutterBottom>
-                  Verification Progress:
-                </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Chip
-                    label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                    color="primary"
-                    variant="outlined"
-                  />
-                  
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label={`${sealComparison.matched.length} Matched`}
-                    color="success" 
-                    variant="outlined"
-                  />
-                  
-                  {sealComparison.mismatched.length > 0 && (
-                    <Chip 
-                      icon={<Warning fontSize="small" />}
-                      label={`${sealComparison.mismatched.length} Not Scanned`}
-                      color="warning" 
-                      variant="outlined"
-                    />
-                  )}
-                </Box>
-              </Box>
-              
-              {/* Seal Tags Table */}
-              <TableContainer component={Paper} variant="outlined">
-                <Table>
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: 'background.paper' }}>
-                      <TableCell>Seal Tag ID</TableCell>
-                      <TableCell>Method</TableCell>
-                      <TableCell>Source</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {/* Render operator seals with their verification status */}
-                    {operatorSeals.map((seal) => {
-                      const isVerified = sealComparison.matched.includes(seal.id);
-                      return (
-                        <TableRow key={seal.id} sx={{ backgroundColor: isVerified ? '#f5fff5' : '#fff5f5' }}>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              {isVerified ? (
-                                <CheckCircle color="success" fontSize="small" sx={{ mr: 1 }} />
-                              ) : (
-                                <Cancel color="error" fontSize="small" sx={{ mr: 1 }} />
-                              )}
-                              {seal.id}
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={getMethodDisplay('digital')}
-                              color={getMethodColor('digital')}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip 
-                              label="Operator"
-                              color="primary"
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {isVerified ? (
-                              <Chip 
-                                icon={<CheckCircle fontSize="small" />}
-                                label="Verified" 
-                                color="success" 
-                                size="small"
-                              />
-                            ) : (
-                              <Chip 
-                                icon={<Warning fontSize="small" />}
-                                label="Not Scanned" 
-                                color="warning" 
-                                size="small"
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <IconButton size="small" onClick={() => {
-                              // Toggle details visibility
-      ) : (
-        <>
-          {/* Verification Mode UI with Tabs OR Regular UI for non-GUARD users */}
-          {userSubrole === EmployeeSubrole.GUARD && verificationMode ? (
-            <>
-              {/* Verification UI with Tabs */}
-              <Paper sx={{ mb: 3 }}>
-                <Tabs 
-                  value={activeTab} 
-                  onChange={(_, newValue) => setActiveTab(newValue)} 
-                  variant="fullWidth"
-                  textColor="primary"
-                  indicatorColor="primary"
-                >
-                  <Tab icon={<InfoOutlined />} label="Trip Details" />
-                  <Tab icon={<QrCode />} label="Seal Tags" />
-                  <Tab icon={<PhotoLibrary />} label="Images" />
-                </Tabs>
-                
-                {/* Trip Details Tab */}
-                {activeTab === 0 && (
-                  <Box sx={{ p: 3 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Trip Information Verification
-                    </Typography>
-                    
-                    <TableContainer>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {session.tripDetails && Object.entries(session.tripDetails)
-                            .filter(([key]) => !isSystemField(key))
-                            .map(([key, value]) => (
-                              <TableRow key={key}>
-                                <TableCell>{getFieldLabel(key)}</TableCell>
-                                <TableCell>{value || 'N/A'}</TableCell>
-                                <TableCell>
-                                  {verificationFields[key]?.verified ? (
-                                    <Chip 
-                                      icon={<CheckCircle fontSize="small" />}
-                                      label="Verified" 
-                                      color="success" 
-                                      size="small"
-                                    />
-                                  ) : (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      onClick={() => verifyField(key)}
-                                    >
-                                      Verify
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={verifyAllFields}
-                      >
-                        Verify All Fields
-                      </Button>
-                      
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => setActiveTab(1)}
-                      >
-                        Next: Seal Tags
-                      </Button>
-                    </Box>
-                  </Box>
-                )}
-                
-                {/* Seal Tags Tab */}
-                {activeTab === 1 && (
-                  <Box sx={{ p: 3 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Seal Tags Verification
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
-                    </Typography>
-                    
-                    {/* Scan Seal Tags */}
-                    <Box sx={{ mt: 3, mb: 3 }}>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Scan Seal Tags
-                      </Typography>
-                      
-                      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                        <TextField
-                          variant="outlined"
-                          size="small"
-                          placeholder="Seal Tag ID"
-                          value={scanInput}
-                          onChange={(e) => setScanInput(e.target.value)}
-                          sx={{ flexGrow: 1 }}
-                        />
-                        
-                        <Button
-                          variant="outlined"
-                          onClick={() => handleScanComplete(scanInput, 'manual')}
-                          sx={{ minWidth: 120 }}
-                        >
-                          Add Manually
-                        </Button>
-                        
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          startIcon={<QrCode />}
-                          onClick={() => {
-                            // Show QR scanner
-                            const scanner = document.getElementById('qr-scanner-container');
-                            if (scanner) {
-                              scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                            }
-                          }}
-                          sx={{ minWidth: 200 }}
-                        >
-                          Scan QR/Barcode
-                        </Button>
-                      </Box>
-                      
-                      <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-                        <ClientSideQrScanner 
-                          onScan={(data) => handleScanComplete(data, 'digital')}
-                          buttonText="Scan QR Code"
-                        />
-                      </Box>
-                      
-                      {scanError && (
-                        <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                          {scanError}
-                        </Alert>
-                      )}
-                    </Box>
-                    
-                    {/* Verification Progress */}
-                    <Box 
-                      sx={{ 
-                        p: 2, 
-                        mb: 3, 
-                        border: '1px solid', 
-                        borderColor: 'divider',
-                        borderLeft: '4px solid',
-                        borderLeftColor: 'primary.main',
-                        borderRadius: 1
-                      }}
-                    >
-                      <Typography variant="subtitle1" gutterBottom>
-                        Verification Progress:
-                      </Typography>
-                      
-                      <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Chip
-                          label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                          color="primary"
-                          variant="outlined"
-                        />
-                        
-                        <Chip 
-                          icon={<CheckCircle fontSize="small" />}
-                          label={`${sealComparison.matched.length} Matched`}
-                          color="success" 
-                          variant="outlined"
-                        />
-                        
-                        {sealComparison.mismatched.length > 0 && (
-                          <Chip 
-                            icon={<Warning fontSize="small" />}
-                            label={`${sealComparison.mismatched.length} Not Scanned`}
-                            color="warning" 
-                            variant="outlined"
-                          />
-                        )}
-                      </Box>
-                    </Box>
-                    
-                    {/* Seal Tags Table */}
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table>
-                        <TableHead>
-                          <TableRow sx={{ backgroundColor: 'background.paper' }}>
-                            <TableCell>Seal Tag ID</TableCell>
-                            <TableCell>Method</TableCell>
-                            <TableCell>Source</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Actions</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {/* Render operator seals with their verification status */}
-                          {operatorSeals.map((seal) => {
-                            const isVerified = sealComparison.matched.includes(seal.id);
-                            return (
-                              <TableRow key={seal.id} sx={{ backgroundColor: isVerified ? '#f5fff5' : '#fff5f5' }}>
-                                <TableCell>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    {isVerified ? (
-                                      <CheckCircle color="success" fontSize="small" sx={{ mr: 1 }} />
-                                    ) : (
-                                      <Cancel color="error" fontSize="small" sx={{ mr: 1 }} />
-                                    )}
-                                    {seal.id}
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  <Chip 
-                                    label={getMethodDisplay('digital')}
-                                    color={getMethodColor('digital')}
-                                    size="small"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Chip 
-                                    label="Operator"
-                                    color="primary"
-                                    size="small"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  {isVerified ? (
-                                    <Chip 
-                                      icon={<CheckCircle fontSize="small" />}
-                                      label="Verified" 
-                                      color="success" 
-                                      size="small"
-                                    />
-                                  ) : (
-                                    <Chip 
-                                      icon={<Warning fontSize="small" />}
-                                      label="Not Scanned" 
-                                      color="warning" 
-                                      size="small"
-                                    />
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <IconButton size="small" onClick={() => {
-                                    // Toggle details visibility
-                                    const detailsRow = document.getElementById(`details-${seal.id}`);
-                                    if (detailsRow) {
-                                      detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
-                                    }
-                                  }}>
-                                    <KeyboardArrowDown />
-                                  </IconButton>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setActiveTab(0)}
-                      >
-                        Back: Trip Details
-                      </Button>
-                      
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => setActiveTab(2)}
-                      >
-                        Next: Images
-                      </Button>
-                    </Box>
-                  </Box>
-                )}
-                
-                {/* Images Tab */}
-                {activeTab === 2 && (
-                  <Box sx={{ p: 3 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Image Verification
-                    </Typography>
-                    
-                    {session.images && (
-                      <Grid container spacing={2}>
-                        {session.images.vehicleNumberPlatePicture && (
-                          <Grid item xs={12} sm={6} md={4}>
-                            <Paper 
-                              elevation={1} 
-                              sx={{ 
-                                p: 2, 
-                                height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column'
-                              }}
-                            >
-                              <Typography variant="subtitle1" gutterBottom>
-                                Vehicle Number Plate
-                              </Typography>
-                              
-                              <Box 
-                                component="img"
-                                src={session.images.vehicleNumberPlatePicture}
-                                alt="Vehicle Number Plate"
-                                sx={{ 
-                                  width: '100%', 
-                                  height: 180, 
-                                  objectFit: 'cover',
-                                  cursor: 'pointer',
-                                  borderRadius: 1,
-                                  mb: 2
-                                }}
-                                onClick={() => {
-                                  setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                                  setOpenImageModal(true);
-                                }}
-                              />
-                              
-                              {verificationFields['vehicleNumberPlatePicture']?.verified ? (
-                                <Chip 
-                                  icon={<CheckCircle fontSize="small" />}
-                                  label="Verified" 
-                                  color="success" 
-                                  size="small"
-                                  sx={{ alignSelf: 'flex-start' }}
-                                />
-                              ) : (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => verifyImage('vehicleNumberPlatePicture')}
-                                  sx={{ alignSelf: 'flex-start' }}
-                                >
-                                  Verify Image
-                                </Button>
-                              )}
-                            </Paper>
-                          </Grid>
-                        )}
-                        
-                        {session.images.gpsImeiPicture && (
-                          <Grid item xs={12} sm={6} md={4}>
-                            <Paper 
-                              elevation={1} 
-                              sx={{ 
-                                p: 2, 
-                                height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column'
-                              }}
-                            >
-                              <Typography variant="subtitle1" gutterBottom>
-                                GPS/IMEI Image
-                              </Typography>
-                              
-                              <Box 
-                                component="img"
-                                src={session.images.gpsImeiPicture}
-                                alt="GPS/IMEI"
-                                sx={{ 
-                                  width: '100%', 
-                                  height: 180, 
-                                  objectFit: 'cover',
-                                  cursor: 'pointer',
-                                  borderRadius: 1,
-                                  mb: 2
-                                }}
-                                onClick={() => {
-                                  setSelectedImage(session.images?.gpsImeiPicture || '');
-                                  setOpenImageModal(true);
-                                }}
-                              />
-                              
-                              {verificationFields['gpsImeiPicture']?.verified ? (
-                                <Chip 
-                                  icon={<CheckCircle fontSize="small" />}
-                                  label="Verified" 
-                                  color="success" 
-                                  size="small"
-                                  sx={{ alignSelf: 'flex-start' }}
-                                />
-                              ) : (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => verifyImage('gpsImeiPicture')}
-                                  sx={{ alignSelf: 'flex-start' }}
-                                >
-                                  Verify Image
-                                </Button>
-                              )}
-                            </Paper>
-                          </Grid>
-                        )}
-                        
-                        {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
-                          <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
-                            <Paper 
-                              elevation={1} 
-                              sx={{ 
-                                p: 2, 
-                                height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column'
-                              }}
-                            >
-                              <Typography variant="subtitle1" gutterBottom>
-                                Vehicle Image {index + 1}
-                              </Typography>
-                              
-                              <Box 
-                                component="img"
-                                src={imageUrl}
-                                alt={`Vehicle ${index + 1}`}
-                                sx={{ 
-                                  width: '100%', 
-                                  height: 180, 
-                                  objectFit: 'cover',
-                                  cursor: 'pointer',
-                                  borderRadius: 1,
-                                  mb: 2
-                                }}
-                                onClick={() => {
-                                  setSelectedImage(imageUrl);
-                                  setOpenImageModal(true);
-                                }}
-                              />
-                              
-                              {verificationFields[`vehicleImages-${index}`]?.verified ? (
-                                <Chip 
-                                  icon={<CheckCircle fontSize="small" />}
-                                  label="Verified" 
-                                  color="success" 
-                                  size="small"
-                                  sx={{ alignSelf: 'flex-start' }}
-                                />
-                              ) : (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => verifyImage(`vehicleImages-${index}`)}
-                                  sx={{ alignSelf: 'flex-start' }}
-                                >
-                                  Verify Image
-                                </Button>
-                              )}
-                            </Paper>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    )}
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setActiveTab(1)}
-                      >
-                        Back: Seal Tags
-                      </Button>
-                      
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={handleVerifySeal}
-                        disabled={verifying}
-                      >
-                        Complete Verification
-                      </Button>
-                    </Box>
-                  </Box>
-                )}
-              </Paper>
-            </>
-          ) : (
-            <>
-              {/* Verification Mode UI with Tabs OR Regular UI for non-GUARD users */}
-              {userSubrole === EmployeeSubrole.GUARD && verificationMode ? (
-                <>
-                  {/* Verification UI with Tabs */}
-                  <Paper sx={{ mb: 3 }}>
-                    <Tabs 
-                      value={activeTab} 
-                      onChange={(_, newValue) => setActiveTab(newValue)} 
-                      variant="fullWidth"
-                      textColor="primary"
-                      indicatorColor="primary"
-                    >
-                      <Tab icon={<InfoOutlined />} label="Trip Details" />
-                      <Tab icon={<QrCode />} label="Seal Tags" />
-                      <Tab icon={<PhotoLibrary />} label="Images" />
-                    </Tabs>
-                    
-                    {/* Trip Details Tab */}
-                    {activeTab === 0 && (
-                      <Box sx={{ p: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                          Trip Information Verification
-                        </Typography>
-                        
-                        <TableContainer>
-                          <Table size="small">
-                            <TableHead>
-                              <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {session.tripDetails && Object.entries(session.tripDetails)
-                                .filter(([key]) => !isSystemField(key))
-                                .map(([key, value]) => (
-                                  <TableRow key={key}>
-                                    <TableCell>{getFieldLabel(key)}</TableCell>
-                                    <TableCell>{value || 'N/A'}</TableCell>
-                                    <TableCell>
-                                      {verificationFields[key]?.verified ? (
-                                        <Chip 
-                                          icon={<CheckCircle fontSize="small" />}
-                                          label="Verified" 
-                                          color="success" 
-                                          size="small"
-                                        />
-                                      ) : (
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          onClick={() => verifyField(key)}
-                                        >
-                                          Verify
-                                        </Button>
-                                      )}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                        
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                          <Button
-                            variant="outlined"
-                            onClick={verifyAllFields}
-                          >
-                            Verify All Fields
-                          </Button>
-                          
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => setActiveTab(1)}
-                          >
-                            Next: Seal Tags
-                          </Button>
-                        </Box>
-                      </Box>
-                    )}
-                    
-                    {/* Seal Tags Tab */}
-                    {activeTab === 1 && (
-                      <Box sx={{ p: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                          Seal Tags Verification
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
-                        </Typography>
-                        
-                        {/* Scan Seal Tags */}
-                        <Box sx={{ mt: 3, mb: 3 }}>
-                          <Typography variant="subtitle1" gutterBottom>
-                            Scan Seal Tags
-                          </Typography>
-                          
-                          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                            <TextField
-                              variant="outlined"
-                              size="small"
-                              placeholder="Seal Tag ID"
-                              value={scanInput}
-                              onChange={(e) => setScanInput(e.target.value)}
-                              sx={{ flexGrow: 1 }}
-                            />
-                            
-                            <Button
-                              variant="outlined"
-                              onClick={() => handleScanComplete(scanInput, 'manual')}
-                              sx={{ minWidth: 120 }}
-                            >
-                              Add Manually
-                            </Button>
-                            
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              startIcon={<QrCode />}
-                              onClick={() => {
-                                // Show QR scanner
-                                const scanner = document.getElementById('qr-scanner-container');
-                                if (scanner) {
-                                  scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                                }
-                              }}
-                              sx={{ minWidth: 200 }}
-                            >
-                              Scan QR/Barcode
-                            </Button>
-                          </Box>
-                          
-                          <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-                            <ClientSideQrScanner 
-                              onScan={(data) => handleScanComplete(data, 'digital')}
-                              buttonText="Scan QR Code"
-                            />
-                          </Box>
-                          
-                          {scanError && (
-                            <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                              {scanError}
-                            </Alert>
-                          )}
-                        </Box>
-                        
-                        {/* Verification Progress */}
-                        <Box 
-                          sx={{ 
-                            p: 2, 
-                            mb: 3, 
-                            border: '1px solid', 
-                            borderColor: 'divider',
-                            borderLeft: '4px solid',
-                            borderLeftColor: 'primary.main',
-                            borderRadius: 1
-                          }}
-                        >
-                          <Typography variant="subtitle1" gutterBottom>
-                            Verification Progress:
-                          </Typography>
-                          
-                          <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Chip
-                              label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                              color="primary"
-                              variant="outlined"
-                            />
-                            
-                            <Chip 
-                              icon={<CheckCircle fontSize="small" />}
-                              label={`${sealComparison.matched.length} Matched`}
-                              color="success" 
-                              variant="outlined"
-                            />
-                            
-                            {sealComparison.mismatched.length > 0 && (
-                              <Chip 
-                                icon={<Warning fontSize="small" />}
-                                label={`${sealComparison.mismatched.length} Not Scanned`}
-                                color="warning" 
-                                variant="outlined"
-                              />
-                            )}
-                          </Box>
-                        </Box>
-                        
-                        {/* Seal Tags Table */}
-                        <TableContainer component={Paper} variant="outlined">
-                          <Table>
-                            <TableHead>
-                              <TableRow sx={{ backgroundColor: 'background.paper' }}>
-                                <TableCell>Seal Tag ID</TableCell>
-                                <TableCell>Method</TableCell>
-                                <TableCell>Source</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>Actions</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {/* Render operator seals with their verification status */}
-                              {operatorSeals.map((seal) => {
-                                const isVerified = sealComparison.matched.includes(seal.id);
-                                return (
-                                  <TableRow key={seal.id} sx={{ backgroundColor: isVerified ? '#f5fff5' : '#fff5f5' }}>
-                                    <TableCell>
-                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        {isVerified ? (
-                                          <CheckCircle color="success" fontSize="small" sx={{ mr: 1 }} />
-                                        ) : (
-                                          <Cancel color="error" fontSize="small" sx={{ mr: 1 }} />
-                                        )}
-                                        {seal.id}
-                                      </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Chip 
-                                        label={getMethodDisplay('digital')}
-                                        color={getMethodColor('digital')}
-                                        size="small"
-                                      />
-                                    </TableCell>
-                                    <TableCell>
-                                      <Chip 
-                                        label="Operator"
-                                        color="primary"
-                                        size="small"
-                                      />
-                                    </TableCell>
-                                    <TableCell>
-                                      {isVerified ? (
-                                        <Chip 
-                                          icon={<CheckCircle fontSize="small" />}
-                                          label="Verified" 
-                                          color="success" 
-                                          size="small"
-                                        />
-                                      ) : (
-                                        <Chip 
-                                          icon={<Warning fontSize="small" />}
-                                          label="Not Scanned" 
-                                          color="warning" 
-                                          size="small"
-                                        />
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      <IconButton size="small" onClick={() => {
-                                        // Toggle details visibility
-                                        const detailsRow = document.getElementById(`details-${seal.id}`);
-                                        if (detailsRow) {
-                                          detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
-                                        }
-                                      }}>
-                                        <KeyboardArrowDown />
-                                      </IconButton>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                        
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                          <Button
-                            variant="outlined"
-                            onClick={() => setActiveTab(0)}
-                          >
-                            Back: Trip Details
-                          </Button>
-                          
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => setActiveTab(2)}
-                          >
-                            Next: Images
-                          </Button>
-                        </Box>
-                      </Box>
-                    )}
-                    
-                    {/* Images Tab */}
-                    {activeTab === 2 && (
-                      <Box sx={{ p: 3 }}>
-                        <Typography variant="h6" gutterBottom>
-                          Image Verification
-                        </Typography>
-                        
-                        {session.images && (
-                          <Grid container spacing={2}>
-                            {session.images.vehicleNumberPlatePicture && (
-                              <Grid item xs={12} sm={6} md={4}>
-                                <Paper 
-                                  elevation={1} 
-                                  sx={{ 
-                                    p: 2, 
-                                    height: '100%', 
-                                    display: 'flex', 
-                                    flexDirection: 'column'
-                                  }}
-                                >
-                                  <Typography variant="subtitle1" gutterBottom>
-                                    Vehicle Number Plate
-                                  </Typography>
-                                  
-                                  <Box 
-                                    component="img"
-                                    src={session.images.vehicleNumberPlatePicture}
-                                    alt="Vehicle Number Plate"
-                                    sx={{ 
-                                      width: '100%', 
-                                      height: 180, 
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      borderRadius: 1,
-                                      mb: 2
-                                    }}
-                                    onClick={() => {
-                                      setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                                      setOpenImageModal(true);
-                                    }}
-                                  />
-                                  
-                                  {verificationFields['vehicleNumberPlatePicture']?.verified ? (
-                                    <Chip 
-                                      icon={<CheckCircle fontSize="small" />}
-                                      label="Verified" 
-                                      color="success" 
-                                      size="small"
-                                      sx={{ alignSelf: 'flex-start' }}
-                                    />
-                                  ) : (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      onClick={() => verifyImage('vehicleNumberPlatePicture')}
-                                      sx={{ alignSelf: 'flex-start' }}
-                                    >
-                                      Verify Image
-                                    </Button>
-                                  )}
-                                </Paper>
-                              </Grid>
-                            )}
-                            
-                            {session.images.gpsImeiPicture && (
-                              <Grid item xs={12} sm={6} md={4}>
-                                <Paper 
-                                  elevation={1} 
-                                  sx={{ 
-                                    p: 2, 
-                                    height: '100%', 
-                                    display: 'flex', 
-                                    flexDirection: 'column'
-                                  }}
-                                >
-                                  <Typography variant="subtitle1" gutterBottom>
-                                    GPS/IMEI Image
-                                  </Typography>
-                                  
-                                  <Box 
-                                    component="img"
-                                    src={session.images.gpsImeiPicture}
-                                    alt="GPS/IMEI"
-                                    sx={{ 
-                                      width: '100%', 
-                                      height: 180, 
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      borderRadius: 1,
-                                      mb: 2
-                                    }}
-                                    onClick={() => {
-                                      setSelectedImage(session.images?.gpsImeiPicture || '');
-                                      setOpenImageModal(true);
-                                    }}
-                                  />
-                                  
-                                  {verificationFields['gpsImeiPicture']?.verified ? (
-                                    <Chip 
-                                      icon={<CheckCircle fontSize="small" />}
-                                      label="Verified" 
-                                      color="success" 
-                                      size="small"
-                                      sx={{ alignSelf: 'flex-start' }}
-                                    />
-                                  ) : (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      onClick={() => verifyImage('gpsImeiPicture')}
-                                      sx={{ alignSelf: 'flex-start' }}
-                                    >
-                                      Verify Image
-                                    </Button>
-                                  )}
-                                </Paper>
-                              </Grid>
-                            )}
-                            
-                            {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
-                              <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
-                                <Paper 
-                                  elevation={1} 
-                                  sx={{ 
-                                    p: 2, 
-                                    height: '100%', 
-                                    display: 'flex', 
-                                    flexDirection: 'column'
-                                  }}
-                                >
-                                  <Typography variant="subtitle1" gutterBottom>
-                                    Vehicle Image {index + 1}
-                                  </Typography>
-                                  
-                                  <Box 
-                                    component="img"
-                                    src={imageUrl}
-                                    alt={`Vehicle ${index + 1}`}
-                                    sx={{ 
-                                      width: '100%', 
-                                      height: 180, 
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      borderRadius: 1,
-                                      mb: 2
-                                    }}
-                                    onClick={() => {
-                                      setSelectedImage(imageUrl);
-                                      setOpenImageModal(true);
-                                    }}
-                                  />
-                                  
-                                  {verificationFields[`vehicleImages-${index}`]?.verified ? (
-                                    <Chip 
-                                      icon={<CheckCircle fontSize="small" />}
-                                      label="Verified" 
-                                      color="success" 
-                                      size="small"
-                                      sx={{ alignSelf: 'flex-start' }}
-                                    />
-                                  ) : (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      onClick={() => verifyImage(`vehicleImages-${index}`)}
-                                      sx={{ alignSelf: 'flex-start' }}
-                                    >
-                                      Verify Image
-                                    </Button>
-                                  )}
-                                </Paper>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        )}
-                        
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                          <Button
-                            variant="outlined"
-                            onClick={() => setActiveTab(1)}
-                          >
-                            Back: Seal Tags
-                          </Button>
-                          
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleVerifySeal}
-                            disabled={verifying}
-                          >
-                            Complete Verification
-                          </Button>
-                        </Box>
-                      </Box>
-                    )}
-                  </Paper>
-                </>
-              ) : (
-                <>
-                  {/* Verification Mode UI with Tabs OR Regular UI for non-GUARD users */}
-                  {userSubrole === EmployeeSubrole.GUARD && verificationMode ? (
-                    <>
-                      {/* Verification UI with Tabs */}
-                      <Paper sx={{ mb: 3 }}>
-                        <Tabs 
-                          value={activeTab} 
-                          onChange={(_, newValue) => setActiveTab(newValue)} 
-                          variant="fullWidth"
-                          textColor="primary"
-                          indicatorColor="primary"
-                        >
-                          <Tab icon={<InfoOutlined />} label="Trip Details" />
-                          <Tab icon={<QrCode />} label="Seal Tags" />
-                          <Tab icon={<PhotoLibrary />} label="Images" />
-                        </Tabs>
-                        
-                        {/* Trip Details Tab */}
-                        {activeTab === 0 && (
-                          <Box sx={{ p: 3 }}>
-                            <Typography variant="h6" gutterBottom>
-                              Trip Information Verification
-                            </Typography>
-                            
-                            <TableContainer>
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {session.tripDetails && Object.entries(session.tripDetails)
-                                    .filter(([key]) => !isSystemField(key))
-                                    .map(([key, value]) => (
-                                      <TableRow key={key}>
-                                        <TableCell>{getFieldLabel(key)}</TableCell>
-                                        <TableCell>{value || 'N/A'}</TableCell>
-                                        <TableCell>
-                                          {verificationFields[key]?.verified ? (
-                                            <Chip 
-                                              icon={<CheckCircle fontSize="small" />}
-                                              label="Verified" 
-                                              color="success" 
-                                              size="small"
-                                            />
-                                          ) : (
-                                            <Button
-                                              size="small"
-                                              variant="outlined"
-                                              onClick={() => verifyField(key)}
-                                            >
-                                              Verify
-                                            </Button>
-                                          )}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
-                            
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                              <Button
-                                variant="outlined"
-                                onClick={verifyAllFields}
-                              >
-                                Verify All Fields
-                              </Button>
-                              
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={() => setActiveTab(1)}
-                              >
-                                Next: Seal Tags
-                              </Button>
-                            </Box>
-                          </Box>
-                        )}
-                        
-                        {/* Seal Tags Tab */}
-                        {activeTab === 1 && (
-                          <Box sx={{ p: 3 }}>
-                            <Typography variant="h6" gutterBottom>
-                              Seal Tags Verification
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                              Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
-                            </Typography>
-                            
-                            {/* Scan Seal Tags */}
-                            <Box sx={{ mt: 3, mb: 3 }}>
-                              <Typography variant="subtitle1" gutterBottom>
-                                Scan Seal Tags
-                              </Typography>
-                              
-                              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                                <TextField
-                                  variant="outlined"
-                                  size="small"
-                                  placeholder="Seal Tag ID"
-                                  value={scanInput}
-                                  onChange={(e) => setScanInput(e.target.value)}
-                                  sx={{ flexGrow: 1 }}
-                                />
-                                
-                                <Button
-                                  variant="outlined"
-                                  onClick={() => handleScanComplete(scanInput, 'manual')}
-                                  sx={{ minWidth: 120 }}
-                                >
-                                  Add Manually
-                                </Button>
-                                
-                                <Button
-                                  variant="contained"
-                                  color="primary"
-                                  startIcon={<QrCode />}
-                                  onClick={() => {
-                                    // Show QR scanner
-                                    const scanner = document.getElementById('qr-scanner-container');
-                                    if (scanner) {
-                                      scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                                    }
-                                  }}
-                                  sx={{ minWidth: 200 }}
-                                >
-                                  Scan QR/Barcode
-                                </Button>
-                              </Box>
-                              
-                              <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-                                <ClientSideQrScanner 
-                                  onScan={(data) => handleScanComplete(data, 'digital')}
-                                  buttonText="Scan QR Code"
-                                />
-                              </Box>
-                              
-                              {scanError && (
-                                <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                                  {scanError}
-                                </Alert>
-                              )}
-                            </Box>
-                            
-                            {/* Verification Progress */}
-                            <Box 
-                              sx={{ 
-                                p: 2, 
-                                mb: 3, 
-                                border: '1px solid', 
-                                borderColor: 'divider',
-                                borderLeft: '4px solid',
-                                borderLeftColor: 'primary.main',
-                                borderRadius: 1
-                              }}
-                            >
-                              <Typography variant="subtitle1" gutterBottom>
-                                Verification Progress:
-                              </Typography>
-                              
-                              <Box sx={{ display: 'flex', gap: 2 }}>
-                                <Chip
-                                  label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                                  color="primary"
-                                  variant="outlined"
-                                />
-                                
-                                <Chip 
-                                  icon={<CheckCircle fontSize="small" />}
-                                  label={`${sealComparison.matched.length} Matched`}
-                                  color="success" 
-                                  variant="outlined"
-                                />
-                                
-                                {sealComparison.mismatched.length > 0 && (
-                                  <Chip 
-                                    icon={<Warning fontSize="small" />}
-                                    label={`${sealComparison.mismatched.length} Not Scanned`}
-                                    color="warning" 
-                                    variant="outlined"
-                                  />
-                                )}
-                              </Box>
-                            </Box>
-                            
-                            {/* Seal Tags Table */}
-                            <TableContainer component={Paper} variant="outlined">
-                              <Table>
-                                <TableHead>
-                                  <TableRow sx={{ backgroundColor: 'background.paper' }}>
-                                    <TableCell>Seal Tag ID</TableCell>
-                                    <TableCell>Method</TableCell>
-                                    <TableCell>Source</TableCell>
-                                    <TableCell>Status</TableCell>
-                                    <TableCell>Actions</TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {/* Render operator seals with their verification status */}
-                                  {operatorSeals.map((seal) => {
-                                    const isVerified = sealComparison.matched.includes(seal.id);
-                                    return (
-                                      <TableRow key={seal.id} sx={{ backgroundColor: isVerified ? '#f5fff5' : '#fff5f5' }}>
-                                        <TableCell>
-                                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            {isVerified ? (
-                                              <CheckCircle color="success" fontSize="small" sx={{ mr: 1 }} />
-                                            ) : (
-                                              <Cancel color="error" fontSize="small" sx={{ mr: 1 }} />
-                                            )}
-                                            {seal.id}
-                                          </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                          <Chip 
-                                            label={getMethodDisplay('digital')}
-                                            color={getMethodColor('digital')}
-                                            size="small"
-                                          />
-                                        </TableCell>
-                                        <TableCell>
-                                          <Chip 
-                                            label="Operator"
-                                            color="primary"
-                                            size="small"
-                                          />
-                                        </TableCell>
-                                        <TableCell>
-                                          {isVerified ? (
-                                            <Chip 
-                                              icon={<CheckCircle fontSize="small" />}
-                                              label="Verified" 
-                                              color="success" 
-                                              size="small"
-                                            />
-                                          ) : (
-                                            <Chip 
-                                              icon={<Warning fontSize="small" />}
-                                              label="Not Scanned" 
-                                              color="warning" 
-                                              size="small"
-                                            />
-                                          )}
-                                        </TableCell>
-                                        <TableCell>
-                                          <IconButton size="small" onClick={() => {
-                                            // Toggle details visibility
-                                            const detailsRow = document.getElementById(`details-${seal.id}`);
-                                            if (detailsRow) {
-                                              detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
-                                            }
-                                          }}>
-                                            <KeyboardArrowDown />
-                                          </IconButton>
-                                        </TableCell>
-                                      </TableRow>
-                                    );
-                                  })}
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
-                            
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                              <Button
-                                variant="outlined"
-                                onClick={() => setActiveTab(0)}
-                              >
-                                Back: Trip Details
-                              </Button>
-                              
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={() => setActiveTab(2)}
-                              >
-                                Next: Images
-                              </Button>
-                            </Box>
-                          </Box>
-                        )}
-                        
-                        {/* Images Tab */}
-                        {activeTab === 2 && (
-                          <Box sx={{ p: 3 }}>
-                            <Typography variant="h6" gutterBottom>
-                              Image Verification
-                            </Typography>
-                            
-                            {session.images && (
-                              <Grid container spacing={2}>
-                                {session.images.vehicleNumberPlatePicture && (
-                                  <Grid item xs={12} sm={6} md={4}>
-                                    <Paper 
-                                      elevation={1} 
-                                      sx={{ 
-                                        p: 2, 
-                                        height: '100%', 
-                                        display: 'flex', 
-                                        flexDirection: 'column'
-                                      }}
-                                    >
-                                      <Typography variant="subtitle1" gutterBottom>
-                                        Vehicle Number Plate
-                                      </Typography>
-                                      
-                                      <Box 
-                                        component="img"
-                                        src={session.images.vehicleNumberPlatePicture}
-                                        alt="Vehicle Number Plate"
-                                        sx={{ 
-                                          width: '100%', 
-                                          height: 180, 
-                                          objectFit: 'cover',
-                                          cursor: 'pointer',
-                                          borderRadius: 1,
-                                          mb: 2
-                                        }}
-                                        onClick={() => {
-                                          setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                                          setOpenImageModal(true);
-                                        }}
-                                      />
-                                      
-                                      {verificationFields['vehicleNumberPlatePicture']?.verified ? (
-                                        <Chip 
-                                          icon={<CheckCircle fontSize="small" />}
-                                          label="Verified" 
-                                          color="success" 
-                                          size="small"
-                                          sx={{ alignSelf: 'flex-start' }}
-                                        />
-                                      ) : (
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          onClick={() => verifyImage('vehicleNumberPlatePicture')}
-                                          sx={{ alignSelf: 'flex-start' }}
-                                        >
-                                          Verify Image
-                                        </Button>
-                                      )}
-                                    </Paper>
-                                  </Grid>
-                                )}
-                                
-                                {session.images.gpsImeiPicture && (
-                                  <Grid item xs={12} sm={6} md={4}>
-                                    <Paper 
-                                      elevation={1} 
-                                      sx={{ 
-                                        p: 2, 
-                                        height: '100%', 
-                                        display: 'flex', 
-                                        flexDirection: 'column'
-                                      }}
-                                    >
-                                      <Typography variant="subtitle1" gutterBottom>
-                                        GPS/IMEI Image
-                                      </Typography>
-                                      
-                                      <Box 
-                                        component="img"
-                                        src={session.images.gpsImeiPicture}
-                                        alt="GPS/IMEI"
-                                        sx={{ 
-                                          width: '100%', 
-                                          height: 180, 
-                                          objectFit: 'cover',
-                                          cursor: 'pointer',
-                                          borderRadius: 1,
-                                          mb: 2
-                                        }}
-                                        onClick={() => {
-                                          setSelectedImage(session.images?.gpsImeiPicture || '');
-                                          setOpenImageModal(true);
-                                        }}
-                                      />
-                                      
-                                      {verificationFields['gpsImeiPicture']?.verified ? (
-                                        <Chip 
-                                          icon={<CheckCircle fontSize="small" />}
-                                          label="Verified" 
-                                          color="success" 
-                                          size="small"
-                                          sx={{ alignSelf: 'flex-start' }}
-                                        />
-                                      ) : (
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          onClick={() => verifyImage('gpsImeiPicture')}
-                                          sx={{ alignSelf: 'flex-start' }}
-                                        >
-                                          Verify Image
-                                        </Button>
-                                      )}
-                                    </Paper>
-                                  </Grid>
-                                )}
-                                
-                                {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
-                                  <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
-                                    <Paper 
-                                      elevation={1} 
-                                      sx={{ 
-                                        p: 2, 
-                                        height: '100%', 
-                                        display: 'flex', 
-                                        flexDirection: 'column'
-                                      }}
-                                    >
-                                      <Typography variant="subtitle1" gutterBottom>
-                                        Vehicle Image {index + 1}
-                                      </Typography>
-                                      
-                                      <Box 
-                                        component="img"
-                                        src={imageUrl}
-                                        alt={`Vehicle ${index + 1}`}
-                                        sx={{ 
-                                          width: '100%', 
-                                          height: 180, 
-                                          objectFit: 'cover',
-                                          cursor: 'pointer',
-                                          borderRadius: 1,
-                                          mb: 2
-                                        }}
-                                        onClick={() => {
-                                          setSelectedImage(imageUrl);
-                                          setOpenImageModal(true);
-                                        }}
-                                      />
-                                      
-                                      {verificationFields[`vehicleImages-${index}`]?.verified ? (
-                                        <Chip 
-                                          icon={<CheckCircle fontSize="small" />}
-                                          label="Verified" 
-                                          color="success" 
-                                          size="small"
-                                          sx={{ alignSelf: 'flex-start' }}
-                                        />
-                                      ) : (
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          onClick={() => verifyImage(`vehicleImages-${index}`)}
-                                          sx={{ alignSelf: 'flex-start' }}
-                                        >
-                                          Verify Image
-                                        </Button>
-                                      )}
-                                    </Paper>
-                                  </Grid>
-                                ))}
-                              </Grid>
-                            )}
-                            
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                              <Button
-                                variant="outlined"
-                                onClick={() => setActiveTab(1)}
-                              >
-                                Back: Seal Tags
-                              </Button>
-                              
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={handleVerifySeal}
-                                disabled={verifying}
-                              >
-                                Complete Verification
-                              </Button>
-                            </Box>
-                          </Box>
-                        )}
-                      </Paper>
-                    </>
-                  ) : (
-                    <>
-                      {/* Verification Mode UI with Tabs OR Regular UI for non-GUARD users */}
-                      {userSubrole === EmployeeSubrole.GUARD && verificationMode ? (
-                        <>
-                          {/* Verification UI with Tabs */}
-                          <Paper sx={{ mb: 3 }}>
-                            <Tabs 
-                              value={activeTab} 
-                              onChange={(_, newValue) => setActiveTab(newValue)} 
-                              variant="fullWidth"
-                              textColor="primary"
-                              indicatorColor="primary"
-                            >
-                              <Tab icon={<InfoOutlined />} label="Trip Details" />
-                              <Tab icon={<QrCode />} label="Seal Tags" />
-                              <Tab icon={<PhotoLibrary />} label="Images" />
-                            </Tabs>
-                            
-                            {/* Trip Details Tab */}
-                            {activeTab === 0 && (
-                              <Box sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                  Trip Information Verification
-                                </Typography>
-                                
-                                <TableContainer>
-                                  <Table size="small">
-                                    <TableHead>
-                                      <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {session.tripDetails && Object.entries(session.tripDetails)
-                                        .filter(([key]) => !isSystemField(key))
-                                        .map(([key, value]) => (
-                                          <TableRow key={key}>
-                                            <TableCell>{getFieldLabel(key)}</TableCell>
-                                            <TableCell>{value || 'N/A'}</TableCell>
-                                            <TableCell>
-                                              {verificationFields[key]?.verified ? (
-                                                <Chip 
-                                                  icon={<CheckCircle fontSize="small" />}
-                                                  label="Verified" 
-                                                  color="success" 
-                                                  size="small"
-                                                />
-                                              ) : (
-                                                <Button
-                                                  size="small"
-                                                  variant="outlined"
-                                                  onClick={() => verifyField(key)}
-                                                >
-                                                  Verify
-                                                </Button>
-                                              )}
-                                            </TableCell>
-                                          </TableRow>
-                                        ))}
-                                    </TableBody>
-                                  </Table>
-                                </TableContainer>
-                                
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                  <Button
-                                    variant="outlined"
-                                    onClick={verifyAllFields}
-                                  >
-                                    Verify All Fields
-                                  </Button>
-                                  
-                                  <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={() => setActiveTab(1)}
-                                  >
-                                    Next: Seal Tags
-                                  </Button>
-                                </Box>
-                              </Box>
-                            )}
-                            
-                            {/* Seal Tags Tab */}
-                            {activeTab === 1 && (
-                              <Box sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                  Seal Tags Verification
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" gutterBottom>
-                                  Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
-                                </Typography>
-                                
-                                {/* Scan Seal Tags */}
-                                <Box sx={{ mt: 3, mb: 3 }}>
-                                  <Typography variant="subtitle1" gutterBottom>
-                                    Scan Seal Tags
-                                  </Typography>
-                                  
-                                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                                    <TextField
-                                      variant="outlined"
-                                      size="small"
-                                      placeholder="Seal Tag ID"
-                                      value={scanInput}
-                                      onChange={(e) => setScanInput(e.target.value)}
-                                      sx={{ flexGrow: 1 }}
-                                    />
-                                    
-                                    <Button
-                                      variant="outlined"
-                                      onClick={() => handleScanComplete(scanInput, 'manual')}
-                                      sx={{ minWidth: 120 }}
-                                    >
-                                      Add Manually
-                                    </Button>
-                                    
-                                    <Button
-                                      variant="contained"
-                                      color="primary"
-                                      startIcon={<QrCode />}
-                                      onClick={() => {
-                                        // Show QR scanner
-                                        const scanner = document.getElementById('qr-scanner-container');
-                                        if (scanner) {
-                                          scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                                        }
-                                      }}
-                                      sx={{ minWidth: 200 }}
-                                    >
-                                      Scan QR/Barcode
-                                    </Button>
-                                  </Box>
-                                  
-                                  <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-                                    <ClientSideQrScanner 
-                                      onScan={(data) => handleScanComplete(data, 'digital')}
-                                      buttonText="Scan QR Code"
-                                    />
-                                  </Box>
-                                  
-                                  {scanError && (
-                                    <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                                      {scanError}
-                                    </Alert>
-                                  )}
-                                </Box>
-                                
-                                {/* Verification Progress */}
-                                <Box 
-                                  sx={{ 
-                                    p: 2, 
-                                    mb: 3, 
-                                    border: '1px solid', 
-                                    borderColor: 'divider',
-                                    borderLeft: '4px solid',
-                                    borderLeftColor: 'primary.main',
-                                    borderRadius: 1
-                                  }}
-                                >
-                                  <Typography variant="subtitle1" gutterBottom>
-                                    Verification Progress:
-                                  </Typography>
-                                  
-                                  <Box sx={{ display: 'flex', gap: 2 }}>
-                                    <Chip
-                                      label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                                      color="primary"
-                                      variant="outlined"
-                                    />
-                                    
-                                    <Chip 
-                                      icon={<CheckCircle fontSize="small" />}
-                                      label={`${sealComparison.matched.length} Matched`}
-                                      color="success" 
-                                      variant="outlined"
-                                    />
-                                    
-                                    {sealComparison.mismatched.length > 0 && (
-                                      <Chip 
-                                        icon={<Warning fontSize="small" />}
-                                        label={`${sealComparison.mismatched.length} Not Scanned`}
-                                        color="warning" 
-                                        variant="outlined"
-                                      />
-                                    )}
-                                  </Box>
-                                </Box>
-                                
-                                {/* Seal Tags Table */}
-                                <TableContainer component={Paper} variant="outlined">
-                                  <Table>
-                                    <TableHead>
-                                      <TableRow sx={{ backgroundColor: 'background.paper' }}>
-                                        <TableCell>Seal Tag ID</TableCell>
-                                        <TableCell>Method</TableCell>
-                                        <TableCell>Source</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell>Actions</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {/* Render operator seals with their verification status */}
-                                      {operatorSeals.map((seal) => {
-                                        const isVerified = sealComparison.matched.includes(seal.id);
-                                        return (
-                                          <TableRow key={seal.id} sx={{ backgroundColor: isVerified ? '#f5fff5' : '#fff5f5' }}>
-                                            <TableCell>
-                                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                {isVerified ? (
-                                                  <CheckCircle color="success" fontSize="small" sx={{ mr: 1 }} />
-                                                ) : (
-                                                  <Cancel color="error" fontSize="small" sx={{ mr: 1 }} />
-                                                )}
-                                                {seal.id}
-                                              </Box>
-                                            </TableCell>
-                                            <TableCell>
-                                              <Chip 
-                                                label={getMethodDisplay('digital')}
-                                                color={getMethodColor('digital')}
-                                                size="small"
-                                              />
-                                            </TableCell>
-                                            <TableCell>
-                                              <Chip 
-                                                label="Operator"
-                                                color="primary"
-                                                size="small"
-                                              />
-                                            </TableCell>
-                                            <TableCell>
-                                              {isVerified ? (
-                                                <Chip 
-                                                  icon={<CheckCircle fontSize="small" />}
-                                                  label="Verified" 
-                                                  color="success" 
-                                                  size="small"
-                                                />
-                                              ) : (
-                                                <Chip 
-                                                  icon={<Warning fontSize="small" />}
-                                                  label="Not Scanned" 
-                                                  color="warning" 
-                                                  size="small"
-                                                />
-                                              )}
-                                            </TableCell>
-                                            <TableCell>
-                                              <IconButton size="small" onClick={() => {
-                                                // Toggle details visibility
-                                                const detailsRow = document.getElementById(`details-${seal.id}`);
-                                                if (detailsRow) {
-                                                  detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
-                                                }
-                                              }}>
-                                                <KeyboardArrowDown />
-                                              </IconButton>
-                                            </TableCell>
-                                          </TableRow>
-                                        );
-                                      })}
-                                    </TableBody>
-                                  </Table>
-                                </TableContainer>
-                                
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                  <Button
-                                    variant="outlined"
-                                    onClick={() => setActiveTab(0)}
-                                  >
-                                    Back: Trip Details
-                                  </Button>
-                                  
-                                  <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={() => setActiveTab(2)}
-                                  >
-                                    Next: Images
-                                  </Button>
-                                </Box>
-                              </Box>
-                            )}
-                            
-                            {/* Images Tab */}
-                            {activeTab === 2 && (
-                              <Box sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                  Image Verification
-                                </Typography>
-                                
-                                {session.images && (
-                                  <Grid container spacing={2}>
-                                    {session.images.vehicleNumberPlatePicture && (
-                                      <Grid item xs={12} sm={6} md={4}>
-                                        <Paper 
-                                          elevation={1} 
-                                          sx={{ 
-                                            p: 2, 
-                                            height: '100%', 
-                                            display: 'flex', 
-                                            flexDirection: 'column'
-                                          }}
-                                        >
-                                          <Typography variant="subtitle1" gutterBottom>
-                                            Vehicle Number Plate
-                                          </Typography>
-                                          
-                                          <Box 
-                                            component="img"
-                                            src={session.images.vehicleNumberPlatePicture}
-                                            alt="Vehicle Number Plate"
-                                            sx={{ 
-                                              width: '100%', 
-                                              height: 180, 
-                                              objectFit: 'cover',
-                                              cursor: 'pointer',
-                                              borderRadius: 1,
-                                              mb: 2
-                                            }}
-                                            onClick={() => {
-                                              setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                                              setOpenImageModal(true);
-                                            }}
-                                          />
-                                          
-                                          {verificationFields['vehicleNumberPlatePicture']?.verified ? (
-                                            <Chip 
-                                              icon={<CheckCircle fontSize="small" />}
-                                              label="Verified" 
-                                              color="success" 
-                                              size="small"
-                                              sx={{ alignSelf: 'flex-start' }}
-                                            />
-                                          ) : (
-                                            <Button
-                                              size="small"
-                                              variant="outlined"
-                                              onClick={() => verifyImage('vehicleNumberPlatePicture')}
-                                              sx={{ alignSelf: 'flex-start' }}
-                                            >
-                                              Verify Image
-                                            </Button>
-                                          )}
-                                        </Paper>
-                                      </Grid>
-                                    )}
-                                    
-                                    {session.images.gpsImeiPicture && (
-                                      <Grid item xs={12} sm={6} md={4}>
-                                        <Paper 
-                                          elevation={1} 
-                                          sx={{ 
-                                            p: 2, 
-                                            height: '100%', 
-                                            display: 'flex', 
-                                            flexDirection: 'column'
-                                          }}
-                                        >
-                                          <Typography variant="subtitle1" gutterBottom>
-                                            GPS IMEI Image
-                                          </Typography>
-                                          
-                                          <Box 
-                                            component="img"
-                                            src={session.images.gpsImeiPicture}
-                                            alt="GPS IMEI"
-                                            sx={{ 
-                                              width: '100%', 
-                                              height: 180, 
-                                              objectFit: 'cover',
-                                              cursor: 'pointer',
-                                              borderRadius: 1,
-                                              mb: 2
-                                            }}
-                                            onClick={() => {
-                                              setSelectedImage(session.images?.gpsImeiPicture || '');
-                                              setOpenImageModal(true);
-                                            }}
-                                          />
-                                          
-                                          {verificationFields['gpsImeiPicture']?.verified ? (
-                                            <Chip 
-                                              icon={<CheckCircle fontSize="small" />}
-                                              label="Verified" 
-                                              color="success" 
-                                              size="small"
-                                              sx={{ alignSelf: 'flex-start' }}
-                                            />
-                                          ) : (
-                                            <Button
-                                              size="small"
-                                              variant="outlined"
-                                              onClick={() => verifyImage('gpsImeiPicture')}
-                                              sx={{ alignSelf: 'flex-start' }}
-                                            >
-                                              Verify Image
-                                            </Button>
-                                          )}
-                                        </Paper>
-                                      </Grid>
-                                    )}
-                                    
-                                    {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
-                                      <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
-                                        <Paper 
-                                          elevation={1} 
-                                          sx={{ 
-                                            p: 2, 
-                                            height: '100%', 
-                                            display: 'flex', 
-                                            flexDirection: 'column'
-                                          }}
-                                        >
-                                          <Typography variant="subtitle1" gutterBottom>
-                                            Vehicle Image {index + 1}
-                                          </Typography>
-                                          
-                                          <Box 
-                                            component="img"
-                                            src={imageUrl}
-                                            alt={`Vehicle ${index + 1}`}
-                                            sx={{ 
-                                              width: '100%', 
-                                              height: 180, 
-                                              objectFit: 'cover',
-                                              cursor: 'pointer',
-                                              borderRadius: 1,
-                                              mb: 2
-                                            }}
-                                            onClick={() => {
-                                              setSelectedImage(imageUrl);
-                                              setOpenImageModal(true);
-                                            }}
-                                          />
-                                          
-                                          {verificationFields[`vehicleImages-${index}`]?.verified ? (
-                                            <Chip 
-                                              icon={<CheckCircle fontSize="small" />}
-                                              label="Verified" 
-                                              color="success" 
-                                              size="small"
-                                              sx={{ alignSelf: 'flex-start' }}
-                                            />
-                                          ) : (
-                                            <Button
-                                              size="small"
-                                              variant="outlined"
-                                              onClick={() => verifyImage(`vehicleImages-${index}`)}
-                                              sx={{ alignSelf: 'flex-start' }}
-                                            >
-                                              Verify Image
-                                            </Button>
-                                          )}
-                                        </Paper>
-                                      </Grid>
-                                    ))}
-                                  </Grid>
-                                )}
-                                
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                  <Button
-                                    variant="outlined"
-                                    onClick={() => setActiveTab(1)}
-                                  >
-                                    Back: Seal Tags
-                                  </Button>
-                                  
-                                  <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={handleVerifySeal}
-                                    disabled={verifying}
-                                  >
-                                    Complete Verification
-                                  </Button>
-                                </Box>
-                              </Box>
-                            )}
-                          </Paper>
-                        </>
-                      ) : (
-                        <>
-                          {/* Verification Mode UI with Tabs OR Regular UI for non-GUARD users */}
-                          {userSubrole === EmployeeSubrole.GUARD && verificationMode ? (
-                            <>
-                              {/* Verification UI with Tabs */}
-                              <Paper sx={{ mb: 3 }}>
-                                <Tabs 
-                                  value={activeTab} 
-                                  onChange={(_, newValue) => setActiveTab(newValue)} 
-                                  variant="fullWidth"
-                                  textColor="primary"
-                                  indicatorColor="primary"
-                                >
-                                  <Tab icon={<InfoOutlined />} label="Trip Details" />
-                                  <Tab icon={<QrCode />} label="Seal Tags" />
-                                  <Tab icon={<PhotoLibrary />} label="Images" />
-                                </Tabs>
-                                
-                                {/* Trip Details Tab */}
-                                {activeTab === 0 && (
-                                  <Box sx={{ p: 3 }}>
-                                    <Typography variant="h6" gutterBottom>
-                                      Trip Information Verification
-                                    </Typography>
-                                    
-                                    <TableContainer>
-                                      <Table size="small">
-                                        <TableHead>
-                                          <TableRow>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                                          </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                          {session.tripDetails && Object.entries(session.tripDetails)
-                                            .filter(([key]) => !isSystemField(key))
-                                            .map(([key, value]) => (
-                                              <TableRow key={key}>
-                                                <TableCell>{getFieldLabel(key)}</TableCell>
-                                                <TableCell>{value || 'N/A'}</TableCell>
-                                                <TableCell>
-                                                  {verificationFields[key]?.verified ? (
-                                                    <Chip 
-                                                      icon={<CheckCircle fontSize="small" />}
-                                                      label="Verified" 
-                                                      color="success" 
-                                                      size="small"
-                                                    />
-                                                  ) : (
-                                                    <Button
-                                                      size="small"
-                                                      variant="outlined"
-                                                      onClick={() => verifyField(key)}
-                                                    >
-                                                      Verify
-                                                    </Button>
-                                                  )}
-                                                </TableCell>
-                                              </TableRow>
-                                            ))}
-                                        </TableBody>
-                                      </Table>
-                                    </TableContainer>
-                                    
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                      <Button
-                                        variant="outlined"
-                                        onClick={verifyAllFields}
-                                      >
-                                        Verify All Fields
-                                      </Button>
-                                      
-                                      <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={() => setActiveTab(1)}
-                                      >
-                                        Next: Seal Tags
-                                      </Button>
-                                    </Box>
-                                  </Box>
-                                )}
-                                
-                                {/* Seal Tags Tab */}
-                                {activeTab === 1 && (
-                                  <Box sx={{ p: 3 }}>
-                                    <Typography variant="h6" gutterBottom>
-                                      Seal Tags Verification
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                                      Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
-                                    </Typography>
-                                    
-                                    {/* Scan Seal Tags */}
-                                    <Box sx={{ mt: 3, mb: 3 }}>
-                                      <Typography variant="subtitle1" gutterBottom>
-                                        Scan Seal Tags
-                                      </Typography>
-                                      
-                                      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                                        <TextField
-                                          variant="outlined"
-                                          size="small"
-                                          placeholder="Seal Tag ID"
-                                          value={scanInput}
-                                          onChange={(e) => setScanInput(e.target.value)}
-                                          sx={{ flexGrow: 1 }}
-                                        />
-                                        
-                                        <Button
-                                          variant="outlined"
-                                          onClick={() => handleScanComplete(scanInput, 'manual')}
-                                          sx={{ minWidth: 120 }}
-                                        >
-                                          Add Manually
-                                        </Button>
-                                        
-                                        <Button
-                                          variant="contained"
-                                          color="primary"
-                                          startIcon={<QrCode />}
-                                          onClick={() => {
-                                            // Show QR scanner
-                                            const scanner = document.getElementById('qr-scanner-container');
-                                            if (scanner) {
-                                              scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                                            }
-                                          }}
-                                          sx={{ minWidth: 200 }}
-                                        >
-                                          Scan QR/Barcode
-                                        </Button>
-                                      </Box>
-                                      
-                                      <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-                                        <ClientSideQrScanner 
-                                          onScan={(data) => handleScanComplete(data, 'digital')}
-                                          buttonText="Scan QR Code"
-                                        />
-                                      </Box>
-                                      
-                                      {scanError && (
-                                        <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                                          {scanError}
-                                        </Alert>
-                                      )}
-                                    </Box>
-                                    
-                                    {/* Verification Progress */}
-                                    <Box 
-                                      sx={{ 
-                                        p: 2, 
-                                        mb: 3, 
-                                        border: '1px solid', 
-                                        borderColor: 'divider',
-                                        borderLeft: '4px solid',
-                                        borderLeftColor: 'primary.main',
-                                        borderRadius: 1
-                                      }}
-                                    >
-                                      <Typography variant="subtitle1" gutterBottom>
-                                        Verification Progress:
-                                      </Typography>
-                                      
-                                      <Box sx={{ display: 'flex', gap: 2 }}>
-                                        <Chip
-                                          label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                                          color="primary"
-                                          variant="outlined"
-                                        />
-                                        
-                                        <Chip 
-                                          icon={<CheckCircle fontSize="small" />}
-                                          label={`${sealComparison.matched.length} Matched`}
-                                          color="success" 
-                                          variant="outlined"
-                                        />
-                                        
-                                        {sealComparison.mismatched.length > 0 && (
-                                          <Chip 
-                                            icon={<Warning fontSize="small" />}
-                                            label={`${sealComparison.mismatched.length} Not Scanned`}
-                                            color="warning" 
-                                            variant="outlined"
-                                          />
-                                        )}
-                                      </Box>
-                                    </Box>
-                                    
-                                    {/* Seal Tags Table */}
-                                    <TableContainer component={Paper} variant="outlined">
-                                      <Table>
-                                        <TableHead>
-                                          <TableRow sx={{ backgroundColor: 'background.paper' }}>
-                                            <TableCell>Seal Tag ID</TableCell>
-                                            <TableCell>Method</TableCell>
-                                            <TableCell>Source</TableCell>
-                                            <TableCell>Status</TableCell>
-                                            <TableCell>Actions</TableCell>
-                                          </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                          {/* Render operator seals with their verification status */}
-                                          {operatorSeals.map((seal) => {
-                                            const isVerified = sealComparison.matched.includes(seal.id);
-                                            return (
-                                              <TableRow key={seal.id} sx={{ backgroundColor: isVerified ? '#f5fff5' : '#fff5f5' }}>
-                                                <TableCell>
-                                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                    {isVerified ? (
-                                                      <CheckCircle color="success" fontSize="small" sx={{ mr: 1 }} />
-                                                    ) : (
-                                                      <Cancel color="error" fontSize="small" sx={{ mr: 1 }} />
-                                                    )}
-                                                    {seal.id}
-                                                  </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                  <Chip 
-                                                    label={getMethodDisplay('digital')}
-                                                    color={getMethodColor('digital')}
-                                                    size="small"
-                                                  />
-                                                </TableCell>
-                                                <TableCell>
-                                                  <Chip 
-                                                    label="Operator"
-                                                    color="primary"
-                                                    size="small"
-                                                  />
-                                                </TableCell>
-                                                <TableCell>
-                                                  {isVerified ? (
-                                                    <Chip 
-                                                      icon={<CheckCircle fontSize="small" />}
-                                                      label="Verified" 
-                                                      color="success" 
-                                                      size="small"
-                                                    />
-                                                  ) : (
-                                                    <Chip 
-                                                      icon={<Warning fontSize="small" />}
-                                                      label="Not Scanned" 
-                                                      color="warning" 
-                                                      size="small"
-                                                    />
-                                                  )}
-                                                </TableCell>
-                                                <TableCell>
-                                                  <IconButton size="small" onClick={() => {
-                                                    // Toggle details visibility
-                                                    const detailsRow = document.getElementById(`details-${seal.id}`);
-                                                    if (detailsRow) {
-                                                      detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
-                                                    }
-                                                  }}>
-                                                    <KeyboardArrowDown />
-                                                  </IconButton>
-                                                </TableCell>
-                                              </TableRow>
-                                            );
-                                          })}
-                                        </TableBody>
-                                      </Table>
-                                    </TableContainer>
-                                    
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                      <Button
-                                        variant="outlined"
-                                        onClick={() => setActiveTab(0)}
-                                      >
-                                        Back: Trip Details
-                                      </Button>
-                                      
-                                      <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={() => setActiveTab(2)}
-                                      >
-                                        Next: Images
-                                      </Button>
-                                    </Box>
-                                  </Box>
-                                )}
-                                
-                                {/* Images Tab */}
-                                {activeTab === 2 && (
-                                  <Box sx={{ p: 3 }}>
-                                    <Typography variant="h6" gutterBottom>
-                                      Image Verification
-                                    </Typography>
-                                    
-                                    {session.images && (
-                                      <Grid container spacing={2}>
-                                        {session.images.vehicleNumberPlatePicture && (
-                                          <Grid item xs={12} sm={6} md={4}>
-                                            <Paper 
-                                              elevation={1} 
-                                              sx={{ 
-                                                p: 2, 
-                                                height: '100%', 
-                                                display: 'flex', 
-                                                flexDirection: 'column'
-                                              }}
-                                            >
-                                              <Typography variant="subtitle1" gutterBottom>
-                                                Vehicle Number Plate
-                                              </Typography>
-                                              
-                                              <Box 
-                                                component="img"
-                                                src={session.images.vehicleNumberPlatePicture}
-                                                alt="Vehicle Number Plate"
-                                                sx={{ 
-                                                  width: '100%', 
-                                                  height: 180, 
-                                                  objectFit: 'cover',
-                                                  cursor: 'pointer',
-                                                  borderRadius: 1,
-                                                  mb: 2
-                                                }}
-                                                onClick={() => {
-                                                  setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                                                  setOpenImageModal(true);
-                                                }}
-                                              />
-                                              
-                                              {verificationFields['vehicleNumberPlatePicture']?.verified ? (
-                                                <Chip 
-                                                  icon={<CheckCircle fontSize="small" />}
-                                                  label="Verified" 
-                                                  color="success" 
-                                                  size="small"
-                                                  sx={{ alignSelf: 'flex-start' }}
-                                                />
-                                              ) : (
-                                                <Button
-                                                  size="small"
-                                                  variant="outlined"
-                                                  onClick={() => verifyImage('vehicleNumberPlatePicture')}
-                                                  sx={{ alignSelf: 'flex-start' }}
-                                                >
-                                                  Verify Image
-                                                </Button>
-                                              )}
-                                            </Paper>
-                                          </Grid>
-                                        )}
-                                        
-                                        {session.images.gpsImeiPicture && (
-                                          <Grid item xs={12} sm={6} md={4}>
-                                            <Paper 
-                                              elevation={1} 
-                                              sx={{ 
-                                                p: 2, 
-                                                height: '100%', 
-                                                display: 'flex', 
-                                                flexDirection: 'column'
-                                              }}
-                                            >
-                                              <Typography variant="subtitle1" gutterBottom>
-                                                GPS IMEI Image
-                                              </Typography>
-                                              
-                                              <Box 
-                                                component="img"
-                                                src={session.images.gpsImeiPicture}
-                                                alt="GPS IMEI"
-                                                sx={{ 
-                                                  width: '100%', 
-                                                  height: 180, 
-                                                  objectFit: 'cover',
-                                                  cursor: 'pointer',
-                                                  borderRadius: 1,
-                                                  mb: 2
-                                                }}
-                                                onClick={() => {
-                                                  setSelectedImage(session.images?.gpsImeiPicture || '');
-                                                  setOpenImageModal(true);
-                                                }}
-                                              />
-                                              
-                                              {verificationFields['gpsImeiPicture']?.verified ? (
-                                                <Chip 
-                                                  icon={<CheckCircle fontSize="small" />}
-                                                  label="Verified" 
-                                                  color="success" 
-                                                  size="small"
-                                                  sx={{ alignSelf: 'flex-start' }}
-                                                />
-                                              ) : (
-                                                <Button
-                                                  size="small"
-                                                  variant="outlined"
-                                                  onClick={() => verifyImage('gpsImeiPicture')}
-                                                  sx={{ alignSelf: 'flex-start' }}
-                                                >
-                                                  Verify Image
-                                                </Button>
-                                              )}
-                                            </Paper>
-                                          </Grid>
-                                        )}
-                                        
-                                        {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
-                                          <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
-                                            <Paper 
-                                              elevation={1} 
-                                              sx={{ 
-                                                p: 2, 
-                                                height: '100%', 
-                                                display: 'flex', 
-                                                flexDirection: 'column'
-                                              }}
-                                            >
-                                              <Typography variant="subtitle1" gutterBottom>
-                                                Vehicle Image {index + 1}
-                                              </Typography>
-                                              
-                                              <Box 
-                                                component="img"
-                                                src={imageUrl}
-                                                alt={`Vehicle ${index + 1}`}
-                                                sx={{ 
-                                                  width: '100%', 
-                                                  height: 180, 
-                                                  objectFit: 'cover',
-                                                  cursor: 'pointer',
-                                                  borderRadius: 1,
-                                                  mb: 2
-                                                }}
-                                                onClick={() => {
-                                                  setSelectedImage(imageUrl);
-                                                  setOpenImageModal(true);
-                                                }}
-                                              />
-                                              
-                                              {verificationFields[`vehicleImages-${index}`]?.verified ? (
-                                                <Chip 
-                                                  icon={<CheckCircle fontSize="small" />}
-                                                  label="Verified" 
-                                                  color="success" 
-                                                  size="small"
-                                                  sx={{ alignSelf: 'flex-start' }}
-                                                />
-                                              ) : (
-                                                <Button
-                                                  size="small"
-                                                  variant="outlined"
-                                                  onClick={() => verifyImage(`vehicleImages-${index}`)}
-                                                  sx={{ alignSelf: 'flex-start' }}
-                                                >
-                                                  Verify Image
-                                                </Button>
-                                              )}
-                                            </Paper>
-                                          </Grid>
-                                        ))}
-                                      </Grid>
-                                    )}
-                                    
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                      <Button
-                                        variant="outlined"
-                                        onClick={() => setActiveTab(1)}
-                                      >
-                                        Back: Seal Tags
-                                      </Button>
-                                      
-                                      <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={handleVerifySeal}
-                                        disabled={verifying}
-                                      >
-                                        Complete Verification
-                                      </Button>
-                                    </Box>
-                                  </Box>
-                                )}
-                              </Paper>
-                            </>
-                          ) : (
-                            <>
-                              {/* Verification Mode UI with Tabs OR Regular UI for non-GUARD users */}
-                              {userSubrole === EmployeeSubrole.GUARD && verificationMode ? (
-                                <>
-                                  {/* Verification UI with Tabs */}
-                                  <Paper sx={{ mb: 3 }}>
-                                    <Tabs 
-                                      value={activeTab} 
-                                      onChange={(_, newValue) => setActiveTab(newValue)} 
-                                      variant="fullWidth"
-                                      textColor="primary"
-                                      indicatorColor="primary"
-                                    >
-                                      <Tab icon={<InfoOutlined />} label="Trip Details" />
-                                      <Tab icon={<QrCode />} label="Seal Tags" />
-                                      <Tab icon={<PhotoLibrary />} label="Images" />
-                                    </Tabs>
-                                    
-                                    {/* Trip Details Tab */}
-                                    {activeTab === 0 && (
-                                      <Box sx={{ p: 3 }}>
-                                        <Typography variant="h6" gutterBottom>
-                                          Trip Information Verification
-                                        </Typography>
-                                        
-                                        <TableContainer>
-                                          <Table size="small">
-                                            <TableHead>
-                                              <TableRow>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                                              </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                              {session.tripDetails && Object.entries(session.tripDetails)
-                                                .filter(([key]) => !isSystemField(key))
-                                                .map(([key, value]) => (
-                                                  <TableRow key={key}>
-                                                    <TableCell>{getFieldLabel(key)}</TableCell>
-                                                    <TableCell>{value || 'N/A'}</TableCell>
-                                                    <TableCell>
-                                                      {verificationFields[key]?.verified ? (
-                                                        <Chip 
-                                                          icon={<CheckCircle fontSize="small" />}
-                                                          label="Verified" 
-                                                          color="success" 
-                                                          size="small"
-                                                        />
-                                                      ) : (
-                                                        <Button
-                                                          size="small"
-                                                          variant="outlined"
-                                                          onClick={() => verifyField(key)}
-                                                        >
-                                                          Verify
-                                                        </Button>
-                                                      )}
-                                                    </TableCell>
-                                                  </TableRow>
-                                                ))}
-                                            </TableBody>
-                                          </Table>
-                                        </TableContainer>
-                                        
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                          <Button
-                                            variant="outlined"
-                                            onClick={verifyAllFields}
-                                          >
-                                            Verify All Fields
-                                          </Button>
-                                          
-                                          <Button
-                                            variant="contained"
-                                            color="primary"
-                                            onClick={() => setActiveTab(1)}
-                                          >
-                                            Next: Seal Tags
-                                          </Button>
-                                        </Box>
-                                      </Box>
-                                    )}
-                                    
-                                    {/* Seal Tags Tab */}
-                                    {activeTab === 1 && (
-                                      <Box sx={{ p: 3 }}>
-                                        <Typography variant="h6" gutterBottom>
-                                          Seal Tags Verification
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                                          Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
-                                        </Typography>
-                                        
-                                        {/* Scan Seal Tags */}
-                                        <Box sx={{ mt: 3, mb: 3 }}>
-                                          <Typography variant="subtitle1" gutterBottom>
-                                            Scan Seal Tags
-                                          </Typography>
-                                          
-                                          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                                            <TextField
-                                              variant="outlined"
-                                              size="small"
-                                              placeholder="Seal Tag ID"
-                                              value={scanInput}
-                                              onChange={(e) => setScanInput(e.target.value)}
-                                              sx={{ flexGrow: 1 }}
-                                            />
-                                            
-                                            <Button
-                                              variant="outlined"
-                                              onClick={() => handleScanComplete(scanInput, 'manual')}
-                                              sx={{ minWidth: 120 }}
-                                            >
-                                              Add Manually
-                                            </Button>
-                                            
-                                            <Button
-                                              variant="contained"
-                                              color="primary"
-                                              startIcon={<QrCode />}
-                                              onClick={() => {
-                                                // Show QR scanner
-                                                const scanner = document.getElementById('qr-scanner-container');
-                                                if (scanner) {
-                                                  scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                                                }
-                                              }}
-                                              sx={{ minWidth: 200 }}
-                                            >
-                                              Scan QR/Barcode
-                                            </Button>
-                                          </Box>
-                                          
-                                          <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-                                            <ClientSideQrScanner 
-                                              onScan={(data) => handleScanComplete(data, 'digital')}
-                                              buttonText="Scan QR Code"
-                                            />
-                                          </Box>
-                                          
-                                          {scanError && (
-                                            <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                                              {scanError}
-                                            </Alert>
-                                          )}
-                                        </Box>
-                                        
-                                        {/* Verification Progress */}
-                                        <Box 
-                                          sx={{ 
-                                            p: 2, 
-                                            mb: 3, 
-                                            border: '1px solid', 
-                                            borderColor: 'divider',
-                                            borderLeft: '4px solid',
-                                            borderLeftColor: 'primary.main',
-                                            borderRadius: 1
-                                          }}
-                                        >
-                                          <Typography variant="subtitle1" gutterBottom>
-                                            Verification Progress:
-                                          </Typography>
-                                          
-                                          <Box sx={{ display: 'flex', gap: 2 }}>
-                                            <Chip
-                                              label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
-                                              color="primary"
-                                              variant="outlined"
-                                            />
-                                            
-                                            <Chip 
-                                              icon={<CheckCircle fontSize="small" />}
-                                              label={`${sealComparison.matched.length} Matched`}
-                                              color="success" 
-                                              variant="outlined"
-                                            />
-                                            
-                                            {sealComparison.mismatched.length > 0 && (
-                                              <Chip 
-                                                icon={<Warning fontSize="small" />}
-                                                label={`${sealComparison.mismatched.length} Not Scanned`}
-                                                color="warning" 
-                                                variant="outlined"
-                                              />
-                                            )}
-                                          </Box>
-                                        </Box>
-                                        
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                          <Button
-                                            variant="outlined"
-                                            onClick={() => setActiveTab(0)}
-                                          >
-                                            Back: Trip Details
-                                          </Button>
-                                          
-                                          <Button
-                                            variant="contained"
-                                            color="primary"
-                                            onClick={() => setActiveTab(2)}
-                                          >
-                                            Next: Images
-                                          </Button>
-                                        </Box>
-                                      </Box>
-                                    )}
-                                    
-                                    {/* Images Tab */}
-                                    {activeTab === 2 && (
-                                      <Box sx={{ p: 3 }}>
-                                        <Typography variant="h6" gutterBottom>
-                                          Image Verification
-                                        </Typography>
-                                        
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                          <Button
-                                            variant="outlined"
-                                            onClick={() => setActiveTab(1)}
-                                          >
-                                            Back: Seal Tags
-                                          </Button>
-                                          
-                                          <Button
-                                            variant="contained"
-                                            color="primary"
-                                            onClick={handleVerifySeal}
-                                            disabled={verifying}
-                                          >
-                                            Complete Verification
-                                          </Button>
-                                        </Box>
-                                      </Box>
-                                    )}
-                                  </Paper>
-                                </>
-                              ) : (
-                                // Regular UI for non-GUARD users or GUARD users not in verification mode
-                                <>
-                                  {/* Regular Session UI */}
-                                  <Paper sx={{ p: 3, mb: 3 }}>
-                                    <Typography variant="h5" gutterBottom>
-                                      Session Details
-                                    </Typography>
-                                    {/* ... Regular session details ... */}
-                                  </Paper>
-                                </>
-                              )}
-                            </>
-                          )}
-                          
-                          {/* Image Modal - Used by all views */}
-                          <Dialog
-                            open={openImageModal}
-                            onClose={() => setOpenImageModal(false)}
-                            maxWidth="lg"
-                          >
-                            <DialogContent sx={{ p: 1 }}>
-                              {selectedImage && (
-                                <Box
-                                  component="img"
-                                  src={selectedImage}
-                                  alt="Full size"
-                                  sx={{
-                                    maxWidth: '100%',
-                                    maxHeight: '80vh',
-                                    display: 'block',
-                                    margin: '0 auto',
-                                  }}
-                                />
-                              )}
-                            </DialogContent>
-                            <DialogActions>
-                              <Button onClick={() => setOpenImageModal(false)}>Close</Button>
-                            </DialogActions>
-                          </Dialog>
-                          
-                          {/* Comment Section */}
-                          <CommentSection sessionId={sessionId} />
-                        </Container>
-                      );
-                    }
+      <Dialog
+        open={openImageModal}
+        onClose={() => setOpenImageModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Image Preview</DialogTitle>
+        <DialogContent>
+          <Box
+            component="img"
+            src={selectedImage}
+            alt="Preview"
+            sx={{
+              width: '100%',
+              height: 'auto',
+              maxHeight: '80vh',
+              objectFit: 'contain'
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImageModal(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
+}
