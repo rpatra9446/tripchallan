@@ -290,6 +290,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
           onChange={(e) => setMessage(e.target.value)}
           disabled={isLoading}
           sx={{ mb: 2 }}
+          aria-label="Comment message"
         />
 
         {/* Image preview area */}
@@ -297,7 +298,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
           <Box sx={{ position: 'relative', width: 'fit-content', mt: 1, mb: 2 }}>
             <img 
               src={imagePreview} 
-              alt="Selected" 
+              alt="Selected image preview" 
               style={{ 
                 maxWidth: '100%', 
                 maxHeight: '200px', 
@@ -329,6 +330,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
               id="image-upload"
               onChange={handleImageSelect}
               ref={fileInputRef}
+              aria-label="Upload image"
             />
             <label htmlFor="image-upload">
               <Tooltip title="Attach image">
@@ -336,6 +338,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
                   component="span" 
                   color="primary"
                   disabled={isLoading}
+                  aria-label="Attach image"
                 >
                   <PhotoCamera />
                 </IconButton>
@@ -358,7 +361,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
                   }} />
                 }
               >
-                <MenuItem value="NA">--NA--</MenuItem>
+                <MenuItem value="NA">No Urgency</MenuItem>
                 <MenuItem value="LOW">
                   <Typography sx={{ color: "#EFCC00" }}>
                     Low
@@ -384,8 +387,9 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
             color="primary"
             disabled={(!(message.trim() || selectedImage)) || isLoading}
             endIcon={isLoading ? <CircularProgress size={20} /> : <Send />}
+            aria-label="Send comment"
           >
-            Send
+            {isLoading ? 'Sending...' : 'Send'}
           </Button>
         </Box>
       </form>
@@ -393,7 +397,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
       <List sx={{ mt: 2 }}>
         {isFetching ? (
           <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-            <CircularProgress />
+            <CircularProgress aria-label="Loading comments" />
           </Box>
         ) : comments.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: "center" }}>
@@ -444,7 +448,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
                         <Box sx={{ mt: 1 }}>
                           <img 
                             src={comment.imageUrl} 
-                            alt="Comment attachment" 
+                            alt={`Attachment by ${comment.user.name}`} 
                             style={{ 
                               maxWidth: '100%', 
                               maxHeight: '300px',
