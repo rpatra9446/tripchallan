@@ -65,6 +65,7 @@ import Link from "next/link";
 import { SessionStatus, EmployeeSubrole, UserRole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import toast from "react-hot-toast";
 
 // Types
@@ -755,58 +756,208 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     
     setReportLoading('pdf');
     try {
-      // Create a new jsPDF instance
-      const doc = new jsPDF();
+      // Create a new jsPDF instance - landscape to fit more content
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      let yPos = 15; // Starting y position
+      const leftMargin = 14;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      // Helper function to add a new page and reset y position
+      const addNewPageIfNeeded = (requiredSpace = 20) => {
+        if (yPos + requiredSpace > pageHeight - 15) {
+          doc.addPage();
+          yPos = 15;
+          return true;
+        }
+        return false;
+      };
       
       // Add title
       doc.setFontSize(20);
-      doc.text('Trip Session Report', 105, 15, { align: 'center' });
+      doc.text('Trip Session Report', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
       
       // Add session details
-      doc.setFontSize(12);
-      doc.text(`Session ID: ${session.id}`, 14, 30);
-      doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`, 14, 38);
-      doc.text(`Status: ${session.status}`, 14, 46);
-      doc.text(`Company: ${session.company.name}`, 14, 54);
-      doc.text(`Created By: ${session.createdBy.name}`, 14, 62);
+      doc.setFontSize(14);
+      doc.text('Basic Information', leftMargin, yPos);
+      yPos += 8;
       
-      // Add source & destination
-      doc.setFontSize(16);
-      doc.text('Trip Route', 14, 75);
-      doc.setFontSize(12);
-      doc.text(`Source: ${session.source}`, 14, 83);
-      doc.text(`Destination: ${session.destination}`, 14, 91);
+      doc.setFontSize(10);
+      doc.text(`Session ID: ${session.id}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Status: ${session.status.replace('_', ' ')}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Company: ${session.company.name}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Created By: ${session.createdBy.name}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Source: ${session.source}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Destination: ${session.destination}`, leftMargin, yPos); yPos += 10;
       
-      // Add driver details
+      // Add trip details section
       if (session.tripDetails) {
-        doc.setFontSize(16);
-        doc.text('Driver Details', 14, 105);
-        doc.setFontSize(12);
-        doc.text(`Driver: ${session.tripDetails.driverName || 'N/A'}`, 14, 113);
-        doc.text(`Contact: ${session.tripDetails.driverContactNumber || 'N/A'}`, 14, 121);
-        doc.text(`License: ${session.tripDetails.driverLicense || 'N/A'}`, 14, 129);
-      }
-      
-      // Add vehicle details
-      if (session.tripDetails) {
-        doc.setFontSize(16);
-        doc.text('Vehicle Details', 14, 151);
-        doc.setFontSize(12);
-        doc.text(`Vehicle Number: ${session.tripDetails.vehicleNumber || 'N/A'}`, 14, 159);
-        doc.text(`Transporter: ${session.tripDetails.transporterName || 'N/A'}`, 14, 167);
-        doc.text(`GPS IMEI: ${session.tripDetails.gpsImeiNumber || 'N/A'}`, 14, 175);
+        addNewPageIfNeeded(60);
+        doc.setFontSize(14);
+        doc.text('Trip Details', leftMargin, yPos);
+        yPos += 8;
+        
+        doc.setFontSize(10);
+        const tripDetails = session.tripDetails;
+        
+        // Create trip details table
+        const tripDetailsArray = Object.entries(tripDetails)
+          .filter(([key]) => !isSystemField(key))
+          .map(([key, value]) => [getFieldLabel(key), value || 'N/A']);
+        
+        if (tripDetailsArray.length > 0) {
+          // @ts-ignore - jspdf-autotable extends jsPDF prototype
+          doc.autoTable({
+            head: [['Field', 'Value']],
+            body: tripDetailsArray,
+            startY: yPos,
+            margin: { left: leftMargin },
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [75, 75, 75] }
+          });
+          
+          // @ts-ignore - jspdf-autotable extends jsPDF prototype
+          yPos = doc.lastAutoTable.finalY + 10;
+        } else {
+          doc.text('No trip details available', leftMargin, yPos);
+          yPos += 10;
+        }
       }
       
       // Add seal information
       if (session.sealTags && session.sealTags.length > 0) {
-        doc.setFontSize(16);
-        doc.text('Seal Tags', 14, 189);
-        doc.setFontSize(12);
+        addNewPageIfNeeded(60);
+        doc.setFontSize(14);
+        doc.text('Seal Tags', leftMargin, yPos);
+        yPos += 8;
         
-        session.sealTags.forEach((tag, index) => {
-          const y = 197 + (index * 8);
-          doc.text(`Tag ${index + 1}: ${tag.barcode} (${getMethodDisplay(tag.method)})`, 14, y);
+        doc.setFontSize(10);
+        doc.text(`Total Seal Tags: ${session.sealTags.length}`, leftMargin, yPos);
+        yPos += 8;
+        
+        // Create seal tags table
+        const sealTagsArray = session.sealTags.map((tag, index) => [
+          index + 1,
+          tag.barcode,
+          getMethodDisplay(tag.method),
+          new Date(tag.createdAt).toLocaleString(),
+          tag.scannedByName || 'Unknown'
+        ]);
+        
+        // @ts-ignore - jspdf-autotable extends jsPDF prototype
+        doc.autoTable({
+          head: [['No.', 'Seal Tag ID', 'Method', 'Created At', 'Created By']],
+          body: sealTagsArray,
+          startY: yPos,
+          margin: { left: leftMargin },
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [75, 75, 75] }
         });
+        
+        // @ts-ignore - jspdf-autotable extends jsPDF prototype
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
+      
+      // Function to add an image to PDF
+      const addImageToPdf = async (imageUrl: string, title: string) => {
+        if (!imageUrl) return;
+        
+        try {
+          addNewPageIfNeeded(70);
+          
+          // Add image title
+          doc.setFontSize(10);
+          doc.text(title, leftMargin, yPos);
+          yPos += 5;
+          
+          // Create a temporary image element to load the image
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          
+          // Wait for image to load
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = imageUrl;
+          });
+          
+          // Calculate image dimensions to fit in PDF
+          const maxWidth = 120;
+          const maxHeight = 60;
+          
+          let imgWidth = img.width;
+          let imgHeight = img.height;
+          
+          if (imgWidth > maxWidth) {
+            const ratio = maxWidth / imgWidth;
+            imgWidth = maxWidth;
+            imgHeight = imgHeight * ratio;
+          }
+          
+          if (imgHeight > maxHeight) {
+            const ratio = maxHeight / imgHeight;
+            imgHeight = maxHeight;
+            imgWidth = imgWidth * ratio;
+          }
+          
+          // Add image to PDF
+          doc.addImage(img, 'JPEG', leftMargin, yPos, imgWidth, imgHeight);
+          yPos += imgHeight + 10;
+          
+        } catch (error) {
+          console.error(`Error adding image to PDF: ${title}`, error);
+          doc.text(`[Error loading image: ${title}]`, leftMargin, yPos);
+          yPos += 10;
+        }
+      };
+      
+      // Add images section - vehicle and document images
+      if (session.images) {
+        addNewPageIfNeeded(80);
+        doc.setFontSize(14);
+        doc.text('Vehicle & Document Images', leftMargin, yPos);
+        yPos += 8;
+        
+        // Process all images
+        if (session.images.vehicleNumberPlatePicture) {
+          await addImageToPdf(session.images.vehicleNumberPlatePicture, 'Vehicle Number Plate');
+        }
+        
+        if (session.images.gpsImeiPicture) {
+          await addImageToPdf(session.images.gpsImeiPicture, 'GPS IMEI Photo');
+        }
+        
+        if (session.images.driverPicture) {
+          await addImageToPdf(session.images.driverPicture, 'Driver Photo');
+        }
+        
+        // Add vehicle images
+        if (session.images.vehicleImages && session.images.vehicleImages.length > 0) {
+          for (let i = 0; i < session.images.vehicleImages.length; i++) {
+            await addImageToPdf(session.images.vehicleImages[i], `Vehicle Image ${i + 1}`);
+          }
+        }
+        
+        // Add sealing images
+        if (session.images.sealingImages && session.images.sealingImages.length > 0) {
+          for (let i = 0; i < session.images.sealingImages.length; i++) {
+            await addImageToPdf(session.images.sealingImages[i], `Sealing Image ${i + 1}`);
+          }
+        }
+        
+        // Add additional images
+        if (session.images.additionalImages && session.images.additionalImages.length > 0) {
+          for (let i = 0; i < session.images.additionalImages.length; i++) {
+            await addImageToPdf(session.images.additionalImages[i], `Additional Image ${i + 1}`);
+          }
+        }
       }
       
       // Save the PDF
