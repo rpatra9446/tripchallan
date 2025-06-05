@@ -9,8 +9,8 @@ import {
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   Alert, AlertTitle, LinearProgress, List, ListItem, ListItemText,
   TableContainer, Table, TableHead, TableBody, TableRow, TableCell,
-  TextField, IconButton, Grid, InputAdornment, Tooltip, Typography,
-  Tabs, Tab, FormControl, InputLabel, Select, MenuItem
+  TextField, IconButton, InputAdornment, Tooltip, Typography,
+  Tabs, Tab, FormControl, InputLabel, Select, MenuItem, Grid
 } from "@mui/material";
 import { 
   LocationOn, DirectionsCar, AccessTime, VerifiedUser, ArrowBack, Lock,
@@ -354,6 +354,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
            subrole === EmployeeSubrole.OPERATOR));
       
       setCanEdit(canEditSession);
+      
+      // Set verification mode for GUARD role
+      if (role === 'EMPLOYEE' && subrole === EmployeeSubrole.GUARD) {
+        setVerificationMode(true);
+      }
     }
   }, [authSession]);
   
@@ -397,17 +402,19 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     const mismatched: string[] = [];
     
     // Find matches and mismatches between operator and guard scanned seals
-    guardTags.forEach(guardTag => {
-      const isMatch = operatorSeals.some(
-        opSeal => opSeal.id.trim().toLowerCase() === guardTag.id.trim().toLowerCase()
-      );
-      
-      if (isMatch) {
-        matched.push(guardTag.id);
-      } else {
-        mismatched.push(guardTag.id);
-      }
-    });
+    if (operatorSeals && operatorSeals.length > 0) {
+      guardTags.forEach(guardTag => {
+        const isMatch = operatorSeals.some(
+          opSeal => opSeal.id.trim().toLowerCase() === guardTag.id.trim().toLowerCase()
+        );
+        
+        if (isMatch) {
+          matched.push(guardTag.id);
+        } else {
+          mismatched.push(guardTag.id);
+        }
+      });
+    }
     
     setSealComparison({ matched, mismatched });
   }, [operatorSeals]);
