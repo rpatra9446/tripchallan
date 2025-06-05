@@ -1448,13 +1448,459 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   disabled={verifying || getVerificationStats().percentage < 100}
                   startIcon={verifying ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
                 >
-                  {verifying ? "Processing..." : "Complete Verification"}
+                  {verifying ? "Verifying..." : "Complete Verification"}
                 </Button>
               </Box>
             </Box>
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Inline Seal Tag Verification UI */}
+      {verificationFormOpen && (
+        <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Seal Tags Verification
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
+          </Typography>
+          
+          {/* Scan Seal Tags */}
+          <Box sx={{ mt: 3, mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Scan Seal Tags
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <TextField
+                variant="outlined"
+                size="small"
+                placeholder="Seal Tag ID"
+                value={scanInput}
+                onChange={(e) => setScanInput(e.target.value)}
+                sx={{ flexGrow: 1 }}
+              />
+              
+              <Button
+                variant="outlined"
+                onClick={() => handleScanComplete(scanInput, 'manual')}
+                sx={{ minWidth: 120 }}
+              >
+                Add Manually
+              </Button>
+              
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<QrCode />}
+                onClick={() => {
+                  // Show QR scanner
+                  const scanner = document.getElementById('qr-scanner-container');
+                  if (scanner) {
+                    scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
+                  }
+                }}
+                sx={{ minWidth: 200 }}
+              >
+                Scan QR/Barcode
+              </Button>
+            </Box>
+            
+            <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
+              <ClientSideQrScanner 
+                onScan={(data) => handleScanComplete(data, 'digital')}
+                buttonText="Scan QR Code"
+              />
+            </Box>
+            
+            {scanError && (
+              <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+                {scanError}
+              </Alert>
+            )}
+          </Box>
+          
+          {/* Verification Progress */}
+          <Box 
+            sx={{ 
+              p: 2, 
+              mb: 3, 
+              border: '1px solid', 
+              borderColor: 'divider',
+              borderLeft: '4px solid',
+              borderLeftColor: 'primary.main',
+              borderRadius: 1
+            }}
+          >
+            <Typography variant="subtitle1" gutterBottom>
+              Verification Progress:
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Chip
+                label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
+                color="primary"
+                variant="outlined"
+              />
+              
+              <Chip 
+                icon={<CheckCircle fontSize="small" />}
+                label={`${sealComparison.matched.length} Matched`}
+                color="success" 
+                variant="outlined"
+              />
+              
+              {sealComparison.mismatched.length > 0 && (
+                <Chip 
+                  icon={<Warning fontSize="small" />}
+                  label={`${sealComparison.mismatched.length} Not Scanned`}
+                  color="warning" 
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          </Box>
+          
+          {/* Seal Tags Table */}
+          <TableContainer component={Paper} variant="outlined">
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'background.paper' }}>
+                  <TableCell>Seal Tag ID</TableCell>
+                  <TableCell>Method</TableCell>
+                  <TableCell>Source</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {/* Matched seals displayed with details */}
+                {guardScannedSeals.filter(seal => seal.verified).map((seal) => (
+                  <React.Fragment key={seal.id}>
+                    <TableRow sx={{ backgroundColor: '#f5fff5' }}>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CheckCircle color="success" fontSize="small" sx={{ mr: 1 }} />
+                          {seal.id}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={getMethodDisplay(seal.method)}
+                          color={getMethodColor(seal.method)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label="Both"
+                          color="success"
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          icon={<CheckCircle fontSize="small" />}
+                          label="Matched" 
+                          color="success" 
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton size="small" onClick={() => {
+                          // Toggle details visibility
+                          const detailsRow = document.getElementById(`details-${seal.id}`);
+                          if (detailsRow) {
+                            detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
+                          }
+                        }}>
+                          <KeyboardArrowDown />
+                        </IconButton>
+                        
+                        <IconButton size="small" color="error">
+                          <Delete />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                    
+                    {/* Details row for each verified seal */}
+                    <TableRow id={`details-${seal.id}`} sx={{ display: 'none' }}>
+                      <TableCell colSpan={5} sx={{ py: 0 }}>
+                        <Box sx={{ display: 'flex', p: 2 }}>
+                          {/* Operator Information */}
+                          <Box sx={{ flex: 1, mr: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Operator Information
+                            </Typography>
+                            
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Seal ID:
+                              </Typography>
+                              <Typography variant="body1">
+                                {seal.id}
+                              </Typography>
+                            </Box>
+                            
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Method:
+                              </Typography>
+                              <Chip 
+                                label={getMethodDisplay(seal.method)}
+                                color={getMethodColor(seal.method)}
+                                size="small"
+                              />
+                            </Box>
+                            
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Timestamp:
+                              </Typography>
+                              <Typography variant="body1">
+                                {new Date(seal.timestamp).toLocaleString()}
+                              </Typography>
+                            </Box>
+                            
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Image:
+                              </Typography>
+                              {seal.imagePreview ? (
+                                <Box
+                                  component="img"
+                                  src={seal.imagePreview}
+                                  alt={`Seal ${seal.id}`}
+                                  sx={{ 
+                                    width: '100%',
+                                    maxHeight: 150,
+                                    objectFit: 'cover',
+                                    borderRadius: 1,
+                                    mt: 1,
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => {
+                                    setSelectedImage(seal.imagePreview!);
+                                    setOpenImageModal(true);
+                                  }}
+                                />
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  No image available
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                          
+                          {/* Guard Information */}
+                          <Box sx={{ flex: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Guard Information
+                            </Typography>
+                            
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Seal ID:
+                              </Typography>
+                              <Typography variant="body1">
+                                {seal.id}
+                              </Typography>
+                            </Box>
+                            
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Method:
+                              </Typography>
+                              <Chip 
+                                label={getMethodDisplay(seal.method)}
+                                color={getMethodColor(seal.method)}
+                                size="small"
+                              />
+                            </Box>
+                            
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Timestamp:
+                              </Typography>
+                              <Typography variant="body1">
+                                {new Date(seal.timestamp).toLocaleString()}
+                              </Typography>
+                            </Box>
+                            
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Image:
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                                <Button
+                                  variant="outlined"
+                                  startIcon={<CloudUpload />}
+                                  size="small"
+                                  component="label"
+                                >
+                                  Upload Image
+                                  <input
+                                    type="file"
+                                    hidden
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        // Handle image upload
+                                      }
+                                    }}
+                                  />
+                                </Button>
+                                
+                                <Button
+                                  variant="outlined"
+                                  startIcon={<QrCode />}
+                                  size="small"
+                                >
+                                  Capture Image
+                                </Button>
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Box>
+                        
+                        {/* Verification Status */}
+                        <Box 
+                          sx={{ 
+                            p: 2, 
+                            mt: 1, 
+                            backgroundColor: '#f5fff5',
+                            borderTop: '1px solid',
+                            borderColor: 'divider',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                          }}
+                        >
+                          <Typography variant="subtitle2">
+                            Verification Status: 
+                            <Chip 
+                              label="Verified Match"
+                              color="success"
+                              size="small"
+                              sx={{ ml: 1 }}
+                            />
+                          </Typography>
+                          
+                          <Button
+                            size="small"
+                            endIcon={<KeyboardArrowUp />}
+                            onClick={() => {
+                              // Hide details
+                              const detailsRow = document.getElementById(`details-${seal.id}`);
+                              if (detailsRow) {
+                                detailsRow.style.display = 'none';
+                              }
+                            }}
+                          >
+                            Close Details
+                          </Button>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
+                ))}
+                
+                {/* Unverified operator seals */}
+                {operatorSeals.filter(opSeal => 
+                  !guardScannedSeals.some(gSeal => gSeal.id.toLowerCase() === opSeal.id.toLowerCase())
+                ).map((seal) => (
+                  <TableRow key={seal.id}>
+                    <TableCell>{seal.id}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label="Digitally Scanned"
+                        color="primary"
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label="Operator"
+                        color="primary"
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        icon={<Warning fontSize="small" />}
+                        label="Not Scanned" 
+                        color="warning" 
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <IconButton size="small" disabled>
+                        <KeyboardArrowDown />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                
+                {/* Mismatched seals (guard only) */}
+                {guardScannedSeals.filter(seal => !seal.verified).map((seal) => (
+                  <TableRow key={seal.id} sx={{ backgroundColor: '#fff5f5' }}>
+                    <TableCell>{seal.id}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getMethodDisplay(seal.method)}
+                        color={getMethodColor(seal.method)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label="Guard Only"
+                        color="error"
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        icon={<Warning fontSize="small" />}
+                        label="Mismatched" 
+                        color="error" 
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <IconButton size="small" color="error">
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          {/* Complete verification button */}
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircle />}
+              onClick={handleVerifySeal}
+              disabled={verifying}
+              sx={{ minWidth: 200 }}
+            >
+              {verifying ? (
+                <>
+                  <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                  Completing...
+                </>
+              ) : (
+                "Complete Verification"
+              )}
+            </Button>
+          </Box>
+        </Paper>
+      )}
       
       {/* Image Preview Modal */}
       <Dialog
