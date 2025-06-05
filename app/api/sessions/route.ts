@@ -1018,6 +1018,27 @@ export const POST = withAuth(
             });
             console.log("Base64 image data stored successfully");
             
+            // Update SealTag records with image data directly
+            if (imageBase64Data.sealTagImages && Object.keys(imageBase64Data.sealTagImages).length > 0) {
+              console.log("Updating SealTag records with image data");
+              const sealTagImages = imageBase64Data.sealTagImages;
+              
+              for (const sealTag of newSession.sealTags) {
+                if (sealTagImages[sealTag.barcode] && sealTagImages[sealTag.barcode].data) {
+                  const contentType = sealTagImages[sealTag.barcode].contentType || 'image/jpeg';
+                  const imageData = `data:${contentType};base64,${sealTagImages[sealTag.barcode].data}`;
+                  
+                  // Update the SealTag record with the image data
+                  await tx.sealTag.update({
+                    where: { id: sealTag.id },
+                    data: { imageData }
+                  });
+                  
+                  console.log(`Updated SealTag record for ${sealTag.barcode} with image data`);
+                }
+              }
+            }
+            
             return { session: newSession };
           } catch (error) {
             console.error("Error in database transaction:", error);

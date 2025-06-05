@@ -181,6 +181,35 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Extract operator seal tags if available
         if (data.sealTags && Array.isArray(data.sealTags)) {
           setOperatorSeals(data.sealTags.map((tag: any) => ({ id: tag.barcode })));
+          
+          // Check if any seal tags have missing images
+          const hasMissingImages = data.sealTags.some((tag: any) => 
+            (!tag.imageUrl && !tag.imageData) || 
+            (tag.imageUrl === null && tag.imageData === null)
+          );
+          
+          // If seal tags are missing images, try to fix them
+          if (hasMissingImages) {
+            console.log("Detected missing seal tag images, attempting to fix...");
+            try {
+              const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-seal-images`);
+              if (fixResponse.ok) {
+                const fixResult = await fixResponse.json();
+                console.log("Fix seal images result:", fixResult);
+                
+                if (fixResult.fixed > 0) {
+                  // Refresh the session data to get the updated seal tags
+                  const refreshResponse = await fetch(`/api/sessions/${sessionId}`);
+                  if (refreshResponse.ok) {
+                    const refreshedData = await refreshResponse.json();
+                    setSession(refreshedData);
+                  }
+                }
+              }
+            } catch (fixError) {
+              console.error("Failed to fix seal tag images:", fixError);
+            }
+          }
         }
         
         // Fetch guard seal tags
