@@ -3,97 +3,144 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import * as React from 'react';
+import React from 'react';
 import { 
-  Container, Box, Paper, Divider, Chip, CircularProgress, Button,
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Alert, AlertTitle, LinearProgress, List, ListItem, ListItemText,
-  TableContainer, Table, TableHead, TableBody, TableRow, TableCell,
-  TextField, IconButton, InputAdornment, Tooltip, Typography,
-  Tabs, Tab, FormControl, InputLabel, Select, MenuItem, Grid as MuiGrid
+  Container, 
+  Typography, 
+  Box, 
+  Paper, 
+  Divider, 
+  Chip, 
+  CircularProgress, 
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Alert,
+  AlertTitle,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Grid as MuiGrid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  InputAdornment,
+  IconButton
 } from "@mui/material";
+
+// Fix for TypeScript errors with Grid
+const Grid = MuiGrid;
+
 import { 
-  LocationOn, DirectionsCar, AccessTime, VerifiedUser, ArrowBack, Lock,
-  CheckCircle, Warning, PictureAsPdf, TableChart, Description, Edit,
-  BusinessCenter, RadioButtonUnchecked, Comment, ArrowForward, Delete,
-  CloudUpload, Close, QrCode, InfoOutlined, Refresh, Person,
-  KeyboardArrowUp, KeyboardArrowDown, Phone
+  LocationOn, 
+  DirectionsCar, 
+  AccessTime, 
+  VerifiedUser, 
+  ArrowBack, 
+  Lock,
+  CheckCircle,
+  Warning,
+  PictureAsPdf,
+  TableChart,
+  Description,
+  Edit,
+  Person,
+  Phone,
+  QrCode,
+  Refresh
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
-import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
 import toast from "react-hot-toast";
-import { compressImage } from "@/lib/imageUtils";
 
-// Fix for TypeScript errors with Grid
-const Grid = MuiGrid;
+// Types
+type SealType = {
+  id: string;
+  barcode: string;
+  verified: boolean;
+  scannedAt: string | null;
+  verifiedById: string | null;
+  verifiedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+};
 
-// Utility functions
-function getFieldLabel(field: string): string {
-  const map: Record<string, string> = {
-    driverName: "Driver Name",
-    vehicleNumber: "Vehicle Number",
-    transporterName: "Transporter Name",
-    materialName: "Material Name",
-    receiverPartyName: "Receiver Party",
-    gpsImeiNumber: "GPS IMEI Number"
-  };
-  return map[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-}
-
-function getMethodDisplay(method?: string) {
-  if (!method) return "Unknown";
-  return method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
-}
-
-function getMethodColor(method?: string): "primary" | "secondary" | "default" {
-  if (!method) return "default";
-  return method.toLowerCase().includes('manual') ? 'secondary' : 'primary';
-}
-
-function getStatusColor(status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" {
-  switch (status?.toLowerCase()) {
-    case 'verified':
-    case 'completed':
-      return 'success';
-    case 'in_progress':
-    case 'processing':
-      return 'info';
-    case 'rejected':
-    case 'failed':
-      return 'error';
-    case 'pending':
-    case 'waiting':
-      return 'warning';
-    default:
-      return 'default';
-  }
-}
-
-function isSystemField(key: string) {
-  const systemFields = ['id', 'createdAt', 'updatedAt', 'sessionId', 'companyId'];
-  return systemFields.includes(key);
-}
-
-// Type definitions
 type SessionType = {
   id: string;
   source: string;
   destination: string;
   status: string;
   createdAt: string;
-  company: { id: string; name: string; };
-  createdBy: { id: string; name: string; email: string; };
-  tripDetails?: Record<string, any>;
+  company: {
+    id: string;
+    name: string;
+  };
+  createdBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  seal?: SealType | null;
+  // Additional trip details from the session creation form
+  tripDetails?: {
+    transporterName?: string;
+    materialName?: string;
+    vehicleNumber?: string;
+    gpsImeiNumber?: string;
+    driverName?: string;
+    driverContactNumber?: string;
+    loaderName?: string;
+    challanRoyaltyNumber?: string;
+    doNumber?: string;
+    freight?: number;
+    qualityOfMaterials?: string;
+    tpNumber?: string;
+    grossWeight?: number;
+    tareWeight?: number;
+    netMaterialWeight?: number;
+    loaderMobileNumber?: string;
+    loadingSite?: string;
+    receiverPartyName?: string;
+    driverLicense?: string;
+  };
   images?: {
     gpsImeiPicture?: string;
     vehicleNumberPlatePicture?: string;
     driverPicture?: string;
     sealingImages?: string[];
     vehicleImages?: string[];
+    additionalImages?: string[];
   };
+  timestamps?: {
+    loadingDetails?: Record<string, string>;
+    imagesForm?: Record<string, string>;
+  };
+  qrCodes?: {
+    primaryBarcode?: string;
+    additionalBarcodes?: string[];
+  };
+  activityLogs?: {
+    id: string;
+    action: string;
+    details?: {
+      verification?: {
+        fieldVerifications?: Record<string, any>;
+        allMatch?: boolean;
+      };
+    };
+  }[];
   sealTags?: { 
     id: string; 
     barcode: string; 
@@ -140,6 +187,53 @@ function TabPanel(props: {
       )}
     </div>
   );
+}
+
+// Utility functions
+function getFieldLabel(field: string): string {
+  const map: Record<string, string> = {
+    driverName: "Driver Name",
+    vehicleNumber: "Vehicle Number",
+    transporterName: "Transporter Name",
+    materialName: "Material Name",
+    receiverPartyName: "Receiver Party",
+    gpsImeiNumber: "GPS IMEI Number"
+  };
+  return map[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+}
+
+function getMethodDisplay(method?: string) {
+  if (!method) return "Unknown";
+  return method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
+}
+
+function getMethodColor(method?: string): "primary" | "secondary" | "default" {
+  if (!method) return "default";
+  return method.toLowerCase().includes('manual') ? 'secondary' : 'primary';
+}
+
+function getStatusColor(status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" {
+  switch (status?.toLowerCase()) {
+    case 'verified':
+    case 'completed':
+      return 'success';
+    case 'in_progress':
+    case 'processing':
+      return 'info';
+    case 'rejected':
+    case 'failed':
+      return 'error';
+    case 'pending':
+    case 'waiting':
+      return 'warning';
+    default:
+      return 'default';
+  }
+}
+
+function isSystemField(key: string) {
+  const systemFields = ['id', 'createdAt', 'updatedAt', 'sessionId', 'companyId'];
+  return systemFields.includes(key);
 }
 
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
@@ -191,388 +285,222 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [guardImages, setGuardImages] = useState<Record<string, any>>({});
   const [imagePreviews, setImagePreviews] = useState<Record<string, any>>({});
 
-  // Update seal comparison status - defined as standalone function to avoid circular references
-  const updateSealComparison = useCallback((guardTags: any[]) => {
-    if (!guardTags || !Array.isArray(guardTags)) return;
-    if (!operatorSeals || !Array.isArray(operatorSeals) || operatorSeals.length === 0) return;
-    
-    const matched: string[] = [];
-    const mismatched: string[] = [];
-    
-    // Find matches and mismatches between operator and guard scanned seals
-    guardTags.forEach(guardTag => {
-      if (!guardTag || !guardTag.id) return;
-      
-      const guardTagId = String(guardTag.id).trim().toLowerCase();
-      const isMatch = operatorSeals.some(opSeal => 
-        opSeal && opSeal.id && String(opSeal.id).trim().toLowerCase() === guardTagId
-      );
-      
-      if (isMatch) {
-        matched.push(guardTag.id);
-      } else {
-        mismatched.push(guardTag.id);
-      }
-    });
-    
-    setSealComparison({ matched, mismatched });
-  }, [operatorSeals]);
+  // Check if user is a guard
+  const isGuard = useMemo(() => 
+    userRole === "EMPLOYEE" && userSubrole === EmployeeSubrole.GUARD, 
+    [userRole, userSubrole]
+  );
+  
+  // Check if user can access reports (non-GUARD users)
+  const canAccessReports = useMemo(() => 
+    userRole === "SUPERADMIN" || 
+    userRole === "ADMIN" || 
+    userRole === "COMPANY", 
+    [userRole]
+  );
+  
+  // Check if the session can be verified
+  const canVerify = useMemo(() => 
+    isGuard && 
+    session?.status === SessionStatus.IN_PROGRESS,
+    [isGuard, session]
+  );
 
-  // Fetch guard seal tags - defined as standalone function to avoid circular references
-  const fetchGuardSealTags = useCallback(async () => {
+  // Session data and user role loading
+  useEffect(() => {
+    if (authStatus === "authenticated" && authSession?.user) {
+      setUserRole(authSession.user.role || "");
+      setUserSubrole(authSession.user.subrole || "");
+      fetchSessionDetails();
+    }
+  }, [authStatus, authSession, sessionId]);
+
+  // Check for verification mode on load
+  useEffect(() => {
+    // Auto-enter verification mode for guards
+    if (isGuard && session && session.status === SessionStatus.IN_PROGRESS) {
+      setVerificationMode(true);
+      startVerification();
+    }
+  }, [isGuard, session]);
+
+  // Update seal comparison when seals change
+  useEffect(() => {
+    updateSealComparison(guardScannedSeals);
+  }, [guardScannedSeals, operatorSeals]);
+
+  // Define fetchSessionDetails function
+  const fetchSessionDetails = useCallback(async () => {
+    if (!sessionId) {
+      console.log("No session ID available yet, skipping fetch");
+      return;
+    }
+    
+    setLoading(true);
+    setError("");
+
+    try {
+      console.log("Fetching session details for ID:", sessionId);
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch session: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Session data received:", data);
+      setSession(data);
+      
+      // Initialize operator seals if available
+      if (data.sealTags && Array.isArray(data.sealTags)) {
+        setOperatorSeals(data.sealTags.map((tag: any) => ({ 
+          id: tag.barcode,
+          method: tag.method,
+          timestamp: tag.createdAt
+        })));
+      }
+      
+      // Fetch guard seal tags if in verification mode
+      if (isGuard) {
+        fetchGuardSealTags();
+      }
+      
+    } catch (err) {
+      console.error("Error fetching session:", err);
+      setError(`Failed to load session: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, isGuard]);
+
+  // Fetch guard seal tags for verification
+  const fetchGuardSealTags = async () => {
     if (!sessionId) return;
     
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`);
+      console.log("Fetching guard verification sessions");
+      const response = await fetch(`/api/sessions/${sessionId}/guard-seals`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch guard seal tags: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log("Guard seal tags received:", data);
       
+      // Process and set guard scanned seals
       if (data && Array.isArray(data)) {
-        // Process guard seal tags
-        const guardTags = data.map((tag: any) => ({
-          id: tag.barcode || '',
-          method: tag.method || 'digital',
-          image: null,
-          imagePreview: tag.imageUrl || null,
-          timestamp: tag.createdAt || new Date().toISOString(),
-          verified: operatorSeals.some(seal => 
-            seal.id && tag.barcode && 
-            String(seal.id).trim().toLowerCase() === String(tag.barcode).trim().toLowerCase()
-          )
+        const processedSeals = data.map((tag: any) => ({
+          id: tag.barcode,
+          method: tag.method,
+          image: tag.imageUrl || null,
+          timestamp: tag.createdAt,
+          verified: false // Will be updated during comparison
         }));
         
-        setGuardScannedSeals(guardTags);
-        updateSealComparison(guardTags);
+        setGuardScannedSeals(processedSeals);
+        updateSealComparison(processedSeals);
       }
-    } catch (error) {
-      console.error('Error fetching guard seal tags:', error);
+    } catch (err) {
+      console.error("Error fetching guard seal tags:", err);
+      toast.error(`Failed to load guard verification data: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
-  }, [sessionId, operatorSeals, updateSealComparison]);
+  };
 
-  // Session data fetching - use fetchGuardSealTags only inside this effect
-  useEffect(() => {
-    if (!sessionId) return;
+  // Update seal comparison
+  const updateSealComparison = (guardSeals: any[]) => {
+    const matched: string[] = [];
+    const mismatched: string[] = [];
     
-    const fetchSessionData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/sessions/${sessionId}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch session: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setSession(data);
-        
-        // Extract operator seal tags if available
-        if (data.sealTags && Array.isArray(data.sealTags)) {
-          setOperatorSeals(data.sealTags.map((tag: any) => ({ id: tag.barcode })));
-          
-          // Check for issues that need fixing
-          let needsReload = false;
-          
-          // 1. Check for missing images
-          const hasMissingImages = data.sealTags.some((tag: any) => 
-            (!tag.imageUrl && !tag.imageData) || 
-            (tag.imageUrl === null && tag.imageData === null)
-          );
-          
-          // 2. Check for identical timestamps
-          const timestamps = data.sealTags.map((tag: any) => new Date(tag.createdAt).getTime());
-          const uniqueTimestamps = new Set(timestamps);
-          const hasIdenticalTimestamps = uniqueTimestamps.size === 1 && data.sealTags.length > 1;
-          
-          // Fix missing images if needed
-          if (hasMissingImages) {
-            console.log("Detected missing seal tag images, attempting to fix...");
-            try {
-              const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-seal-images`);
-              if (fixResponse.ok) {
-                const fixResult = await fixResponse.json();
-                console.log("Fix seal images result:", fixResult);
-                if (fixResult.fixed > 0) {
-                  needsReload = true;
-                }
-              }
-            } catch (fixError) {
-              console.error("Failed to fix seal tag images:", fixError);
-            }
-          }
-          
-          // Fix identical timestamps if needed
-          if (hasIdenticalTimestamps) {
-            console.log('Detected identical timestamps for all seal tags. Attempting to fix...');
-            try {
-              const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-seal-timestamps`);
-              if (fixResponse.ok) {
-                const fixResult = await fixResponse.json();
-                console.log('Fix seal timestamps result:', fixResult);
-                if (fixResult.fixed > 0) {
-                  needsReload = true;
-                }
-              }
-            } catch (fixError) {
-              console.error('Failed to fix seal tag timestamps:', fixError);
-            }
-          }
-          
-          // Check guard seal tags if they exist
-          if (data.guardSealTags && Array.isArray(data.guardSealTags) && data.guardSealTags.length > 0) {
-            console.log("Processing guard seal tags:", data.guardSealTags.length);
-            
-            // 1. Check for missing guard images
-            const hasMissingGuardImages = data.guardSealTags.some((tag: any) => 
-              (!tag.imageUrl && !tag.imageData) || 
-              (tag.imageUrl === null && tag.imageData === null)
-            );
-            
-            // 2. Check for identical timestamps in guard tags
-            const guardTimestamps = data.guardSealTags.map((tag: any) => new Date(tag.createdAt).getTime());
-            const uniqueGuardTimestamps = new Set(guardTimestamps);
-            const hasIdenticalGuardTimestamps = uniqueGuardTimestamps.size === 1 && data.guardSealTags.length > 1;
-            
-            // Fix missing guard images if needed
-            if (hasMissingGuardImages) {
-              console.log("Detected missing guard seal tag images, attempting to fix...");
-              try {
-                const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-guard-seal-images`);
-                if (fixResponse.ok) {
-                  const fixResult = await fixResponse.json();
-                  console.log("Fix guard seal images result:", fixResult);
-                  if (fixResult.fixed > 0) {
-                    needsReload = true;
-                  }
-                }
-              } catch (fixError) {
-                console.error("Failed to fix guard seal tag images:", fixError);
-              }
-            }
-            
-            // Fix identical guard timestamps if needed
-            if (hasIdenticalGuardTimestamps) {
-              console.log('Detected identical timestamps for all guard seal tags. Attempting to fix...');
-              try {
-                const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-guard-seal-timestamps`);
-                if (fixResponse.ok) {
-                  const fixResult = await fixResponse.json();
-                  console.log('Fix guard seal timestamps result:', fixResult);
-                  if (fixResult.fixed > 0) {
-                    needsReload = true;
-                  }
-                }
-              } catch (fixError) {
-                console.error('Failed to fix guard seal tag timestamps:', fixError);
-              }
-            }
-          }
-          
-          // Reload session data if any fixes were applied
-          if (needsReload) {
-            console.log('Reloading session data after applying fixes...');
-            const updatedResponse = await fetch(`/api/sessions/${sessionId}`);
-            if (updatedResponse.ok) {
-              const updatedData = await updatedResponse.json();
-              setSession(updatedData);
-              console.log('Session data reloaded with fixes applied');
-            }
-          }
-        }
-        
-        // Wait for state updates to complete before fetching guard seal tags
-        setTimeout(() => {
-          // Only try to fetch guard seal tags after we've set operatorSeals
-          if (authSession?.user?.role === 'EMPLOYEE' && 
-              authSession?.user?.subrole === EmployeeSubrole.GUARD) {
-            fetchGuardSealTags();
-          }
-        }, 100);
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching session data:', error);
-        setError('Failed to load session details');
-        setLoading(false);
-      }
-    };
+    // Extract just the barcode/id values
+    const operatorIds = operatorSeals.map(seal => seal.id);
+    const guardIds = guardSeals.map(seal => seal.id);
     
-    fetchSessionData();
-  }, [sessionId, authSession, fetchGuardSealTags]);
-  
-  // Role and permissions
-  useEffect(() => {
-    if (authSession?.user) {
-      const role = authSession.user.role as string;
-      const subrole = authSession.user.subrole as string;
-      
-      setUserRole(role);
-      setUserSubrole(subrole);
-      
-      // Determine if user can edit based on role/subrole
-      const canEditSession = 
-        role === 'ADMIN' || 
-        role === 'COMPANY' || 
-        (role === 'EMPLOYEE' && 
-          (subrole === EmployeeSubrole.GUARD || 
-           subrole === EmployeeSubrole.OPERATOR));
-      
-      setCanEdit(canEditSession);
-      
-      // Set verification mode for GUARD role
-      if (role === 'EMPLOYEE' && subrole === EmployeeSubrole.GUARD) {
-        setVerificationMode(true);
-      }
-    }
-  }, [authSession]);
-  
-  // Utility function to compress images
-  const compressImage = async (base64Image: string, quality = 0.8): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      try {
-        const img = new Image();
-        img.src = base64Image;
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          
-          // Calculate size - respect aspect ratio but limit max dimensions
-          const MAX_SIZE = 1200;
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > height && width > MAX_SIZE) {
-            height = Math.round((height * MAX_SIZE) / width);
-            width = MAX_SIZE;
-          } else if (height > MAX_SIZE) {
-            width = Math.round((width * MAX_SIZE) / height);
-            height = MAX_SIZE;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
-          
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Convert to webp format for better compression if supported
-          const mimeType = 'image/jpeg';
-          
-          // Get compressed base64
-          const compressedBase64 = canvas.toDataURL(mimeType, quality);
-          resolve(compressedBase64);
-        };
-        
-        img.onerror = () => {
-          reject(new Error('Error loading image for compression'));
-        };
-      } catch (error) {
-        reject(error);
+    // Find matches and mismatches
+    guardIds.forEach(id => {
+      if (operatorIds.includes(id)) {
+        matched.push(id);
+      } else {
+        mismatched.push(id);
       }
     });
+    
+    // Update state
+    setSealComparison({ matched, mismatched });
+    
+    // Update verification status on guard seals
+    const updatedGuardSeals = guardSeals.map(seal => ({
+      ...seal,
+      verified: operatorIds.includes(seal.id)
+    }));
+    
+    setGuardScannedSeals(updatedGuardSeals);
   };
-  
-  // Process image for upload with compression
+
+  // Process images for upload
   const processImageForUpload = async (imageFile: File): Promise<string> => {
-    const reader = new FileReader();
-    return new Promise<string>((resolve, reject) => {
-      reader.onloadend = async () => {
-        try {
-          const base64Image = reader.result as string;
-          
-          // Compression strategy based on size
-          let compressedImageData = base64Image;
-          if (base64Image.length > 1000000) { // 1MB
-            compressedImageData = await compressImage(base64Image, 0.6);
-          }
-          
-          if (compressedImageData.length > 800000) { // 800KB
-            compressedImageData = await compressImage(compressedImageData, 0.4);
-          }
-          
-          if (compressedImageData.length > 500000) { // 500KB
-            compressedImageData = await compressImage(compressedImageData, 0.2);
-          }
-          
-          resolve(compressedImageData);
-        } catch (error) {
-          reject(error);
-        }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        resolve(base64data);
       };
-      reader.onerror = reject;
+      reader.onerror = () => {
+        reject(new Error("Failed to read image file"));
+      };
       reader.readAsDataURL(imageFile);
     });
   };
-  
-  // Handle QR/barcode scanner input
+
+  // Handle scanned barcode
   const handleScanComplete = async (barcodeData: string, method: string = 'digital', imageFile?: File) => {
-    // Don't process empty input
     if (!barcodeData.trim()) {
-      setScanError('Please enter a valid Seal Tag ID');
-      setTimeout(() => setScanError(''), 3000);
+      setScanError("Please enter a valid seal tag");
+      return;
+    }
+    
+    setScanError("");
+    const trimmedData = barcodeData.trim();
+    
+    // Check if already scanned
+    if (guardScannedSeals.some(seal => seal.id === trimmedData)) {
+      toast.error(`Seal tag ${trimmedData} has already been scanned`);
       return;
     }
     
     try {
-      const trimmedData = barcodeData.trim();
-      
-      // Check if already scanned by guard
-      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
-        setScanError('This seal has already been scanned');
-        setTimeout(() => setScanError(''), 3000);
-        return;
-      }
-      
-      // Check if this seal matches an operator seal
-      const isVerified = operatorSeals.some(seal => 
-        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
-      );
-      
-      // Handle image if provided
-      let imageDataBase64 = null;
+      // Process image if provided
+      let imageData = null;
       if (imageFile) {
-        imageDataBase64 = await processImageForUpload(imageFile);
+        imageData = await processImageForUpload(imageFile);
       }
       
-      // Save to API
-      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+      // Determine if this scan matches an operator seal
+      const isVerified = operatorSeals.some(seal => seal.id === trimmedData);
+      
+      // Save the seal tag to the backend
+      const response = await fetch(`/api/sessions/${sessionId}/guard-seals`, {
         method: 'POST',
-        credentials: 'same-origin',
-        mode: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           barcode: trimmedData,
           method,
-          imageData: imageDataBase64
+          imageData,
+          verified: isVerified
         }),
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        
-        // Handle duplicate error
+        // Try to extract specific error
         if (response.status === 409) {
-                        try {
-                const errorData = JSON.parse(errorText);
-                if (errorData.existingTag) {
-                  toast.success(`Seal tag ${trimmedData} was already scanned previously`);
-              fetchGuardSealTags();
-              return;
-            }
-          } catch (e) {
-            // If parsing fails, just show the generic error
+          const errorData = await response.json();
+          if (errorData.existingTag) {
+            toast.success(`Seal tag ${trimmedData} was already scanned previously`);
           }
+          fetchGuardSealTags();
+          return;
         }
         
         throw new Error(`Failed to save guard seal tag: ${response.status}`);
@@ -676,7 +604,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   
   // Verification functions
   
-    // Start verification process
+  // Start verification process
   const startVerification = async () => {
     setVerifying(true);
     try {
@@ -809,9 +737,660 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
   };
 
+  // Fix toast.info - replace with toast success
+  const notifyToastInfo = (message: string) => {
+    toast.success(message); // Using success instead of info which might not be available
+  };
+
+  // Function to generate PDF report
+  const generatePdfReport = useCallback(async () => {
+    if (!session) return;
+    
+    setReportLoading('pdf');
+    try {
+      // Create a new jsPDF instance
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Trip Session Report', 105, 15, { align: 'center' });
+      
+      // Add session details
+      doc.setFontSize(12);
+      doc.text(`Session ID: ${session.id}`, 14, 30);
+      doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`, 14, 38);
+      doc.text(`Status: ${session.status}`, 14, 46);
+      doc.text(`Company: ${session.company.name}`, 14, 54);
+      doc.text(`Created By: ${session.createdBy.name}`, 14, 62);
+      
+      // Add source & destination
+      doc.setFontSize(16);
+      doc.text('Trip Route', 14, 75);
+      doc.setFontSize(12);
+      doc.text(`Source: ${session.source}`, 14, 83);
+      doc.text(`Destination: ${session.destination}`, 14, 91);
+      
+      // Add driver details
+      if (session.tripDetails) {
+        doc.setFontSize(16);
+        doc.text('Driver Details', 14, 105);
+        doc.setFontSize(12);
+        doc.text(`Driver: ${session.tripDetails.driverName || 'N/A'}`, 14, 113);
+        doc.text(`Contact: ${session.tripDetails.driverContactNumber || 'N/A'}`, 14, 121);
+        doc.text(`License: ${session.tripDetails.driverLicense || 'N/A'}`, 14, 129);
+        doc.text(`Registration Certificate: ${session.tripDetails.registrationCertificate || 'N/A'}`, 14, 137);
+      }
+      
+      // Add vehicle details
+      if (session.tripDetails) {
+        doc.setFontSize(16);
+        doc.text('Vehicle Details', 14, 151);
+        doc.setFontSize(12);
+        doc.text(`Vehicle Number: ${session.tripDetails.vehicleNumber || 'N/A'}`, 14, 159);
+        doc.text(`Transporter: ${session.tripDetails.transporterName || 'N/A'}`, 14, 167);
+        doc.text(`GPS IMEI: ${session.tripDetails.gpsImeiNumber || 'N/A'}`, 14, 175);
+      }
+      
+      // Add seal information
+      if (session.sealTags && session.sealTags.length > 0) {
+        doc.setFontSize(16);
+        doc.text('Seal Tags', 14, 189);
+        doc.setFontSize(12);
+        
+        session.sealTags.forEach((tag, index) => {
+          const y = 197 + (index * 8);
+          doc.text(`Tag ${index + 1}: ${tag.barcode} (${getMethodDisplay(tag.method)})`, 14, y);
+        });
+      }
+      
+      // Save the PDF
+      doc.save(`Session_${session.id}.pdf`);
+      
+      toast.success('PDF report generated successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF report');
+    } finally {
+      setReportLoading(null);
+    }
+  }, [session, toast]);
+
+  // Render function
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Alert severity="error">
+        <AlertTitle>Error</AlertTitle>
+        {error}
+      </Alert>
+    );
+  }
+  
+  if (!session) {
+    return (
+      <Alert severity="warning">
+        <AlertTitle>Session Not Found</AlertTitle>
+        The requested session could not be found. It may have been deleted or you may not have permission to view it.
+      </Alert>
+    );
+  }
+  
+  // For GUARD users with verification mode
+  if (verificationMode && userRole === 'EMPLOYEE' && userSubrole === EmployeeSubrole.GUARD) {
+    return (
+      <Container maxWidth="xl">
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h5" component="h1">
+              Guard Verification
+            </Typography>
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={() => router.back()}
+            >
+              Back
+            </Button>
+          </Box>
+          
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Session {session.id}
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Paper elevation={1} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Basic Information
+                  </Typography>
+                  <List>
+                    <ListItem>
+                      <ListItemText primary="Source" secondary={session.source} />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText primary="Destination" secondary={session.destination} />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText primary="Created" secondary={new Date(session.createdAt).toLocaleString()} />
+                    </ListItem>
+                  </List>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Paper elevation={1} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Trip Details
+                  </Typography>
+                  <List>
+                    {session.tripDetails && Object.entries(session.tripDetails)
+                      .filter(([key]) => !isSystemField(key))
+                      .slice(0, 5) // Show only a few key details
+                      .map(([key, value]) => (
+                        <ListItem key={key}>
+                          <ListItemText primary={getFieldLabel(key)} secondary={value || 'N/A'} />
+                        </ListItem>
+                      ))}
+                  </List>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Box>
+          
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Seal Tag Verification
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Paper elevation={1} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Scan Seal Tags
+                  </Typography>
+                  
+                  <TextField
+                    fullWidth
+                    label="Scan or Enter Seal Tag"
+                    value={scanInput}
+                    onChange={(e) => setScanInput(e.target.value)}
+                    error={!!scanError}
+                    helperText={scanError}
+                    sx={{ mb: 2 }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={() => handleScanComplete(scanInput, 'manual')}
+                            disabled={!scanInput.trim()}
+                          >
+                            <CheckCircle />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={() => handleScanComplete(scanInput, 'manual')}
+                    disabled={!scanInput.trim()}
+                  >
+                    Submit Manual Entry
+                  </Button>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Paper elevation={1} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Verification Progress
+                  </Typography>
+                  
+                  <Box sx={{ mb: 2 }}>
+                    <Grid container spacing={1} alignItems="center">
+                      <Grid item>
+                        <Chip
+                          label={`${sealComparison.matched.length}/${operatorSeals.length} Verified`}
+                          color="primary"
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item>
+                        <Chip
+                          icon={<CheckCircle fontSize="small" />}
+                          label={`${sealComparison.matched.length} Matched`}
+                          color="success"
+                          variant="outlined"
+                        />
+                      </Grid>
+                      {sealComparison.mismatched.length > 0 && (
+                        <Grid item>
+                          <Chip
+                            icon={<Warning fontSize="small" />}
+                            label={`${sealComparison.mismatched.length} Not Matched`}
+                            color="warning"
+                            variant="outlined"
+                          />
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Box>
+                  
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleVerifySeal}
+                    disabled={verifying || sealComparison.matched.length === 0}
+                    fullWidth
+                  >
+                    {verifying ? 'Submitting...' : 'Complete Verification'}
+                  </Button>
+                </Paper>
+              </Grid>
+            </Grid>
+            
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Scanned Tags
+              </Typography>
+              
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Seal Tag</TableCell>
+                      <TableCell>Method</TableCell>
+                      <TableCell>Timestamp</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {guardScannedSeals.map((seal) => (
+                      <TableRow key={seal.id}>
+                        <TableCell>{seal.id}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={getMethodDisplay(seal.method)}
+                            color={getMethodColor(seal.method)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{new Date(seal.timestamp).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Chip
+                            icon={seal.verified ? <CheckCircle fontSize="small" /> : <Warning fontSize="small" />}
+                            label={seal.verified ? 'Matched' : 'Not Matched'}
+                            color={seal.verified ? 'success' : 'warning'}
+                            size="small"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {guardScannedSeals.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center">
+                          No seal tags scanned yet. Scan seal tags to verify.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          </Box>
+        </Paper>
+      </Container>
+    );
+  }
+  
+  // Regular view for other users
   return (
-    <div>
-      {/* Render your component content here */}
-    </div>
+    <Container maxWidth="xl">
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" component="h1">
+            Session Details
+          </Typography>
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={() => router.back()}
+              sx={{ mr: 1 }}
+            >
+              Back
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<PictureAsPdf />}
+              onClick={generatePdfReport}
+              disabled={!!reportLoading}
+            >
+              {reportLoading === 'pdf' ? 'Generating...' : 'Download PDF'}
+            </Button>
+          </Box>
+        </Box>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Basic Information
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Session ID"
+                    secondary={session.id}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Status"
+                    secondary={
+                      <Chip
+                        label={session.status}
+                        color={getStatusColor(session.status)}
+                        size="small"
+                      />
+                    }
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Created At"
+                    secondary={new Date(session.createdAt).toLocaleString()}
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Company Information
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Company"
+                    secondary={session.company.name}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Created By"
+                    secondary={session.createdBy.name}
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      <Box sx={{ mb: 3 }}>
+        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+          <Tab label="Trip Details" />
+          <Tab label="Seal Tags" />
+          <Tab label="Images" />
+          <Tab label="Comments" />
+        </Tabs>
+        
+        <TabPanel value={activeTab} index={0}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Route Information
+                </Typography>
+                <List>
+                  <ListItem>
+                    <ListItemText
+                      primary="Source"
+                      secondary={session.source}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Destination"
+                      secondary={session.destination}
+                    />
+                  </ListItem>
+                </List>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Trip Details
+                </Typography>
+                <List>
+                  {session.tripDetails && Object.entries(session.tripDetails)
+                    .filter(([key]) => !isSystemField(key))
+                    .map(([key, value]) => (
+                      <ListItem key={key}>
+                        <ListItemText
+                          primary={getFieldLabel(key)}
+                          secondary={value || 'N/A'}
+                        />
+                      </ListItem>
+                    ))}
+                </List>
+              </Paper>
+            </Grid>
+          </Grid>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={1}>
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Seal Tags
+            </Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Barcode</TableCell>
+                    <TableCell>Method</TableCell>
+                    <TableCell>Scanned By</TableCell>
+                    <TableCell>Timestamp</TableCell>
+                    <TableCell>Image</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.sealTags?.map((tag) => (
+                    <TableRow key={tag.id}>
+                      <TableCell>{tag.barcode}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getMethodDisplay(tag.method)}
+                          color={getMethodColor(tag.method)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{tag.scannedByName || 'N/A'}</TableCell>
+                      <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {tag.imageUrl && (
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSelectedImage(tag.imageUrl!);
+                              setOpenImageModal(true);
+                            }}
+                          >
+                            <QrCode />
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={2}>
+          <Grid container spacing={2}>
+            {session.images && (
+              <>
+                {session.images.gpsImeiPicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        GPS IMEI Picture
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.gpsImeiPicture}
+                        alt="GPS IMEI"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.gpsImeiPicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.vehicleNumberPlatePicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Number Plate
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.vehicleNumberPlatePicture}
+                        alt="Vehicle Number Plate"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.driverPicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Driver Picture
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.driverPicture}
+                        alt="Driver"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.driverPicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Image {index + 1}
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={imageUrl}
+                        alt={`Vehicle ${index + 1}`}
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(imageUrl);
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                ))}
+              </>
+            )}
+          </Grid>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={3}>
+          <CommentSection sessionId={sessionId} />
+        </TabPanel>
+      </Box>
+      
+      <Dialog
+        open={openImageModal}
+        onClose={() => setOpenImageModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Image Preview</DialogTitle>
+        <DialogContent>
+          <Box
+            component="img"
+            src={selectedImage}
+            alt="Preview"
+            sx={{
+              width: '100%',
+              height: 'auto',
+              maxHeight: '80vh',
+              objectFit: 'contain'
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImageModal(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 }
