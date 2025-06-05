@@ -887,7 +887,10 @@ export const POST = withAuth(
                     barcode: tagId,
                     method: sealTagMethods[tagId] || 'digitally scanned',
                     // Store image URL - can be updated later when images are processed
-                    imageUrl: null
+                    imageUrl: null,
+                    // Add operator information
+                    scannedById: userId as string,
+                    scannedByName: session?.user?.name || 'Unknown Operator'
                   }))
                 }
               },

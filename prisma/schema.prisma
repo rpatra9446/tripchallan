@@ -28,6 +28,7 @@ model User {
   operatorPermissions  OperatorPermissions?
   verifiedSeals        Seal[]               @relation("SealVerifiedBy")
   verifiedGuardSealTags GuardSealTag[]      @relation("GuardSealTagVerifiedBy")
+  scannedSealTags      SealTag[]            @relation("SealTagScannedBy")
   createdSessions      Session[]            @relation("SessionCreatedBy")
   company              Company?             @relation("CompanyEmployees", fields: [companyId], references: [id])
   createdBy            User?                @relation("UserCreatedBy", fields: [createdById], references: [id])
@@ -131,6 +132,8 @@ model Session {
   receiverPartyName    String?
   cargoType            String?
   numberOfPackages     String?
+  registrationCertificate String?    // Added field for RC number
+  driverLicense        String?       // Added field for driver license number
   comments             Comment[]
   seal                 Seal?
   sealTags             SealTag[]
@@ -226,8 +229,12 @@ model SealTag {
   sessionId     String
   method        String
   imageUrl      String?
+  imageData     String?  // Add field for storing base64 image data
+  scannedById   String?  // Add field for the operator who scanned the tag
+  scannedByName String?  // Add field for the operator's name
   createdAt     DateTime @default(now())
   session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  scannedBy     User?    @relation("SealTagScannedBy", fields: [scannedById], references: [id])
 
   @@map("seal_tags")
 }

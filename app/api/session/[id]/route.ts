@@ -193,6 +193,8 @@ async function handler(
         destination: sessionData.destination,
         cargoType: sessionData.cargoType,
         numberOfPackages: sessionData.numberOfPackages,
+        registrationCertificate: sessionData.registrationCertificate,
+        driverLicense: sessionData.driverLicense,
       };
     }
     

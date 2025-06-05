@@ -91,7 +91,16 @@ type SessionType = {
     sealingImages?: string[];
     vehicleImages?: string[];
   };
-  sealTags?: { id: string; barcode: string; method: string; imageUrl?: string | null; createdAt: string; }[];
+  sealTags?: { 
+    id: string; 
+    barcode: string; 
+    method: string; 
+    imageUrl?: string | null; 
+    imageData?: string | null;
+    createdAt: string;
+    scannedById?: string;
+    scannedByName?: string;
+  }[];
   guardSealTags?: {
     id: string;
     barcode: string;
@@ -589,606 +598,744 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     toast.success(message); // Using success instead of info which might not be available
   };
   
+  // Function to generate PDF report
+  const generatePdfReport = useCallback(async () => {
+    if (!session) return;
+    
+    setReportLoading('pdf');
+    try {
+      // Create a new jsPDF instance
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Trip Session Report', 105, 15, { align: 'center' });
+      
+      // Add session details
+      doc.setFontSize(12);
+      doc.text(`Session ID: ${session.id}`, 14, 30);
+      doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`, 14, 38);
+      doc.text(`Status: ${session.status}`, 14, 46);
+      doc.text(`Company: ${session.company.name}`, 14, 54);
+      doc.text(`Created By: ${session.createdBy.name}`, 14, 62);
+      
+      // Add source & destination
+      doc.setFontSize(16);
+      doc.text('Trip Route', 14, 75);
+      doc.setFontSize(12);
+      doc.text(`Source: ${session.source}`, 14, 83);
+      doc.text(`Destination: ${session.destination}`, 14, 91);
+      
+      // Add driver details
+      if (session.tripDetails) {
+        doc.setFontSize(16);
+        doc.text('Driver Details', 14, 105);
+        doc.setFontSize(12);
+        doc.text(`Driver: ${session.tripDetails.driverName || 'N/A'}`, 14, 113);
+        doc.text(`Contact: ${session.tripDetails.driverContactNumber || 'N/A'}`, 14, 121);
+        doc.text(`License: ${session.tripDetails.driverLicense || 'N/A'}`, 14, 129);
+        doc.text(`Registration Certificate: ${session.tripDetails.registrationCertificate || 'N/A'}`, 14, 137);
+      }
+      
+      // Add vehicle details
+      if (session.tripDetails) {
+        doc.setFontSize(16);
+        doc.text('Vehicle Details', 14, 151);
+        doc.setFontSize(12);
+        doc.text(`Vehicle Number: ${session.tripDetails.vehicleNumber || 'N/A'}`, 14, 159);
+        doc.text(`Transporter: ${session.tripDetails.transporterName || 'N/A'}`, 14, 167);
+        doc.text(`GPS IMEI: ${session.tripDetails.gpsImeiNumber || 'N/A'}`, 14, 175);
+      }
+      
+      // Add seal information
+      if (session.sealTags && session.sealTags.length > 0) {
+        doc.setFontSize(16);
+        doc.text('Seal Tags', 14, 189);
+        doc.setFontSize(12);
+        
+        session.sealTags.forEach((tag, index) => {
+          const y = 197 + (index * 8);
+          doc.text(`Tag ${index + 1}: ${tag.barcode} (${getMethodDisplay(tag.method)})`, 14, y);
+        });
+      }
+      
+      // Save the PDF
+      doc.save(`Session_${session.id}.pdf`);
+      
+      toast.success('PDF report generated successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF report');
+    } finally {
+      setReportLoading(null);
+    }
+  }, [session, toast]);
+
   // Render function
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Alert severity="error">
+        <AlertTitle>Error</AlertTitle>
+        {error}
+      </Alert>
+    );
+  }
+  
+  if (!session) {
+    return (
+      <Alert severity="warning">
+        <AlertTitle>Session Not Found</AlertTitle>
+        The requested session could not be found. It may have been deleted or you may not have permission to view it.
+      </Alert>
+    );
+  }
+  
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {loading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Alert severity="error">
-          <AlertTitle>Error</AlertTitle>
-          {error}
-        </Alert>
-      ) : !session ? (
-        <Alert severity="warning">
-          <AlertTitle>Session Not Found</AlertTitle>
-          The requested session could not be found.
-        </Alert>
-      ) : (
-        <>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Header with navigation and action buttons */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          onClick={() => router.push('/dashboard/sessions')}
+        >
+          Back to Sessions
+        </Button>
+        
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* PDF Export Button - available to all users */}
+          <Button
+            variant="outlined"
+            startIcon={<PictureAsPdf />}
+            onClick={generatePdfReport}
+            disabled={!!reportLoading}
+          >
+            {reportLoading === 'pdf' ? 'Generating...' : 'Export PDF'}
+          </Button>
+          
+          {canEdit && (
             <Button
-              startIcon={<ArrowBack />}
-              onClick={() => router.push('/dashboard/sessions')}
-              variant="outlined"
+              variant="contained"
+              startIcon={<Edit />}
+              onClick={() => router.push(`/dashboard/sessions/${sessionId}/edit`)}
             >
-              Back to Sessions
+              Edit Session
             </Button>
+          )}
+        </Box>
+      </Box>
+
+      {/* Session Title and Status */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5">
+            Session Details
+          </Typography>
+          
+          <Box>
+            <Chip 
+              label={session.status.replace('_', ' ')}
+              color={getStatusColor(session.status)}
+              sx={{ fontWeight: 'bold', mr: 1 }}
+            />
             
-            <Box>
-              <Chip 
-                label={session.status.replace('_', ' ')}
-                color={getStatusColor(session.status)}
-                sx={{ fontWeight: 'bold', mr: 1 }}
-              />
-              
-              {userRole === 'ADMIN' || userRole === 'COMPANY' || userSubrole === EmployeeSubrole.GUARD ? (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={startVerification}
-                  startIcon={<VerifiedUser />}
-                  disabled={verifying || verificationFormOpen}
-                >
-                  Verify Session
-                </Button>
-              ) : null}
-            </Box>
+            {userRole === 'ADMIN' || userRole === 'COMPANY' || userSubrole === EmployeeSubrole.GUARD ? (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={startVerification}
+                startIcon={<VerifiedUser />}
+                disabled={verifying || verificationFormOpen}
+              >
+                Verify Session
+              </Button>
+            ) : null}
+          </Box>
+        </Box>
+        
+        <Grid container spacing={2}>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Typography variant="subtitle1">
+              <LocationOn fontSize="small" /> Source: {session?.source}
+            </Typography>
           </Box>
           
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Session Details
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Typography variant="subtitle1">
+              <LocationOn fontSize="small" /> Destination: {session?.destination}
             </Typography>
-            
-            <Grid container spacing={2}>
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Typography variant="subtitle1">
-                  <LocationOn fontSize="small" /> Source: {session?.source}
-                </Typography>
-              </Box>
-              
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Typography variant="subtitle1">
-                  <LocationOn fontSize="small" /> Destination: {session?.destination}
-                </Typography>
-              </Box>
-              
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Typography variant="subtitle1">
-                  <AccessTime fontSize="small" /> Created: {session ? new Date(session.createdAt).toLocaleString() : ''}
-                </Typography>
-              </Box>
-              
-              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                <Typography variant="subtitle1">
-                  <BusinessCenter fontSize="small" /> Company: {session?.company?.name || 'N/A'}
-                </Typography>
-              </Box>
-            </Grid>
-          </Paper>
+          </Box>
           
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Trip Details
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Typography variant="subtitle1">
+              <AccessTime fontSize="small" /> Created: {session ? new Date(session.createdAt).toLocaleString() : ''}
             </Typography>
+          </Box>
+          
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Typography variant="subtitle1">
+              <BusinessCenter fontSize="small" /> Company: {session?.company?.name || 'N/A'}
+            </Typography>
+          </Box>
+        </Grid>
+      </Paper>
+      
+      {/* Trip Details Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Trip Details
+        </Typography>
+        
+        {session.tripDetails ? (
+          <TableContainer>
+            <Table size="small">
+              <TableBody>
+                {Object.entries(session.tripDetails)
+                  .filter(([key]) => !isSystemField(key))
+                  .map(([key, value]) => (
+                    <TableRow key={key}>
+                      <TableCell sx={{ fontWeight: 'bold' }}>
+                        {getFieldLabel(key)}
+                      </TableCell>
+                      <TableCell>{value || 'N/A'}</TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Alert severity="info">No trip details available</Alert>
+        )}
+      </Paper>
+      
+      {/* Driver Details Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Driver Details
+        </Typography>
+        
+        {session.tripDetails ? (
+          <Grid container spacing={2}>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Typography variant="subtitle1">
+                <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
+              </Typography>
+            </Box>
             
-            {session.tripDetails ? (
-              <TableContainer>
-                <Table size="small">
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Typography variant="subtitle1">
+                <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
+              </Typography>
+            </Box>
+            
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Typography variant="subtitle1">
+                <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+              </Typography>
+            </Box>
+            
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Typography variant="subtitle1">
+                <Description fontSize="small" /> Registration Certificate: {session.tripDetails.registrationCertificate || 'N/A'}
+              </Typography>
+            </Box>
+            
+            {session.images?.driverPicture && (
+              <Box sx={{ width: '100%', p: 1 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  <Person fontSize="small" /> Driver Photo
+                </Typography>
+                <Box 
+                  component="img" 
+                  src={session.images.driverPicture}
+                  alt="Driver Photo"
+                  sx={{ 
+                    maxWidth: '200px', 
+                    maxHeight: '200px',
+                    cursor: 'pointer',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    p: 1
+                  }}
+                  onClick={() => {
+                    setSelectedImage(session.images?.driverPicture || '');
+                    setOpenImageModal(true);
+                  }}
+                />
+              </Box>
+            )}
+          </Grid>
+        ) : (
+          <Alert severity="info">No driver details available</Alert>
+        )}
+      </Paper>
+      
+      {/* Seal Tags Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Seal Tags
+        </Typography>
+        
+        {session.sealTags && session.sealTags.length > 0 ? (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Seal ID</TableCell>
+                  <TableCell>Scanned By</TableCell>
+                  <TableCell>Method</TableCell>
+                  <TableCell>Created At</TableCell>
+                  <TableCell>Image</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {session.sealTags.map((tag) => (
+                  <TableRow key={tag.id}>
+                    <TableCell>{tag.barcode}</TableCell>
+                    <TableCell>
+                      {tag.scannedByName || 'Unknown Operator'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getMethodDisplay(tag.method)}
+                        color={getMethodColor(tag.method)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {(tag.imageUrl || tag.imageData) ? (
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setSelectedImage(tag.imageUrl || tag.imageData || '');
+                            setOpenImageModal(true);
+                          }}
+                        >
+                          <img 
+                            src={tag.imageUrl || tag.imageData || ''} 
+                            alt={`Seal tag ${tag.barcode}`}
+                            style={{ width: '50px', height: '50px', objectFit: 'cover' }}
+                          />
+                        </IconButton>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          No image
+                        </Typography>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Alert severity="info">No seal tags available</Alert>
+        )}
+      </Paper>
+      
+      {/* Images Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Vehicle & Document Images
+        </Typography>
+        
+        {session.images ? (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {session.images.vehicleNumberPlatePicture && (
+              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
+                <Paper 
+                  elevation={2} 
+                  sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                >
+                  <Typography variant="subtitle1" gutterBottom>
+                    Vehicle Number Plate
+                  </Typography>
+                  <Box 
+                    component="img" 
+                    src={session.images.vehicleNumberPlatePicture}
+                    alt="Vehicle Number Plate"
+                    sx={{ 
+                      width: '100%', 
+                      height: '200px',
+                      objectFit: 'cover',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      mb: 1
+                    }}
+                    onClick={() => {
+                      setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
+                      setOpenImageModal(true);
+                    }}
+                  />
+                </Paper>
+              </Box>
+            )}
+            
+            {session.images.gpsImeiPicture && (
+              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
+                <Paper 
+                  elevation={2} 
+                  sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                >
+                  <Typography variant="subtitle1" gutterBottom>
+                    GPS IMEI Photo
+                  </Typography>
+                  <Box 
+                    component="img" 
+                    src={session.images.gpsImeiPicture}
+                    alt="GPS IMEI"
+                    sx={{ 
+                      width: '100%', 
+                      height: '200px',
+                      objectFit: 'cover',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      mb: 1
+                    }}
+                    onClick={() => {
+                      setSelectedImage(session.images?.gpsImeiPicture || '');
+                      setOpenImageModal(true);
+                    }}
+                  />
+                </Paper>
+              </Box>
+            )}
+            
+            {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
+              session.images.vehicleImages.map((imageUrl, index) => (
+                <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }} key={`vehicle-${index}`}>
+                  <Paper 
+                    elevation={2} 
+                    sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom>
+                      Vehicle Image {index + 1}
+                    </Typography>
+                    <Box 
+                      component="img" 
+                      src={imageUrl}
+                      alt={`Vehicle Image ${index + 1}`}
+                      sx={{ 
+                        width: '100%', 
+                        height: '200px',
+                        objectFit: 'cover',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        mb: 1
+                      }}
+                      onClick={() => {
+                        setSelectedImage(imageUrl);
+                        setOpenImageModal(true);
+                      }}
+                    />
+                  </Paper>
+                </Box>
+              ))
+            )}
+            
+            {(!session.images.vehicleNumberPlatePicture && 
+              !session.images.gpsImeiPicture && 
+              (!session.images.vehicleImages || session.images.vehicleImages.length === 0)) && (
+              <Box sx={{ width: '100%', p: 2 }}>
+                <Alert severity="info">No images available</Alert>
+              </Box>
+            )}
+          </Box>
+        ) : (
+          <Alert severity="info">No images available</Alert>
+        )}
+      </Paper>
+      
+      {/* Verification Dialog */}
+      <Dialog
+        open={verificationFormOpen}
+        onClose={() => !verifying && setVerificationFormOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Verify Session
+          <IconButton
+            aria-label="close"
+            onClick={() => !verifying && setVerificationFormOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+            disabled={verifying}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent>
+          <LinearProgress
+            variant="determinate"
+            value={verificationStep * 33.3}
+            sx={{ mb: 3 }}
+          />
+          
+          {verificationStep === 0 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Verify Trip Details
+              </Typography>
+              
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Field</TableCell>
+                      <TableCell>Value</TableCell>
+                      <TableCell align="center">Status</TableCell>
+                      <TableCell align="center">Action</TableCell>
+                    </TableRow>
+                  </TableHead>
                   <TableBody>
-                    {Object.entries(session.tripDetails)
+                    {session.tripDetails && Object.entries(session.tripDetails)
                       .filter(([key]) => !isSystemField(key))
                       .map(([key, value]) => (
                         <TableRow key={key}>
-                          <TableCell sx={{ fontWeight: 'bold' }}>
-                            {getFieldLabel(key)}
-                          </TableCell>
+                          <TableCell>{getFieldLabel(key)}</TableCell>
                           <TableCell>{value || 'N/A'}</TableCell>
+                          <TableCell align="center">
+                            {verificationFields[key]?.verified ? (
+                              <Chip 
+                                icon={<CheckCircle />} 
+                                label="Verified" 
+                                color="success" 
+                                size="small"
+                              />
+                            ) : (
+                              <Chip 
+                                icon={<RadioButtonUnchecked />} 
+                                label="Pending" 
+                                color="default" 
+                                size="small"
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              color={verificationFields[key]?.verified ? "success" : "primary"}
+                              onClick={() => verifyField(key)}
+                              startIcon={verificationFields[key]?.verified ? <CheckCircle /> : <VerifiedUser />}
+                            >
+                              {verificationFields[key]?.verified ? "Verified" : "Verify"}
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                   </TableBody>
                 </Table>
               </TableContainer>
-            ) : (
-              <Alert severity="info">No trip details available</Alert>
-            )}
-          </Paper>
+              
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={verifyAllFields}
+                >
+                  Verify All Fields
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setVerificationStep(1)}
+                  endIcon={<ArrowForward />}
+                >
+                  Next
+                </Button>
+              </Box>
+            </Box>
+          )}
           
-          {/* Driver Details Section */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Driver Details
-            </Typography>
-            
-            {session.tripDetails ? (
-              <Grid container spacing={2}>
-                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                  <Typography variant="subtitle1">
-                    <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
-                  </Typography>
-                </Box>
+          {verificationStep === 1 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Verify Seal Tags
+              </Typography>
+              
+              <Box sx={{ mb: 3 }}>
+                <ClientSideQrScanner 
+                  onScan={(data) => handleScanComplete(data, 'digital')}
+                  buttonText="Scan QR Code"
+                />
                 
-                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                  <Typography variant="subtitle1">
-                    <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
-                  </Typography>
-                </Box>
-                
-                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                  <Typography variant="subtitle1">
-                    <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
-                  </Typography>
-                </Box>
-                
-                {session.images?.driverPicture && (
-                  <Box sx={{ width: '100%', p: 1 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <Person fontSize="small" /> Driver Photo
-                    </Typography>
-                    <Box 
-                      component="img" 
-                      src={session.images.driverPicture}
-                      alt="Driver Photo"
-                      sx={{ 
-                        maxWidth: '200px', 
-                        maxHeight: '200px',
-                        cursor: 'pointer',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        p: 1
-                      }}
-                      onClick={() => {
-                        setSelectedImage(session.images?.driverPicture || '');
-                        setOpenImageModal(true);
-                      }}
-                    />
-                  </Box>
+                {scanError && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {scanError}
+                  </Alert>
                 )}
-              </Grid>
-            ) : (
-              <Alert severity="info">No driver details available</Alert>
-            )}
-          </Paper>
-          
-          {/* Seal Tags Section */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Seal Tags
-            </Typography>
-            
-            {session.sealTags && session.sealTags.length > 0 ? (
-              <TableContainer>
-                <Table size="small">
+              </Box>
+              
+              <TableContainer component={Paper} sx={{ mb: 3 }}>
+                <Table>
                   <TableHead>
                     <TableRow>
                       <TableCell>Seal ID</TableCell>
                       <TableCell>Scanned By</TableCell>
                       <TableCell>Method</TableCell>
-                      <TableCell>Created At</TableCell>
+                      <TableCell>Status</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {session.sealTags.map((tag) => (
-                      <TableRow key={tag.id}>
-                        <TableCell>{tag.barcode}</TableCell>
-                        <TableCell>Operator</TableCell>
+                    {guardScannedSeals.map((seal) => (
+                      <TableRow key={seal.id}>
+                        <TableCell>{seal.id}</TableCell>
+                        <TableCell>Guard</TableCell>
                         <TableCell>
                           <Chip 
-                            label={getMethodDisplay(tag.method)}
-                            color={getMethodColor(tag.method)}
+                            label={getMethodDisplay(seal.method)}
+                            color={getMethodColor(seal.method)}
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                        <TableCell>
+                          {seal.verified ? (
+                            <Chip 
+                              icon={<CheckCircle />} 
+                              label="Verified" 
+                              color="success" 
+                              size="small"
+                            />
+                          ) : (
+                            <Chip 
+                              icon={<Warning />} 
+                              label="Not Matched" 
+                              color="error" 
+                              size="small"
+                            />
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
-            ) : (
-              <Alert severity="info">No seal tags available</Alert>
-            )}
-          </Paper>
-          
-          {/* Images Section */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Vehicle & Document Images
-            </Typography>
-            
-            {session.images ? (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {session.images.vehicleNumberPlatePicture && (
-                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
-                    <Paper 
-                      elevation={2} 
-                      sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                    >
-                      <Typography variant="subtitle1" gutterBottom>
-                        Vehicle Number Plate
-                      </Typography>
-                      <Box 
-                        component="img" 
-                        src={session.images.vehicleNumberPlatePicture}
-                        alt="Vehicle Number Plate"
-                        sx={{ 
-                          width: '100%', 
-                          height: '200px',
-                          objectFit: 'cover',
-                          cursor: 'pointer',
-                          borderRadius: '4px',
-                          mb: 1
-                        }}
-                        onClick={() => {
-                          setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                          setOpenImageModal(true);
-                        }}
-                      />
-                    </Paper>
-                  </Box>
-                )}
+              
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setVerificationStep(0)}
+                  startIcon={<ArrowBack />}
+                >
+                  Back
+                </Button>
                 
-                {session.images.gpsImeiPicture && (
-                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
-                    <Paper 
-                      elevation={2} 
-                      sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                    >
-                      <Typography variant="subtitle1" gutterBottom>
-                        GPS IMEI Photo
-                      </Typography>
-                      <Box 
-                        component="img" 
-                        src={session.images.gpsImeiPicture}
-                        alt="GPS IMEI"
-                        sx={{ 
-                          width: '100%', 
-                          height: '200px',
-                          objectFit: 'cover',
-                          cursor: 'pointer',
-                          borderRadius: '4px',
-                          mb: 1
-                        }}
-                        onClick={() => {
-                          setSelectedImage(session.images?.gpsImeiPicture || '');
-                          setOpenImageModal(true);
-                        }}
-                      />
-                    </Paper>
-                  </Box>
-                )}
-                
-                {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
-                  session.images.vehicleImages.map((imageUrl, index) => (
-                    <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }} key={`vehicle-${index}`}>
-                      <Paper 
-                        elevation={2} 
-                        sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                      >
-                        <Typography variant="subtitle1" gutterBottom>
-                          Vehicle Image {index + 1}
-                        </Typography>
-                        <Box 
-                          component="img" 
-                          src={imageUrl}
-                          alt={`Vehicle Image ${index + 1}`}
-                          sx={{ 
-                            width: '100%', 
-                            height: '200px',
-                            objectFit: 'cover',
-                            cursor: 'pointer',
-                            borderRadius: '4px',
-                            mb: 1
-                          }}
-                          onClick={() => {
-                            setSelectedImage(imageUrl);
-                            setOpenImageModal(true);
-                          }}
-                        />
-                      </Paper>
-                    </Box>
-                  ))
-                )}
-                
-                {(!session.images.vehicleNumberPlatePicture && 
-                  !session.images.gpsImeiPicture && 
-                  (!session.images.vehicleImages || session.images.vehicleImages.length === 0)) && (
-                  <Box sx={{ width: '100%', p: 2 }}>
-                    <Alert severity="info">No images available</Alert>
-                  </Box>
-                )}
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setVerificationStep(2)}
+                  endIcon={<ArrowForward />}
+                >
+                  Next
+                </Button>
               </Box>
-            ) : (
-              <Alert severity="info">No images available</Alert>
-            )}
-          </Paper>
+            </Box>
+          )}
           
-          {/* Verification Dialog */}
-          <Dialog
-            open={verificationFormOpen}
-            onClose={() => !verifying && setVerificationFormOpen(false)}
-            maxWidth="md"
-            fullWidth
+          {verificationStep === 2 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Complete Verification
+              </Typography>
+              
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Please review the verification details below before completing the process.
+              </Alert>
+              
+              <Paper sx={{ p: 2, mb: 3 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Verification Summary
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    Trip Details Verification: {getVerificationStats().verified}/{getVerificationStats().total} fields verified ({getVerificationStats().percentage}%)
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={getVerificationStats().percentage}
+                    color={getVerificationStats().percentage === 100 ? "success" : "primary"}
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    Seal Tags: {sealComparison.matched.length} matched, {sealComparison.mismatched.length} mismatched
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={guardScannedSeals.length > 0 ? (sealComparison.matched.length / guardScannedSeals.length) * 100 : 0}
+                    color={sealComparison.mismatched.length === 0 && sealComparison.matched.length > 0 ? "success" : "warning"}
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
+              </Paper>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setVerificationStep(1)}
+                  startIcon={<ArrowBack />}
+                >
+                  Back
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleVerifySeal}
+                  disabled={verifying || getVerificationStats().percentage < 100}
+                  startIcon={verifying ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+                >
+                  {verifying ? "Processing..." : "Complete Verification"}
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Image Preview Modal */}
+      <Dialog
+        open={openImageModal}
+        onClose={() => setOpenImageModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Image Preview
+          <IconButton
+            aria-label="close"
+            onClick={() => setOpenImageModal(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
           >
-            <DialogTitle>
-              Verify Session
-              <IconButton
-                aria-label="close"
-                onClick={() => !verifying && setVerificationFormOpen(false)}
-                sx={{ position: 'absolute', right: 8, top: 8 }}
-                disabled={verifying}
-              >
-                <Close />
-              </IconButton>
-            </DialogTitle>
-            
-            <DialogContent>
-              <LinearProgress
-                variant="determinate"
-                value={verificationStep * 33.3}
-                sx={{ mb: 3 }}
-              />
-              
-              {verificationStep === 0 && (
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Verify Trip Details
-                  </Typography>
-                  
-                  <TableContainer component={Paper}>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Field</TableCell>
-                          <TableCell>Value</TableCell>
-                          <TableCell align="center">Status</TableCell>
-                          <TableCell align="center">Action</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {session.tripDetails && Object.entries(session.tripDetails)
-                          .filter(([key]) => !isSystemField(key))
-                          .map(([key, value]) => (
-                            <TableRow key={key}>
-                              <TableCell>{getFieldLabel(key)}</TableCell>
-                              <TableCell>{value || 'N/A'}</TableCell>
-                              <TableCell align="center">
-                                {verificationFields[key]?.verified ? (
-                                  <Chip 
-                                    icon={<CheckCircle />} 
-                                    label="Verified" 
-                                    color="success" 
-                                    size="small"
-                                  />
-                                ) : (
-                                  <Chip 
-                                    icon={<RadioButtonUnchecked />} 
-                                    label="Pending" 
-                                    color="default" 
-                                    size="small"
-                                  />
-                                )}
-                              </TableCell>
-                              <TableCell align="center">
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  color={verificationFields[key]?.verified ? "success" : "primary"}
-                                  onClick={() => verifyField(key)}
-                                  startIcon={verificationFields[key]?.verified ? <CheckCircle /> : <VerifiedUser />}
-                                >
-                                  {verificationFields[key]?.verified ? "Verified" : "Verify"}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  
-                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={verifyAllFields}
-                    >
-                      Verify All Fields
-                    </Button>
-                    
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={() => setVerificationStep(1)}
-                      endIcon={<ArrowForward />}
-                    >
-                      Next
-                    </Button>
-                  </Box>
-                </Box>
-              )}
-              
-              {verificationStep === 1 && (
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Verify Seal Tags
-                  </Typography>
-                  
-                  <Box sx={{ mb: 3 }}>
-                    <ClientSideQrScanner 
-                      onScan={(data) => handleScanComplete(data, 'digital')}
-                      buttonText="Scan QR Code"
-                    />
-                    
-                    {scanError && (
-                      <Alert severity="error" sx={{ mt: 2 }}>
-                        {scanError}
-                      </Alert>
-                    )}
-                  </Box>
-                  
-                  <TableContainer component={Paper} sx={{ mb: 3 }}>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Seal ID</TableCell>
-                          <TableCell>Scanned By</TableCell>
-                          <TableCell>Method</TableCell>
-                          <TableCell>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {guardScannedSeals.map((seal) => (
-                          <TableRow key={seal.id}>
-                            <TableCell>{seal.id}</TableCell>
-                            <TableCell>Guard</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={getMethodDisplay(seal.method)}
-                                color={getMethodColor(seal.method)}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {seal.verified ? (
-                                <Chip 
-                                  icon={<CheckCircle />} 
-                                  label="Verified" 
-                                  color="success" 
-                                  size="small"
-                                />
-                              ) : (
-                                <Chip 
-                                  icon={<Warning />} 
-                                  label="Not Matched" 
-                                  color="error" 
-                                  size="small"
-                                />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Button
-                      variant="outlined"
-                      onClick={() => setVerificationStep(0)}
-                      startIcon={<ArrowBack />}
-                    >
-                      Back
-                    </Button>
-                    
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={() => setVerificationStep(2)}
-                      endIcon={<ArrowForward />}
-                    >
-                      Next
-                    </Button>
-                  </Box>
-                </Box>
-              )}
-              
-              {verificationStep === 2 && (
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Complete Verification
-                  </Typography>
-                  
-                  <Alert severity="info" sx={{ mb: 3 }}>
-                    Please review the verification details below before completing the process.
-                  </Alert>
-                  
-                  <Paper sx={{ p: 2, mb: 3 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Verification Summary
-                    </Typography>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2">
-                        Trip Details Verification: {getVerificationStats().verified}/{getVerificationStats().total} fields verified ({getVerificationStats().percentage}%)
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={getVerificationStats().percentage}
-                        color={getVerificationStats().percentage === 100 ? "success" : "primary"}
-                        sx={{ mt: 1 }}
-                      />
-                    </Box>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2">
-                        Seal Tags: {sealComparison.matched.length} matched, {sealComparison.mismatched.length} mismatched
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={guardScannedSeals.length > 0 ? (sealComparison.matched.length / guardScannedSeals.length) * 100 : 0}
-                        color={sealComparison.mismatched.length === 0 && sealComparison.matched.length > 0 ? "success" : "warning"}
-                        sx={{ mt: 1 }}
-                      />
-                    </Box>
-                  </Paper>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Button
-                      variant="outlined"
-                      onClick={() => setVerificationStep(1)}
-                      startIcon={<ArrowBack />}
-                    >
-                      Back
-                    </Button>
-                    
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={handleVerifySeal}
-                      disabled={verifying || getVerificationStats().percentage < 100}
-                      startIcon={verifying ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
-                    >
-                      {verifying ? "Processing..." : "Complete Verification"}
-                    </Button>
-                  </Box>
-                </Box>
-              )}
-            </DialogContent>
-          </Dialog>
-          
-          {/* Image Preview Modal */}
-          <Dialog
-            open={openImageModal}
-            onClose={() => setOpenImageModal(false)}
-            maxWidth="md"
-            fullWidth
-          >
-            <DialogTitle>
-              Image Preview
-              <IconButton
-                aria-label="close"
-                onClick={() => setOpenImageModal(false)}
-                sx={{ position: 'absolute', right: 8, top: 8 }}
-              >
-                <Close />
-              </IconButton>
-            </DialogTitle>
-            <DialogContent>
-              {selectedImage && (
-                <Box
-                  component="img"
-                  src={selectedImage}
-                  alt="Preview"
-                  sx={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }}
-                />
-              )}
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {selectedImage && (
+            <Box
+              component="img"
+              src={selectedImage}
+              alt="Preview"
+              sx={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 } 
