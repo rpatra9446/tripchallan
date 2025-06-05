@@ -918,13 +918,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Update yPos using the current autoTable object
         yPos = (doc as any).lastAutoTable.finalY + 10;
         
-        // Add seal tag images
-        addNewPageIfNeeded(20);
-        doc.setFontSize(12);
-        doc.text('Seal Tag Images', leftMargin, yPos);
-        yPos += 8;
-        
-        // Process seal tag images
+        // Add seal tag images right after the table without a separate heading
+        // Process seal tag images one by one
         for (let i = 0; i < session.sealTags.length; i++) {
           const tag = session.sealTags[i];
           if (tag.imageUrl || tag.imageData) {
