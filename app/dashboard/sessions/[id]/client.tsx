@@ -1494,6 +1494,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Comment Section */}
+      <CommentSection sessionId={sessionId} />
     </Container>
   );
 } 
