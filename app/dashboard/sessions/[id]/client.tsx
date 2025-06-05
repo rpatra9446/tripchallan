@@ -779,25 +779,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         return false;
       };
       
-      // Add title
-      doc.setFontSize(20);
-      doc.text('Trip Session Report', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 12;
-      
-      // Add session details
-      doc.setFontSize(14);
-      doc.text('Basic Information', leftMargin, yPos);
-      yPos += 8;
-      
-      doc.setFontSize(10);
-      doc.text(`Session ID: ${session.id}`, leftMargin, yPos); yPos += 6;
-      doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`, leftMargin, yPos); yPos += 6;
-      doc.text(`Status: ${session.status.replace('_', ' ')}`, leftMargin, yPos); yPos += 6;
-      doc.text(`Company: ${session.company.name}`, leftMargin, yPos); yPos += 6;
-      doc.text(`Created By: ${session.createdBy.name}`, leftMargin, yPos); yPos += 6;
-      doc.text(`Source: ${session.source}`, leftMargin, yPos); yPos += 6;
-      doc.text(`Destination: ${session.destination}`, leftMargin, yPos); yPos += 10;
-      
       // Function to add an image to PDF
       const addImageToPdf = async (imageUrl: string, title: string) => {
         if (!imageUrl) return;
@@ -851,6 +832,25 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         }
       };
       
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Trip Session Report', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
+      
+      // Add session details
+      doc.setFontSize(14);
+      doc.text('Basic Information', leftMargin, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.text(`Session ID: ${session.id}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Status: ${session.status.replace('_', ' ')}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Company: ${session.company.name}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Created By: ${session.createdBy.name}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Source: ${session.source}`, leftMargin, yPos); yPos += 6;
+      doc.text(`Destination: ${session.destination}`, leftMargin, yPos); yPos += 10;
+      
       // Add trip details section
       if (session.tripDetails) {
         addNewPageIfNeeded(60);
@@ -896,14 +896,20 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         doc.text(`Total Seal Tags: ${session.sealTags.length}`, leftMargin, yPos);
         yPos += 8;
         
-        // Create seal tags table
-        const sealTagsArray = session.sealTags.map((tag, index) => [
-          index + 1,
-          tag.barcode,
-          getMethodDisplay(tag.method),
-          new Date(tag.createdAt).toLocaleString(),
-          tag.scannedByName || 'Unknown'
-        ]);
+        // Create a separate array of seal tags for the table
+        const sealTagsArray = [];
+        
+        // Add placeholder for images - we'll add them after the table is created
+        for (let i = 0; i < session.sealTags.length; i++) {
+          const tag = session.sealTags[i];
+          sealTagsArray.push([
+            i + 1,
+            tag.barcode,
+            getMethodDisplay(tag.method),
+            new Date(tag.createdAt).toLocaleString(),
+            tag.scannedByName || 'Unknown'
+          ]);
+        }
         
         // Call autoTable with doc as first parameter
         autoTable(doc, {
@@ -918,15 +924,97 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         // Update yPos using the current autoTable object
         yPos = (doc as any).lastAutoTable.finalY + 10;
         
-        // Add seal tag images right after the table without a separate heading
-        // Process seal tag images one by one
-        for (let i = 0; i < session.sealTags.length; i++) {
-          const tag = session.sealTags[i];
-          if (tag.imageUrl || tag.imageData) {
-            await addImageToPdf(
-              tag.imageUrl || tag.imageData || '', 
-              `Seal Tag ${i + 1}: ${tag.barcode}`
-            );
+        // Add a separate table for seal images with their barcode information
+        if (session.sealTags.some(tag => tag.imageUrl || tag.imageData)) {
+          addNewPageIfNeeded(60);
+          doc.setFontSize(14);
+          doc.text('Seal Tag Images', leftMargin, yPos);
+          yPos += 8;
+          
+          // Prepare for image display in a grid-like format
+          const cellWidth = 70; // width of each cell in mm
+          const cellHeight = 70; // height of each cell in mm
+          const cellsPerRow = 3; // number of cells per row
+          
+          let currentX = leftMargin;
+          let currentY = yPos;
+          let cellCount = 0;
+          
+          for (let i = 0; i < session.sealTags.length; i++) {
+            const tag = session.sealTags[i];
+            if (tag.imageUrl || tag.imageData) {
+              // Check if we need to move to next row
+              if (cellCount > 0 && cellCount % cellsPerRow === 0) {
+                currentX = leftMargin;
+                currentY += cellHeight;
+                
+                // Check if we need a new page
+                if (currentY + cellHeight > pageHeight - 15) {
+                  doc.addPage();
+                  currentY = 15;
+                }
+              }
+              
+              try {
+                // Load image
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                
+                // Create a promise to wait for image load
+                await new Promise((resolve, reject) => {
+                  img.onload = resolve;
+                  img.onerror = reject;
+                  img.src = tag.imageUrl || tag.imageData || '';
+                });
+                
+                // Calculate image dimensions to fit cell
+                const maxImgWidth = cellWidth - 10; // 5mm padding on each side
+                const maxImgHeight = cellHeight - 20; // 10mm for text + padding
+                
+                let imgWidth = img.width;
+                let imgHeight = img.height;
+                
+                if (imgWidth > maxImgWidth) {
+                  const ratio = maxImgWidth / imgWidth;
+                  imgWidth = maxImgWidth;
+                  imgHeight = imgHeight * ratio;
+                }
+                
+                if (imgHeight > maxImgHeight) {
+                  const ratio = maxImgHeight / imgHeight;
+                  imgHeight = maxImgHeight;
+                  imgWidth = imgWidth * ratio;
+                }
+                
+                // Add label above image
+                doc.setFontSize(8);
+                doc.text(`Tag ${i + 1}: ${tag.barcode}`, currentX + 5, currentY + 5);
+                
+                // Add image
+                doc.addImage(
+                  img, 
+                  'JPEG', 
+                  currentX + 5, 
+                  currentY + 10, 
+                  imgWidth, 
+                  imgHeight
+                );
+                
+                cellCount++;
+                currentX += cellWidth;
+              } catch (error) {
+                console.error(`Error adding image to PDF: ${tag.barcode}`, error);
+                doc.text(`[Error loading image for ${tag.barcode}]`, currentX + 5, currentY + 5);
+                cellCount++;
+                currentX += cellWidth;
+              }
+            }
+          }
+          
+          // Update yPos to after the last row
+          if (cellCount > 0) {
+            const rows = Math.ceil(cellCount / cellsPerRow);
+            yPos = currentY + (rows * cellHeight);
           }
         }
       }
