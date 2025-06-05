@@ -65,7 +65,8 @@ import Link from "next/link";
 import { SessionStatus, EmployeeSubrole, UserRole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+// Import autoTable as a separate named import instead of side-effect import
+import autoTable from 'jspdf-autotable';
 import toast from "react-hot-toast";
 
 // Types
@@ -813,8 +814,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           .map(([key, value]) => [getFieldLabel(key), value || 'N/A']);
         
         if (tripDetailsArray.length > 0) {
-          // @ts-ignore - jspdf-autotable extends jsPDF prototype
-          doc.autoTable({
+          // Call autoTable with doc as first parameter
+          autoTable(doc, {
             head: [['Field', 'Value']],
             body: tripDetailsArray,
             startY: yPos,
@@ -823,8 +824,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             headStyles: { fillColor: [75, 75, 75] }
           });
           
-          // @ts-ignore - jspdf-autotable extends jsPDF prototype
-          yPos = doc.lastAutoTable.finalY + 10;
+          // Update yPos using the current autoTable object
+          yPos = (doc as any).lastAutoTable.finalY + 10;
         } else {
           doc.text('No trip details available', leftMargin, yPos);
           yPos += 10;
@@ -851,8 +852,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           tag.scannedByName || 'Unknown'
         ]);
         
-        // @ts-ignore - jspdf-autotable extends jsPDF prototype
-        doc.autoTable({
+        // Call autoTable with doc as first parameter
+        autoTable(doc, {
           head: [['No.', 'Seal Tag ID', 'Method', 'Created At', 'Created By']],
           body: sealTagsArray,
           startY: yPos,
@@ -861,8 +862,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           headStyles: { fillColor: [75, 75, 75] }
         });
         
-        // @ts-ignore - jspdf-autotable extends jsPDF prototype
-        yPos = doc.lastAutoTable.finalY + 10;
+        // Update yPos using the current autoTable object
+        yPos = (doc as any).lastAutoTable.finalY + 10;
       }
       
       // Function to add an image to PDF

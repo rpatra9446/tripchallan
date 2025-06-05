@@ -12,9 +12,10 @@ async function initializeServer() {
   if (process.env.NODE_ENV === 'development') return;
   
   try {
-    // Call the server-init API endpoint
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    await fetch(`${baseUrl}/api/server-init`, { method: 'POST' });
+    // Call the server-init API directly without fetch
+    // This avoids making HTTP requests to itself which can cause issues in serverless environments
+    const { GET } = await import('./api/server-init/route');
+    await GET(new Request('https://dummy-url.com/api/server-init'));
     console.log('Server initialization completed');
   } catch (error) {
     console.error('Failed to initialize server:', error);
