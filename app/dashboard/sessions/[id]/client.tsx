@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import React from 'react';
+import * as React from 'react';
 import { 
   Container, Box, Paper, Divider, Chip, CircularProgress, Button,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
@@ -297,7 +297,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   };
   
   // Handle QR/barcode scanner input
-  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File) => {
+  const handleScanComplete = async (barcodeData: string, method: string = 'digital', imageFile?: File) => {
     // Don't process empty input
     if (!barcodeData.trim()) {
       setScanError('Please enter a valid Seal Tag ID');
@@ -646,25 +646,25 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle1">
-                  <LocationOn fontSize="small" /> Source: {session.source}
+                  <LocationOn fontSize="small" /> Source: {session?.source}
                 </Typography>
               </Grid>
               
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle1">
-                  <LocationOn fontSize="small" /> Destination: {session.destination}
+                  <LocationOn fontSize="small" /> Destination: {session?.destination}
                 </Typography>
               </Grid>
               
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle1">
-                  <AccessTime fontSize="small" /> Created: {new Date(session.createdAt).toLocaleString()}
+                  <AccessTime fontSize="small" /> Created: {session ? new Date(session.createdAt).toLocaleString() : ''}
                 </Typography>
               </Grid>
               
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle1">
-                  <BusinessCenter fontSize="small" /> Company: {session.company?.name || 'N/A'}
+                  <BusinessCenter fontSize="small" /> Company: {session?.company?.name || 'N/A'}
                 </Typography>
               </Grid>
             </Grid>
@@ -809,8 +809,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   
                   <Box sx={{ mb: 3 }}>
                     <ClientSideQrScanner 
-                      onScanComplete={handleScanComplete}
-                      initialTab="scan"
+                      onScan={(data) => handleScanComplete(data, 'digital')}
+                      buttonText="Scan QR Code"
                     />
                     
                     {scanError && (
