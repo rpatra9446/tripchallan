@@ -394,7 +394,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
         </Box>
       </form>
 
-      <List sx={{ mt: 2 }}>
+      <List sx={{ mt: 2 }} aria-label="Comments list">
         {isFetching ? (
           <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
             <CircularProgress aria-label="Loading comments" />

@@ -3,29 +3,193 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import * as React from 'react';
+import React from 'react';
 import { 
-  Container, Box, Paper, Divider, Chip, CircularProgress, Button,
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Alert, AlertTitle, LinearProgress, List, ListItem, ListItemText,
-  TableContainer, Table, TableHead, TableBody, TableRow, TableCell,
-  TextField, IconButton, Grid, InputAdornment, Tooltip, Typography,
-  Tabs, Tab, FormControl, InputLabel, Select, MenuItem
+  Container, 
+  Typography, 
+  Box, 
+  Paper, 
+  Divider, 
+  Chip, 
+  CircularProgress, 
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Alert,
+  AlertTitle,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Grid as MuiGrid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  InputAdornment,
+  IconButton,
+  Tabs,
+  Tab
 } from "@mui/material";
+
+// Fix for TypeScript errors with Grid
+const Grid = MuiGrid;
+
 import { 
-  LocationOn, DirectionsCar, AccessTime, VerifiedUser, ArrowBack, Lock,
-  CheckCircle, Warning, PictureAsPdf, TableChart, Description, Edit,
-  BusinessCenter, RadioButtonUnchecked, Comment, ArrowForward, Delete,
-  CloudUpload, Close, QrCode, InfoOutlined, Refresh, Person,
-  KeyboardArrowUp, KeyboardArrowDown, Phone
+  LocationOn, 
+  DirectionsCar, 
+  AccessTime, 
+  VerifiedUser, 
+  ArrowBack, 
+  Lock,
+  CheckCircle,
+  Warning,
+  PictureAsPdf,
+  TableChart,
+  Description,
+  Edit,
+  Person,
+  Phone,
+  QrCode,
+  Refresh
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
-import ClientSideQrScanner from "@/app/components/ClientSideQrScanner";
 import toast from "react-hot-toast";
-import { compressImage } from "@/lib/imageUtils";
+
+// Types
+type SealType = {
+  id: string;
+  barcode: string;
+  verified: boolean;
+  scannedAt: string | null;
+  verifiedById: string | null;
+  verifiedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+};
+
+type SessionType = {
+  id: string;
+  source: string;
+  destination: string;
+  status: string;
+  createdAt: string;
+  company: {
+    id: string;
+    name: string;
+  };
+  createdBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  seal?: SealType | null;
+  // Additional trip details from the session creation form
+  tripDetails?: {
+    transporterName?: string;
+    materialName?: string;
+    vehicleNumber?: string;
+    gpsImeiNumber?: string;
+    driverName?: string;
+    driverContactNumber?: string;
+    loaderName?: string;
+    challanRoyaltyNumber?: string;
+    doNumber?: string;
+    freight?: number;
+    qualityOfMaterials?: string;
+    tpNumber?: string;
+    grossWeight?: number;
+    tareWeight?: number;
+    netMaterialWeight?: number;
+    loaderMobileNumber?: string;
+    loadingSite?: string;
+    receiverPartyName?: string;
+    driverLicense?: string;
+  };
+  images?: {
+    gpsImeiPicture?: string;
+    vehicleNumberPlatePicture?: string;
+    driverPicture?: string;
+    sealingImages?: string[];
+    vehicleImages?: string[];
+    additionalImages?: string[];
+  };
+  timestamps?: {
+    loadingDetails?: Record<string, string>;
+    imagesForm?: Record<string, string>;
+  };
+  qrCodes?: {
+    primaryBarcode?: string;
+    additionalBarcodes?: string[];
+  };
+  activityLogs?: {
+    id: string;
+    action: string;
+    details?: {
+      verification?: {
+        fieldVerifications?: Record<string, any>;
+        allMatch?: boolean;
+      };
+    };
+  }[];
+  sealTags?: { 
+    id: string; 
+    barcode: string; 
+    method: string; 
+    imageUrl?: string | null; 
+    imageData?: string | null;
+    createdAt: string;
+    scannedById?: string;
+    scannedByName?: string;
+  }[];
+  guardSealTags?: {
+    id: string;
+    barcode: string;
+    method: string;
+    imageUrl?: string | null;
+    imageData?: string | null;
+    createdAt: string;
+    status?: string;
+    verifiedById?: string;
+    verifiedBy?: { id: string; name: string; email: string; };
+  }[];
+};
+
+// TabPanel component for verification mode
+function TabPanel(props: {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`verification-tabpanel-${index}`}
+      aria-labelledby={`verification-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 // Utility functions
 function getFieldLabel(field: string): string {
@@ -74,46 +238,6 @@ function isSystemField(key: string) {
   return systemFields.includes(key);
 }
 
-// Type definitions
-type SessionType = {
-  id: string;
-  source: string;
-  destination: string;
-  status: string;
-  createdAt: string;
-  company: { id: string; name: string; };
-  createdBy: { id: string; name: string; email: string; };
-  tripDetails?: Record<string, any>;
-  images?: {
-    gpsImeiPicture?: string;
-    vehicleNumberPlatePicture?: string;
-    driverPicture?: string;
-    sealingImages?: string[];
-    vehicleImages?: string[];
-  };
-  sealTags?: { 
-    id: string; 
-    barcode: string; 
-    method: string; 
-    imageUrl?: string | null; 
-    imageData?: string | null;
-    createdAt: string;
-    scannedById?: string;
-    scannedByName?: string;
-  }[];
-  guardSealTags?: {
-    id: string;
-    barcode: string;
-    method: string;
-    imageUrl?: string | null;
-    imageData?: string | null;
-    createdAt: string;
-    status?: string;
-    verifiedById?: string;
-    verifiedBy?: { id: string; name: string; email: string; };
-  }[];
-};
-
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const { data: authSession, status: authStatus } = useSession();
@@ -141,6 +265,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [verifying, setVerifying] = useState(false);
   const [verificationResults, setVerificationResults] = useState<any>(null);
   const [imageComments, setImageComments] = useState<Record<string, string>>({});
+  const [verificationMode, setVerificationMode] = useState(false); // Controls Guard tabbed UI
   
   // Seal management
   const [guardScannedSeals, setGuardScannedSeals] = useState<Array<{
@@ -162,319 +287,222 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [guardImages, setGuardImages] = useState<Record<string, any>>({});
   const [imagePreviews, setImagePreviews] = useState<Record<string, any>>({});
 
-  // Session data fetching
-  useEffect(() => {
-    if (!sessionId) return;
-    
-    const fetchSessionData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/sessions/${sessionId}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch session: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setSession(data);
-        
-        // Extract operator seal tags if available
-        if (data.sealTags && Array.isArray(data.sealTags)) {
-          setOperatorSeals(data.sealTags.map((tag: any) => ({ id: tag.barcode })));
-          
-          // Check for issues that need fixing
-          let needsReload = false;
-          
-          // 1. Check for missing images
-          const hasMissingImages = data.sealTags.some((tag: any) => 
-            (!tag.imageUrl && !tag.imageData) || 
-            (tag.imageUrl === null && tag.imageData === null)
-          );
-          
-          // 2. Check for identical timestamps
-          const timestamps = data.sealTags.map((tag: any) => new Date(tag.createdAt).getTime());
-          const uniqueTimestamps = new Set(timestamps);
-          const hasIdenticalTimestamps = uniqueTimestamps.size === 1 && data.sealTags.length > 1;
-          
-          // Fix missing images if needed
-          if (hasMissingImages) {
-            console.log("Detected missing seal tag images, attempting to fix...");
-            try {
-              const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-seal-images`);
-              if (fixResponse.ok) {
-                const fixResult = await fixResponse.json();
-                console.log("Fix seal images result:", fixResult);
-                if (fixResult.fixed > 0) {
-                  needsReload = true;
-                }
-              }
-            } catch (fixError) {
-              console.error("Failed to fix seal tag images:", fixError);
-            }
-          }
-          
-          // Fix identical timestamps if needed
-          if (hasIdenticalTimestamps) {
-            console.log('Detected identical timestamps for all seal tags. Attempting to fix...');
-            try {
-              const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-seal-timestamps`);
-              if (fixResponse.ok) {
-                const fixResult = await fixResponse.json();
-                console.log('Fix seal timestamps result:', fixResult);
-                if (fixResult.fixed > 0) {
-                  needsReload = true;
-                }
-              }
-            } catch (fixError) {
-              console.error('Failed to fix seal tag timestamps:', fixError);
-            }
-          }
-          
-          // Check guard seal tags if they exist
-          if (data.guardSealTags && Array.isArray(data.guardSealTags) && data.guardSealTags.length > 0) {
-            console.log("Processing guard seal tags:", data.guardSealTags.length);
-            
-            // 1. Check for missing guard images
-            const hasMissingGuardImages = data.guardSealTags.some((tag: any) => 
-              (!tag.imageUrl && !tag.imageData) || 
-              (tag.imageUrl === null && tag.imageData === null)
-            );
-            
-            // 2. Check for identical timestamps in guard tags
-            const guardTimestamps = data.guardSealTags.map((tag: any) => new Date(tag.createdAt).getTime());
-            const uniqueGuardTimestamps = new Set(guardTimestamps);
-            const hasIdenticalGuardTimestamps = uniqueGuardTimestamps.size === 1 && data.guardSealTags.length > 1;
-            
-            // Fix missing guard images if needed
-            if (hasMissingGuardImages) {
-              console.log("Detected missing guard seal tag images, attempting to fix...");
-              try {
-                const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-guard-seal-images`);
-                if (fixResponse.ok) {
-                  const fixResult = await fixResponse.json();
-                  console.log("Fix guard seal images result:", fixResult);
-                  if (fixResult.fixed > 0) {
-                    needsReload = true;
-                  }
-                }
-              } catch (fixError) {
-                console.error("Failed to fix guard seal tag images:", fixError);
-              }
-            }
-            
-            // Fix identical guard timestamps if needed
-            if (hasIdenticalGuardTimestamps) {
-              console.log('Detected identical timestamps for all guard seal tags. Attempting to fix...');
-              try {
-                const fixResponse = await fetch(`/api/sessions/${sessionId}/fix-guard-seal-timestamps`);
-                if (fixResponse.ok) {
-                  const fixResult = await fixResponse.json();
-                  console.log('Fix guard seal timestamps result:', fixResult);
-                  if (fixResult.fixed > 0) {
-                    needsReload = true;
-                  }
-                }
-              } catch (fixError) {
-                console.error('Failed to fix guard seal tag timestamps:', fixError);
-              }
-            }
-          }
-          
-          // Reload session data if any fixes were applied
-          if (needsReload) {
-            console.log('Reloading session data after applying fixes...');
-            const updatedResponse = await fetch(`/api/sessions/${sessionId}`);
-            if (updatedResponse.ok) {
-              const updatedData = await updatedResponse.json();
-              setSession(updatedData);
-              console.log('Session data reloaded with fixes applied');
-            }
-          }
-        }
-        
-        // Fetch guard seal tags
-        fetchGuardSealTags();
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching session data:', error);
-        setError('Failed to load session details');
-        setLoading(false);
-      }
-    };
-    
-    fetchSessionData();
-  }, [sessionId]);
+  // Check if user is a guard
+  const isGuard = useMemo(() => 
+    userRole === "EMPLOYEE" && userSubrole === EmployeeSubrole.GUARD, 
+    [userRole, userSubrole]
+  );
   
-  // Role and permissions
+  // Check if user can access reports (non-GUARD users)
+  const canAccessReports = useMemo(() => 
+    userRole === "SUPERADMIN" || 
+    userRole === "ADMIN" || 
+    userRole === "COMPANY", 
+    [userRole]
+  );
+  
+  // Check if the session can be verified
+  const canVerify = useMemo(() => 
+    isGuard && 
+    session?.status === SessionStatus.IN_PROGRESS,
+    [isGuard, session]
+  );
+
+  // Session data and user role loading
   useEffect(() => {
-    if (authSession?.user) {
-      const role = authSession.user.role as string;
-      const subrole = authSession.user.subrole as string;
-      
-      setUserRole(role);
-      setUserSubrole(subrole);
-      
-      // Determine if user can edit based on role/subrole
-      const canEditSession = 
-        role === 'ADMIN' || 
-        role === 'COMPANY' || 
-        (role === 'EMPLOYEE' && 
-          (subrole === EmployeeSubrole.GUARD || 
-           subrole === EmployeeSubrole.OPERATOR));
-      
-      setCanEdit(canEditSession);
+    if (authStatus === "authenticated" && authSession?.user) {
+      setUserRole(authSession.user.role || "");
+      setUserSubrole(authSession.user.subrole || "");
+      fetchSessionDetails();
     }
-  }, [authSession]);
-  
-  // Fetch guard seal tags
-  const fetchGuardSealTags = useCallback(async () => {
+  }, [authStatus, authSession, sessionId]);
+
+  // Check for verification mode on load
+  useEffect(() => {
+    // Auto-enter verification mode for guards
+    if (isGuard && session && session.status === SessionStatus.IN_PROGRESS) {
+      setVerificationMode(true);
+      startVerification();
+    }
+  }, [isGuard, session]);
+
+  // Update seal comparison when seals change
+  useEffect(() => {
+    updateSealComparison(guardScannedSeals);
+  }, [guardScannedSeals, operatorSeals]);
+
+  // Define fetchSessionDetails function
+  const fetchSessionDetails = useCallback(async () => {
+    if (!sessionId) {
+      console.log("No session ID available yet, skipping fetch");
+      return;
+    }
+    
+    setLoading(true);
+    setError("");
+
+    try {
+      console.log("Fetching session details for ID:", sessionId);
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch session: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Session data received:", data);
+      setSession(data);
+      
+      // Initialize operator seals if available
+      if (data.sealTags && Array.isArray(data.sealTags)) {
+        setOperatorSeals(data.sealTags.map((tag: any) => ({ 
+          id: tag.barcode,
+          method: tag.method,
+          timestamp: tag.createdAt
+        })));
+      }
+      
+      // Fetch guard seal tags if in verification mode
+      if (isGuard) {
+        fetchGuardSealTags();
+      }
+      
+    } catch (err) {
+      console.error("Error fetching session:", err);
+      setError(`Failed to load session: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, isGuard]);
+
+  // Fetch guard seal tags for verification
+  const fetchGuardSealTags = async () => {
     if (!sessionId) return;
     
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`);
+      console.log("Fetching guard verification sessions");
+      const response = await fetch(`/api/sessions/${sessionId}/guard-seals`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch guard seal tags: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log("Guard seal tags received:", data);
       
+      // Process and set guard scanned seals
       if (data && Array.isArray(data)) {
-        // Process guard seal tags
-        const guardTags = data.map((tag: any) => ({
+        const processedSeals = data.map((tag: any) => ({
           id: tag.barcode,
-          method: tag.method || 'digital',
-          image: null,
-          imagePreview: tag.imageUrl || null,
-          timestamp: tag.createdAt || new Date().toISOString(),
-          verified: operatorSeals.some(seal => 
-            seal.id.trim().toLowerCase() === tag.barcode.trim().toLowerCase()
-          )
+          method: tag.method,
+          image: tag.imageUrl || null,
+          timestamp: tag.createdAt,
+          verified: false // Will be updated during comparison
         }));
         
-        setGuardScannedSeals(guardTags);
-        updateSealComparison(guardTags);
+        setGuardScannedSeals(processedSeals);
+        updateSealComparison(processedSeals);
       }
-    } catch (error) {
-      console.error('Error fetching guard seal tags:', error);
+    } catch (err) {
+      console.error("Error fetching guard seal tags:", err);
+      toast.error(`Failed to load guard verification data: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
-  }, [sessionId, operatorSeals]);
-  
-  // Update seal comparison status
-  const updateSealComparison = useCallback((guardTags: any[]) => {
+  };
+
+  // Update seal comparison
+  const updateSealComparison = (guardSeals: any[]) => {
     const matched: string[] = [];
     const mismatched: string[] = [];
     
-    // Find matches and mismatches between operator and guard scanned seals
-    guardTags.forEach(guardTag => {
-      const isMatch = operatorSeals.some(
-        opSeal => opSeal.id.trim().toLowerCase() === guardTag.id.trim().toLowerCase()
-      );
-      
-      if (isMatch) {
-        matched.push(guardTag.id);
+    // Extract just the barcode/id values
+    const operatorIds = operatorSeals.map(seal => seal.id);
+    const guardIds = guardSeals.map(seal => seal.id);
+    
+    // Find matches and mismatches
+    guardIds.forEach(id => {
+      if (operatorIds.includes(id)) {
+        matched.push(id);
       } else {
-        mismatched.push(guardTag.id);
+        mismatched.push(id);
       }
     });
     
+    // Update state
     setSealComparison({ matched, mismatched });
-  }, [operatorSeals]);
-  
-  // Process image for upload with compression
+    
+    // Update verification status on guard seals
+    const updatedGuardSeals = guardSeals.map(seal => ({
+      ...seal,
+      verified: operatorIds.includes(seal.id)
+    }));
+    
+    setGuardScannedSeals(updatedGuardSeals);
+  };
+
+  // Process images for upload
   const processImageForUpload = async (imageFile: File): Promise<string> => {
-    const reader = new FileReader();
-    return new Promise<string>((resolve, reject) => {
-      reader.onloadend = async () => {
-        try {
-          const base64Image = reader.result as string;
-          
-          // Compression strategy based on size
-          let compressedImageData = base64Image;
-          if (base64Image.length > 1000000) { // 1MB
-            compressedImageData = await compressImage(base64Image, 0.6);
-          }
-          
-          if (compressedImageData.length > 800000) { // 800KB
-            compressedImageData = await compressImage(compressedImageData, 0.4);
-          }
-          
-          if (compressedImageData.length > 500000) { // 500KB
-            compressedImageData = await compressImage(compressedImageData, 0.2);
-          }
-          
-          resolve(compressedImageData);
-        } catch (error) {
-          reject(error);
-        }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        resolve(base64data);
       };
-      reader.onerror = reject;
+      reader.onerror = () => {
+        reject(new Error("Failed to read image file"));
+      };
       reader.readAsDataURL(imageFile);
     });
   };
-  
-  // Handle QR/barcode scanner input
+
+  // Handle scanned barcode
   const handleScanComplete = async (barcodeData: string, method: string = 'digital', imageFile?: File) => {
-    // Don't process empty input
     if (!barcodeData.trim()) {
-      setScanError('Please enter a valid Seal Tag ID');
-      setTimeout(() => setScanError(''), 3000);
+      setScanError("Please enter a valid seal tag");
+      return;
+    }
+    
+    setScanError("");
+    const trimmedData = barcodeData.trim();
+    
+    // Check if already scanned
+    if (guardScannedSeals.some(seal => seal.id === trimmedData)) {
+      toast.error(`Seal tag ${trimmedData} has already been scanned`);
       return;
     }
     
     try {
-      const trimmedData = barcodeData.trim();
-      
-      // Check if already scanned by guard
-      if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
-        setScanError('This seal has already been scanned');
-        setTimeout(() => setScanError(''), 3000);
-        return;
-      }
-      
-      // Check if this seal matches an operator seal
-      const isVerified = operatorSeals.some(seal => 
-        seal.id.trim().toLowerCase() === trimmedData.toLowerCase()
-      );
-      
-      // Handle image if provided
-      let imageDataBase64 = null;
+      // Process image if provided
+      let imageData = null;
       if (imageFile) {
-        imageDataBase64 = await processImageForUpload(imageFile);
+        imageData = await processImageForUpload(imageFile);
       }
       
-      // Save to API
-      const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
+      // Determine if this scan matches an operator seal
+      const isVerified = operatorSeals.some(seal => seal.id === trimmedData);
+      
+      // Save the seal tag to the backend
+      const response = await fetch(`/api/sessions/${sessionId}/guard-seals`, {
         method: 'POST',
-        credentials: 'same-origin',
-        mode: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           barcode: trimmedData,
           method,
-          imageData: imageDataBase64
+          imageData,
+          verified: isVerified
         }),
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        
-        // Handle duplicate error
+        // Try to extract specific error
         if (response.status === 409) {
-                        try {
-                const errorData = JSON.parse(errorText);
-                if (errorData.existingTag) {
-                  toast.success(`Seal tag ${trimmedData} was already scanned previously`);
-              fetchGuardSealTags();
-              return;
-            }
-          } catch (e) {
-            // If parsing fails, just show the generic error
+          const errorData = await response.json();
+          if (errorData.existingTag) {
+            toast.success(`Seal tag ${trimmedData} was already scanned previously`);
           }
+          fetchGuardSealTags();
+          return;
         }
         
         throw new Error(`Failed to save guard seal tag: ${response.status}`);
@@ -579,11 +607,30 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   // Verification functions
   
   // Start verification process
-  const startVerification = () => {
-    setVerificationFormOpen(true);
-    setVerificationStep(0);
+  const startVerification = async () => {
+    setVerifying(true);
+    try {
+      // Make sure operator seals are loaded
+      if (session?.sealTags && Array.isArray(session.sealTags) && operatorSeals.length === 0) {
+        setOperatorSeals(session.sealTags.map((tag: any) => ({ id: tag.barcode })));
+      }
+      
+      // Load guard seal tags if needed
+      await fetchGuardSealTags();
+      
+      // Update UI state to show verification form
+      setVerificationFormOpen(true);
+      setVerificationMode(true); // Enable verification mode UI
+      setVerificationStep(0);
+      console.log("Verification form opened");
+    } catch (error) {
+      console.error("Error starting verification:", error);
+      toast.error("Failed to start verification. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
   };
-  
+
   // Verify a specific field
   const verifyField = (field: string) => {
     setVerificationFields(prev => ({
@@ -676,37 +723,27 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       });
       
       if (!response.ok) {
-        throw new Error(`Verification failed: ${response.status}`);
+        throw new Error(`Failed to complete verification: ${response.status}`);
       }
       
       const result = await response.json();
+      console.log('Verification result:', result);
       
-      // Update UI
       setVerificationResults(result);
-      setVerificationFormOpen(false);
-      
-      // Refresh session data
-      const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
-      if (sessionResponse.ok) {
-        const refreshedSession = await sessionResponse.json();
-        setSession(refreshedSession);
-      }
-      
-      toast.success('Session verification completed successfully');
-      
+      toast.success('Verification completed successfully!');
     } catch (error) {
-      console.error('Error verifying session:', error);
+      console.error('Error completing verification:', error);
       toast.error('Failed to complete verification. Please try again.');
     } finally {
       setVerifying(false);
     }
   };
-  
+
   // Fix toast.info - replace with toast success
   const notifyToastInfo = (message: string) => {
     toast.success(message); // Using success instead of info which might not be available
   };
-  
+
   // Function to generate PDF report
   const generatePdfReport = useCallback(async () => {
     if (!session) return;
@@ -807,369 +844,292 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     );
   }
   
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header with navigation and action buttons */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBack />}
-          onClick={() => router.push('/dashboard/sessions')}
-        >
-          Back to Sessions
-        </Button>
-        
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {/* PDF Export Button - available to all users */}
-          <Button
-            variant="outlined"
-            startIcon={<PictureAsPdf />}
-            onClick={generatePdfReport}
-            disabled={!!reportLoading}
-          >
-            {reportLoading === 'pdf' ? 'Generating...' : 'Export PDF'}
-          </Button>
-          
-          {canEdit && (
+  // For GUARD users with verification mode
+  if (verificationMode && userRole === 'EMPLOYEE' && userSubrole === EmployeeSubrole.GUARD) {
+    return (
+      <Container maxWidth="xl">
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h5" component="h1">
+              Guard Verification
+            </Typography>
             <Button
-              variant="contained"
-              startIcon={<Edit />}
-              onClick={() => router.push(`/dashboard/sessions/${sessionId}/edit`)}
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={() => router.back()}
             >
-              Edit Session
+              Back
             </Button>
-          )}
-        </Box>
-      </Box>
+          </Box>
+        </Paper>
 
-      {/* Session Details */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5">
-            Session Details
-          </Typography>
-          <Chip 
-            label={session.status.replace('_', ' ')}
-            color={getStatusColor(session.status)}
-            sx={{ fontWeight: 'bold' }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <LocationOn fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body1">
-                <strong>Source:</strong> {session.source}
-              </Typography>
+        {/* Session Details */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h5">
+              Session Details
+            </Typography>
+            <Chip 
+              label={session.status.replace('_', ' ')}
+              color={getStatusColor(session.status)}
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <LocationOn fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Source:</strong> {session.source}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <LocationOn fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Destination:</strong> {session.destination}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <AccessTime fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Created At:</strong> {new Date(session.createdAt).toLocaleString()}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <BusinessCenter fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Company:</strong> {session.company?.name || 'N/A'}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <DirectionsCar fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || 'N/A'}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Person fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body1">
+                  <strong>Created By:</strong> {session.createdBy?.name || 'N/A'}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+              {userRole === 'ADMIN' || userRole === 'COMPANY' || userSubrole === EmployeeSubrole.GUARD ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={startVerification}
+                  startIcon={<VerifiedUser />}
+                  disabled={verifying || verificationFormOpen}
+                  size="small"
+                >
+                  Verify Session
+                </Button>
+              ) : null}
             </Box>
           </Box>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <LocationOn fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body1">
-                <strong>Destination:</strong> {session.destination}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <AccessTime fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body1">
-                <strong>Created At:</strong> {new Date(session.createdAt).toLocaleString()}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <BusinessCenter fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body1">
-                <strong>Company:</strong> {session.company?.name || 'N/A'}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <DirectionsCar fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body1">
-                <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || 'N/A'}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Person fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body1">
-                <strong>Created By:</strong> {session.createdBy?.name || 'N/A'}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            {userRole === 'ADMIN' || userRole === 'COMPANY' || userSubrole === EmployeeSubrole.GUARD ? (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={startVerification}
-                startIcon={<VerifiedUser />}
-                disabled={verifying || verificationFormOpen}
-                size="small"
-              >
-                Verify Session
-              </Button>
-            ) : null}
-          </Box>
-        </Box>
-      </Paper>
-      
-      {/* Trip Details Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Trip Details
-        </Typography>
+        </Paper>
         
-        {session.tripDetails ? (
-          <TableContainer>
-            <Table size="small">
-              <TableBody>
-                {Object.entries(session.tripDetails)
-                  .filter(([key]) => !isSystemField(key))
-                  .map(([key, value]) => (
-                    <TableRow key={key}>
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        {getFieldLabel(key)}
+        {/* Trip Details Section */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h5" gutterBottom>
+            Trip Details
+          </Typography>
+          
+          {session.tripDetails ? (
+            <TableContainer>
+              <Table size="small">
+                <TableBody>
+                  {Object.entries(session.tripDetails)
+                    .filter(([key]) => !isSystemField(key))
+                    .map(([key, value]) => (
+                      <TableRow key={key}>
+                        <TableCell sx={{ fontWeight: 'bold' }}>
+                          {getFieldLabel(key)}
+                        </TableCell>
+                        <TableCell>{value || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="info">No trip details available</Alert>
+          )}
+        </Paper>
+        
+        {/* Driver Details Section */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h5" gutterBottom>
+            Driver Details
+          </Typography>
+          
+          {session.tripDetails ? (
+            <Grid container spacing={2}>
+              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                <Typography variant="subtitle1">
+                  <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                <Typography variant="subtitle1">
+                  <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                <Typography variant="subtitle1">
+                  <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+                </Typography>
+              </Box>
+              
+              {session.images?.driverPicture && (
+                <Box sx={{ width: '100%', p: 1 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    <Person fontSize="small" /> Driver Photo
+                  </Typography>
+                  <Box 
+                    component="img" 
+                    src={session.images.driverPicture}
+                    alt="Driver Photo"
+                    sx={{ 
+                      maxWidth: '200px', 
+                      maxHeight: '200px',
+                      cursor: 'pointer',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      p: 1
+                    }}
+                    onClick={() => {
+                      setSelectedImage(session.images?.driverPicture || '');
+                      setOpenImageModal(true);
+                    }}
+                  />
+                </Box>
+              )}
+            </Grid>
+          ) : (
+            <Alert severity="info">No driver details available</Alert>
+          )}
+        </Paper>
+        
+        {/* Seal Tags Section */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h5" gutterBottom>
+            Seal Tags
+          </Typography>
+          
+          {session.sealTags && session.sealTags.length > 0 ? (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Seal ID</TableCell>
+                    <TableCell>Scanned By</TableCell>
+                    <TableCell>Method</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Image</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.sealTags.map((tag) => (
+                    <TableRow key={tag.id}>
+                      <TableCell>{tag.barcode}</TableCell>
+                      <TableCell>
+                        {tag.scannedByName || 'Unknown Operator'}
                       </TableCell>
-                      <TableCell>{value || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={getMethodDisplay(tag.method)}
+                          color={getMethodColor(tag.method)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {tag.imageUrl || tag.imageData ? (
+                          <Box
+                            sx={{
+                              width: '50px',
+                              height: '50px',
+                              cursor: 'pointer',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              overflow: 'hidden',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center'
+                            }}
+                            onClick={() => {
+                              setSelectedImage(tag.imageUrl || tag.imageData || '');
+                              setOpenImageModal(true);
+                            }}
+                          >
+                            <img
+                              src={tag.imageUrl || tag.imageData || ''}
+                              alt={`Seal tag ${tag.barcode}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                console.error(`Failed to load image for seal tag ${tag.barcode}:`, e);
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = 'Load Error';
+                              }}
+                            />
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            No image
+                          </Typography>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        ) : (
-          <Alert severity="info">No trip details available</Alert>
-        )}
-      </Paper>
-      
-      {/* Driver Details Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Driver Details
-        </Typography>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="info">No seal tags available</Alert>
+          )}
+        </Paper>
         
-        {session.tripDetails ? (
-          <Grid container spacing={2}>
-            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              <Typography variant="subtitle1">
-                <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              <Typography variant="subtitle1">
-                <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              <Typography variant="subtitle1">
-                <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
-              </Typography>
-            </Box>
-            
-            {session.images?.driverPicture && (
-              <Box sx={{ width: '100%', p: 1 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  <Person fontSize="small" /> Driver Photo
-                </Typography>
-                <Box 
-                  component="img" 
-                  src={session.images.driverPicture}
-                  alt="Driver Photo"
-                  sx={{ 
-                    maxWidth: '200px', 
-                    maxHeight: '200px',
-                    cursor: 'pointer',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    p: 1
-                  }}
-                  onClick={() => {
-                    setSelectedImage(session.images?.driverPicture || '');
-                    setOpenImageModal(true);
-                  }}
-                />
-              </Box>
-            )}
-          </Grid>
-        ) : (
-          <Alert severity="info">No driver details available</Alert>
-        )}
-      </Paper>
-      
-      {/* Seal Tags Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Seal Tags
-        </Typography>
-        
-        {session.sealTags && session.sealTags.length > 0 ? (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Seal ID</TableCell>
-                  <TableCell>Scanned By</TableCell>
-                  <TableCell>Method</TableCell>
-                  <TableCell>Created At</TableCell>
-                  <TableCell>Image</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {session.sealTags.map((tag) => (
-                  <TableRow key={tag.id}>
-                    <TableCell>{tag.barcode}</TableCell>
-                    <TableCell>
-                      {tag.scannedByName || 'Unknown Operator'}
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={getMethodDisplay(tag.method)}
-                        color={getMethodColor(tag.method)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
-                    <TableCell>
-                      {tag.imageUrl || tag.imageData ? (
-                        <Box
-                          sx={{
-                            width: '50px',
-                            height: '50px',
-                            cursor: 'pointer',
-                            border: '1px solid #ddd',
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center'
-                          }}
-                          onClick={() => {
-                            setSelectedImage(tag.imageUrl || tag.imageData || '');
-                            setOpenImageModal(true);
-                          }}
-                        >
-                          <img
-                            src={tag.imageUrl || tag.imageData || ''}
-                            alt={`Seal tag ${tag.barcode}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                            onError={(e) => {
-                              console.error(`Failed to load image for seal tag ${tag.barcode}:`, e);
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              target.parentElement!.innerHTML = 'Load Error';
-                            }}
-                          />
-                        </Box>
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          No image
-                        </Typography>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        ) : (
-          <Alert severity="info">No seal tags available</Alert>
-        )}
-      </Paper>
-      
-      {/* Images Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Vehicle & Document Images
-        </Typography>
-        
-        {session.images ? (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            {session.images.vehicleNumberPlatePicture && (
-              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
-                <Paper 
-                  elevation={2} 
-                  sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                >
-                  <Typography variant="subtitle1" gutterBottom>
-                    Vehicle Number Plate
-                  </Typography>
-                  <Box 
-                    component="img" 
-                    src={session.images.vehicleNumberPlatePicture}
-                    alt="Vehicle Number Plate"
-                    sx={{ 
-                      width: '100%', 
-                      height: '200px',
-                      objectFit: 'cover',
-                      cursor: 'pointer',
-                      borderRadius: '4px',
-                      mb: 1
-                    }}
-                    onClick={() => {
-                      setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                      setOpenImageModal(true);
-                    }}
-                  />
-                </Paper>
-              </Box>
-            )}
-            
-            {session.images.gpsImeiPicture && (
-              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
-                <Paper 
-                  elevation={2} 
-                  sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                >
-                  <Typography variant="subtitle1" gutterBottom>
-                    GPS IMEI Photo
-                  </Typography>
-                  <Box 
-                    component="img" 
-                    src={session.images.gpsImeiPicture}
-                    alt="GPS IMEI"
-                    sx={{ 
-                      width: '100%', 
-                      height: '200px',
-                      objectFit: 'cover',
-                      cursor: 'pointer',
-                      borderRadius: '4px',
-                      mb: 1
-                    }}
-                    onClick={() => {
-                      setSelectedImage(session.images?.gpsImeiPicture || '');
-                      setOpenImageModal(true);
-                    }}
-                  />
-                </Paper>
-              </Box>
-            )}
-            
-            {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
-              session.images.vehicleImages.map((imageUrl, index) => (
-                <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }} key={`vehicle-${index}`}>
+        {/* Images Section */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h5" gutterBottom>
+            Vehicle & Document Images
+          </Typography>
+          
+          {session.images ? (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              {session.images.vehicleNumberPlatePicture && (
+                <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
                   <Paper 
                     elevation={2} 
                     sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
                   >
                     <Typography variant="subtitle1" gutterBottom>
-                      Vehicle Image {index + 1}
+                      Vehicle Number Plate
                     </Typography>
                     <Box 
                       component="img" 
-                      src={imageUrl}
-                      alt={`Vehicle Image ${index + 1}`}
+                      src={session.images.vehicleNumberPlatePicture}
+                      alt="Vehicle Number Plate"
                       sx={{ 
                         width: '100%', 
                         height: '200px',
@@ -1179,319 +1139,456 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         mb: 1
                       }}
                       onClick={() => {
-                        setSelectedImage(imageUrl);
+                        setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
                         setOpenImageModal(true);
                       }}
                     />
                   </Paper>
                 </Box>
-              ))
-            )}
-            
-            {(!session.images.vehicleNumberPlatePicture && 
-              !session.images.gpsImeiPicture && 
-              (!session.images.vehicleImages || session.images.vehicleImages.length === 0)) && (
-              <Box sx={{ width: '100%', p: 2 }}>
-                <Alert severity="info">No images available</Alert>
-              </Box>
-            )}
+              )}
+              
+              {session.images.gpsImeiPicture && (
+                <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
+                  <Paper 
+                    elevation={2} 
+                    sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom>
+                      GPS IMEI Photo
+                    </Typography>
+                    <Box 
+                      component="img" 
+                      src={session.images.gpsImeiPicture}
+                      alt="GPS IMEI"
+                      sx={{ 
+                        width: '100%', 
+                        height: '200px',
+                        objectFit: 'cover',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        mb: 1
+                      }}
+                      onClick={() => {
+                        setSelectedImage(session.images?.gpsImeiPicture || '');
+                        setOpenImageModal(true);
+                      }}
+                    />
+                  </Paper>
+                </Box>
+              )}
+              
+              {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
+                session.images.vehicleImages.map((imageUrl, index) => (
+                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }} key={`vehicle-${index}`}>
+                    <Paper 
+                      elevation={2} 
+                      sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                    >
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Image {index + 1}
+                      </Typography>
+                      <Box 
+                        component="img" 
+                        src={imageUrl}
+                        alt={`Vehicle Image ${index + 1}`}
+                        sx={{ 
+                          width: '100%', 
+                          height: '200px',
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          mb: 1
+                        }}
+                        onClick={() => {
+                          setSelectedImage(imageUrl);
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Box>
+                ))
+              )}
+              
+              {(!session.images.vehicleNumberPlatePicture && 
+                !session.images.gpsImeiPicture && 
+                (!session.images.vehicleImages || session.images.vehicleImages.length === 0)) && (
+                <Box sx={{ width: '100%', p: 2 }}>
+                  <Alert severity="info">No images available</Alert>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Alert severity="info">No images available</Alert>
+          )}
+        </Paper>
+        
+        {/* Verification Dialog */}
+        <Dialog
+          open={verificationFormOpen}
+          onClose={() => !verifying && setVerificationFormOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Verify Session
+            <IconButton
+              aria-label="close"
+              onClick={() => !verifying && setVerificationFormOpen(false)}
+              sx={{ position: 'absolute', right: 8, top: 8 }}
+              disabled={verifying}
+            >
+              <Close />
+            </IconButton>
+          </DialogTitle>
+          
+          <DialogContent>
+            <LinearProgress
+              variant="determinate"
+              value={verificationStep * 33.3}
+              sx={{ mb: 3 }}
+            />
+          </DialogContent>
+        </Dialog>
+      </Container>
+    );
+  }
+  
+  // Regular view for other users
+  return (
+    <Container maxWidth="xl">
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" component="h1">
+            Session Details
+          </Typography>
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={() => router.back()}
+              sx={{ mr: 1 }}
+            >
+              Back
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<PictureAsPdf />}
+              onClick={generatePdfReport}
+              disabled={!!reportLoading}
+            >
+              {reportLoading === 'pdf' ? 'Generating...' : 'Download PDF'}
+            </Button>
           </Box>
-        ) : (
-          <Alert severity="info">No images available</Alert>
-        )}
+        </Box>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Basic Information
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Session ID"
+                    secondary={session.id}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Status"
+                    secondary={
+                      <Chip
+                        label={session.status}
+                        color={getStatusColor(session.status)}
+                        size="small"
+                      />
+                    }
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Created At"
+                    secondary={new Date(session.createdAt).toLocaleString()}
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Company Information
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Company"
+                    secondary={session.company.name}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Created By"
+                    secondary={session.createdBy.name}
+                  />
+                </ListItem>
+              </List>
+            </Paper>
+          </Grid>
+        </Grid>
       </Paper>
       
-      {/* Verification Dialog */}
-      <Dialog
-        open={verificationFormOpen}
-        onClose={() => !verifying && setVerificationFormOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          Verify Session
-          <IconButton
-            aria-label="close"
-            onClick={() => !verifying && setVerificationFormOpen(false)}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-            disabled={verifying}
-          >
-            <Close />
-          </IconButton>
-        </DialogTitle>
+      <Box sx={{ mb: 3 }}>
+        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+          <Tab label="Trip Details" />
+          <Tab label="Seal Tags" />
+          <Tab label="Images" />
+          <Tab label="Comments" />
+        </Tabs>
         
-        <DialogContent>
-          <LinearProgress
-            variant="determinate"
-            value={verificationStep * 33.3}
-            sx={{ mb: 3 }}
-          />
-          
-          {verificationStep === 0 && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Verify Trip Details
-              </Typography>
-              
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Field</TableCell>
-                      <TableCell>Value</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                      <TableCell align="center">Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {session.tripDetails && Object.entries(session.tripDetails)
-                      .filter(([key]) => !isSystemField(key))
-                      .map(([key, value]) => (
-                        <TableRow key={key}>
-                          <TableCell>{getFieldLabel(key)}</TableCell>
-                          <TableCell>{value || 'N/A'}</TableCell>
-                          <TableCell align="center">
-                            {verificationFields[key]?.verified ? (
-                              <Chip 
-                                icon={<CheckCircle />} 
-                                label="Verified" 
-                                color="success" 
-                                size="small"
-                              />
-                            ) : (
-                              <Chip 
-                                icon={<RadioButtonUnchecked />} 
-                                label="Pending" 
-                                color="default" 
-                                size="small"
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              color={verificationFields[key]?.verified ? "success" : "primary"}
-                              onClick={() => verifyField(key)}
-                              startIcon={verificationFields[key]?.verified ? <CheckCircle /> : <VerifiedUser />}
-                            >
-                              {verificationFields[key]?.verified ? "Verified" : "Verify"}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={verifyAllFields}
-                >
-                  Verify All Fields
-                </Button>
-                
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => setVerificationStep(1)}
-                  endIcon={<ArrowForward />}
-                >
-                  Next
-                </Button>
-              </Box>
-            </Box>
-          )}
-          
-          {verificationStep === 1 && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Verify Seal Tags
-              </Typography>
-              
-              <Box sx={{ mb: 3 }}>
-                <ClientSideQrScanner 
-                  onScan={(data) => handleScanComplete(data, 'digital')}
-                  buttonText="Scan QR Code"
-                />
-                
-                {scanError && (
-                  <Alert severity="error" sx={{ mt: 2 }}>
-                    {scanError}
-                  </Alert>
-                )}
-              </Box>
-              
-              <TableContainer component={Paper} sx={{ mb: 3 }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Seal ID</TableCell>
-                      <TableCell>Scanned By</TableCell>
-                      <TableCell>Method</TableCell>
-                      <TableCell>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {guardScannedSeals.map((seal) => (
-                      <TableRow key={seal.id}>
-                        <TableCell>{seal.id}</TableCell>
-                        <TableCell>Guard</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={getMethodDisplay(seal.method)}
-                            color={getMethodColor(seal.method)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {seal.verified ? (
-                            <Chip 
-                              icon={<CheckCircle />} 
-                              label="Verified" 
-                              color="success" 
-                              size="small"
-                            />
-                          ) : (
-                            <Chip 
-                              icon={<Warning />} 
-                              label="Not Matched" 
-                              color="error" 
-                              size="small"
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => setVerificationStep(0)}
-                  startIcon={<ArrowBack />}
-                >
-                  Back
-                </Button>
-                
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => setVerificationStep(2)}
-                  endIcon={<ArrowForward />}
-                >
-                  Next
-                </Button>
-              </Box>
-            </Box>
-          )}
-          
-          {verificationStep === 2 && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Complete Verification
-              </Typography>
-              
-              <Alert severity="info" sx={{ mb: 3 }}>
-                Please review the verification details below before completing the process.
-              </Alert>
-              
-              <Paper sx={{ p: 2, mb: 3 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Verification Summary
+        <TabPanel value={activeTab} index={0}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Route Information
                 </Typography>
-                
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    Trip Details Verification: {getVerificationStats().verified}/{getVerificationStats().total} fields verified ({getVerificationStats().percentage}%)
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={getVerificationStats().percentage}
-                    color={getVerificationStats().percentage === 100 ? "success" : "primary"}
-                    sx={{ mt: 1 }}
-                  />
-                </Box>
-                
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    Seal Tags: {sealComparison.matched.length} matched, {sealComparison.mismatched.length} mismatched
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={guardScannedSeals.length > 0 ? (sealComparison.matched.length / guardScannedSeals.length) * 100 : 0}
-                    color={sealComparison.mismatched.length === 0 && sealComparison.matched.length > 0 ? "success" : "warning"}
-                    sx={{ mt: 1 }}
-                  />
-                </Box>
+                <List>
+                  <ListItem>
+                    <ListItemText
+                      primary="Source"
+                      secondary={session.source}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Destination"
+                      secondary={session.destination}
+                    />
+                  </ListItem>
+                </List>
               </Paper>
-              
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => setVerificationStep(1)}
-                  startIcon={<ArrowBack />}
-                >
-                  Back
-                </Button>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Trip Details
+                </Typography>
+                <List>
+                  {session.tripDetails && Object.entries(session.tripDetails)
+                    .filter(([key]) => !isSystemField(key))
+                    .map(([key, value]) => (
+                      <ListItem key={key}>
+                        <ListItemText
+                          primary={getFieldLabel(key)}
+                          secondary={value || 'N/A'}
+                        />
+                      </ListItem>
+                    ))}
+                </List>
+              </Paper>
+            </Grid>
+          </Grid>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={1}>
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Seal Tags
+            </Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Barcode</TableCell>
+                    <TableCell>Method</TableCell>
+                    <TableCell>Scanned By</TableCell>
+                    <TableCell>Timestamp</TableCell>
+                    <TableCell>Image</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.sealTags?.map((tag) => (
+                    <TableRow key={tag.id}>
+                      <TableCell>{tag.barcode}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getMethodDisplay(tag.method)}
+                          color={getMethodColor(tag.method)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{tag.scannedByName || 'N/A'}</TableCell>
+                      <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {tag.imageUrl && (
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSelectedImage(tag.imageUrl!);
+                              setOpenImageModal(true);
+                            }}
+                          >
+                            <QrCode />
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={2}>
+          <Grid container spacing={2}>
+            {session.images && (
+              <>
+                {session.images.gpsImeiPicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        GPS IMEI Picture
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.gpsImeiPicture}
+                        alt="GPS IMEI"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.gpsImeiPicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
                 
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleVerifySeal}
-                  disabled={verifying || getVerificationStats().percentage < 100}
-                  startIcon={verifying ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
-                >
-                  {verifying ? "Processing..." : "Complete Verification"}
-                </Button>
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
+                {session.images.vehicleNumberPlatePicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Number Plate
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.vehicleNumberPlatePicture}
+                        alt="Vehicle Number Plate"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.driverPicture && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Driver Picture
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={session.images.driverPicture}
+                        alt="Driver"
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.driverPicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                )}
+                
+                {session.images.vehicleImages && session.images.vehicleImages.map((imageUrl, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Image {index + 1}
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={imageUrl}
+                        alt={`Vehicle ${index + 1}`}
+                        sx={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          mb: 2
+                        }}
+                        onClick={() => {
+                          setSelectedImage(imageUrl);
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                ))}
+              </>
+            )}
+          </Grid>
+        </TabPanel>
+        
+        <TabPanel value={activeTab} index={3}>
+          <CommentSection sessionId={sessionId} />
+        </TabPanel>
+      </Box>
       
-      {/* Image Preview Modal */}
       <Dialog
         open={openImageModal}
         onClose={() => setOpenImageModal(false)}
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          Image Preview
-          <IconButton
-            aria-label="close"
-            onClick={() => setOpenImageModal(false)}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <Close />
-          </IconButton>
-        </DialogTitle>
+        <DialogTitle>Image Preview</DialogTitle>
         <DialogContent>
-          {selectedImage ? (
-            <Box
-              component="img"
-              src={selectedImage}
-              alt="Preview"
-              sx={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }}
-              onError={(e) => {
-                console.error("Failed to load image in modal:", e);
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                target.parentElement!.innerHTML = 'Failed to load image. The image data may be corrupted or in an unsupported format.';
-              }}
-            />
-          ) : (
-            <Typography variant="body1" color="text.secondary" align="center">
-              No image selected
-            </Typography>
-          )}
+          <Box
+            component="img"
+            src={selectedImage}
+            alt="Preview"
+            sx={{
+              width: '100%',
+              height: 'auto',
+              maxHeight: '80vh',
+              objectFit: 'contain'
+            }}
+          />
         </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImageModal(false)}>Close</Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );
-} 
+}
