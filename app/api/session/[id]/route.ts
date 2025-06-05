@@ -207,6 +207,17 @@ async function handler(
       if (details.tripDetails) {
         const logTripDetails = details.tripDetails as Record<string, unknown>;
         
+        // Make sure to properly extract registration certificate and driver license
+        if (logTripDetails.registrationCertificate && !tripDetails.registrationCertificate) {
+          tripDetails.registrationCertificate = logTripDetails.registrationCertificate as string;
+          console.log("[API DEBUG] Found registration certificate in activity log:", logTripDetails.registrationCertificate);
+        }
+        
+        if (logTripDetails.driverLicense && !tripDetails.driverLicense) {
+          tripDetails.driverLicense = logTripDetails.driverLicense as string;
+          console.log("[API DEBUG] Found driver license in activity log:", logTripDetails.driverLicense);
+        }
+        
         // Merge with existing tripDetails, keeping session data as priority
         Object.keys(logTripDetails).forEach(key => {
           if (!tripDetails[key]) {
@@ -223,6 +234,8 @@ async function handler(
             destination: (tripDetails as any).destination,
             loadingSite: (tripDetails as any).loadingSite,
             receiverPartyName: (tripDetails as any).receiverPartyName,
+            registrationCertificate: (tripDetails as any).registrationCertificate,
+            driverLicense: (tripDetails as any).driverLicense
           });
         }
       }
@@ -285,6 +298,21 @@ async function handler(
         
         images = imageUrls;
         console.log("[API DEBUG] Created image URLs from base64 data:", Object.keys(imageUrls));
+      }
+
+      // Process seal tag images and update sealTags directly from the activity log
+      if (details.imageBase64Data && details.imageBase64Data.sealTagImages && sessionData.sealTags) {
+        console.log("[API DEBUG] Found sealTagImages in activity log");
+        const sealTagImages = details.imageBase64Data.sealTagImages;
+        
+        // Update sealTags with image data
+        for (const tag of sessionData.sealTags) {
+          if (sealTagImages[tag.barcode] && sealTagImages[tag.barcode].data) {
+            const contentType = sealTagImages[tag.barcode].contentType || 'image/jpeg';
+            tag.imageData = `data:${contentType};base64,${sealTagImages[tag.barcode].data}`;
+            console.log(`[API DEBUG] Updated sealTag ${tag.barcode} with image data`);
+          }
+        }
       }
     }
 

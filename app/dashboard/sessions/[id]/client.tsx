@@ -792,20 +792,70 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Box>
       </Box>
 
-      {/* Session Title and Status */}
+      {/* Session Details */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5">
-            Session Details
-          </Typography>
-          
-          <Box>
-            <Chip 
-              label={session.status.replace('_', ' ')}
-              color={getStatusColor(session.status)}
-              sx={{ fontWeight: 'bold', mr: 1 }}
-            />
-            
+        <Typography variant="h5" gutterBottom>
+          Session Details
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <LocationOn fontSize="small" sx={{ mr: 1 }} />
+              <Typography variant="body1">
+                <strong>Source:</strong> {session.source}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <LocationOn fontSize="small" sx={{ mr: 1 }} />
+              <Typography variant="body1">
+                <strong>Destination:</strong> {session.destination}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <AccessTime fontSize="small" sx={{ mr: 1 }} />
+              <Typography variant="body1">
+                <strong>Created At:</strong> {new Date(session.createdAt).toLocaleString()}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <BusinessCenter fontSize="small" sx={{ mr: 1 }} />
+              <Typography variant="body1">
+                <strong>Company:</strong> {session.company?.name || 'N/A'}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <DirectionsCar fontSize="small" sx={{ mr: 1 }} />
+              <Typography variant="body1">
+                <strong>Vehicle Number:</strong> {session.tripDetails?.vehicleNumber || 'N/A'}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Person fontSize="small" sx={{ mr: 1 }} />
+              <Typography variant="body1">
+                <strong>Created By:</strong> {session.createdBy?.name || 'N/A'}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Chip 
+                label={session.status.replace('_', ' ')}
+                color={getStatusColor(session.status)}
+                sx={{ fontWeight: 'bold' }}
+              />
+            </Box>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
             {userRole === 'ADMIN' || userRole === 'COMPANY' || userSubrole === EmployeeSubrole.GUARD ? (
               <Button
                 variant="contained"
@@ -813,38 +863,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 onClick={startVerification}
                 startIcon={<VerifiedUser />}
                 disabled={verifying || verificationFormOpen}
+                size="small"
               >
                 Verify Session
               </Button>
             ) : null}
           </Box>
         </Box>
-        
-        <Grid container spacing={2}>
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Typography variant="subtitle1">
-              <LocationOn fontSize="small" /> Source: {session?.source}
-            </Typography>
-          </Box>
-          
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Typography variant="subtitle1">
-              <LocationOn fontSize="small" /> Destination: {session?.destination}
-            </Typography>
-          </Box>
-          
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Typography variant="subtitle1">
-              <AccessTime fontSize="small" /> Created: {session ? new Date(session.createdAt).toLocaleString() : ''}
-            </Typography>
-          </Box>
-          
-          <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            <Typography variant="subtitle1">
-              <BusinessCenter fontSize="small" /> Company: {session?.company?.name || 'N/A'}
-            </Typography>
-          </Box>
-        </Grid>
       </Paper>
       
       {/* Trip Details Section */}
@@ -898,12 +923,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
               <Typography variant="subtitle1">
                 <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              <Typography variant="subtitle1">
-                <Description fontSize="small" /> Registration Certificate: {session.tripDetails.registrationCertificate || 'N/A'}
               </Typography>
             </Box>
             
