@@ -59,7 +59,12 @@ import {
   QrCode,
   Refresh,
   BusinessCenter,
-  Close
+  Close,
+  Inventory,
+  Router,
+  Money,
+  Assessment,
+  Scale
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
@@ -1029,31 +1034,36 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           )}
         </Paper>
         
-        {/* Seal Tags Section */}
-        <Paper sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h5" gutterBottom>
-            Seal Tags
-          </Typography>
-          
-          {session.sealTags && session.sealTags.length > 0 ? (
+              {/* Seal Information Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Seal Information
+        </Typography>
+        
+        {session.sealTags && session.sealTags.length > 0 ? (
+          <>
+            <Box sx={{ mb: 2 }}>
+              <Typography sx={{ fontWeight: 'bold' }}>
+                Total Seal Tags: {session.sealTags.length}
+              </Typography>
+            </Box>
             <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Seal ID</TableCell>
-                    <TableCell>Scanned By</TableCell>
+                    <TableCell>No.</TableCell>
+                    <TableCell>Seal Tag ID</TableCell>
                     <TableCell>Method</TableCell>
-                    <TableCell>Created At</TableCell>
                     <TableCell>Image</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Created By</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {session.sealTags.map((tag) => (
+                  {session.sealTags.map((tag, index) => (
                     <TableRow key={tag.id}>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell>{tag.barcode}</TableCell>
-                      <TableCell>
-                        {tag.scannedByName || 'Unknown Operator'}
-                      </TableCell>
                       <TableCell>
                         <Chip 
                           label={getMethodDisplay(tag.method)}
@@ -1061,7 +1071,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
                       <TableCell>
                         {tag.imageUrl || tag.imageData ? (
                           <Box
@@ -1290,61 +1299,57 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Box>
         </Box>
         
-        <Grid container spacing={3}>
+        {/* Basic Information Section */}
+        <Typography variant="h6" sx={{ mb: 2, mt: 2 }}>
+          Basic Information
+        </Typography>
+        <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
-            <Paper elevation={1} sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Basic Information
-              </Typography>
-              <List>
-                <ListItem>
-                  <ListItemText
-                    primary="Session ID"
-                    secondary={session.id}
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="Created At"
-                    secondary={new Date(session.createdAt).toLocaleString()}
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="Source"
-                    secondary={session.source}
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="Destination"
-                    secondary={session.destination}
-                  />
-                </ListItem>
-              </List>
-            </Paper>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <LocationOn color="primary" sx={{ mr: 1 }} />
+              <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Source:</Typography>
+              <Typography>{session.source}</Typography>
+            </Box>
           </Grid>
           
           <Grid item xs={12} md={6}>
-            <Paper elevation={1} sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Company Information
-              </Typography>
-              <List>
-                <ListItem>
-                  <ListItemText
-                    primary="Company"
-                    secondary={session.company.name}
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="Created By"
-                    secondary={session.createdBy.name}
-                  />
-                </ListItem>
-              </List>
-            </Paper>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <LocationOn color="primary" sx={{ mr: 1 }} />
+              <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Destination:</Typography>
+              <Typography>{session.destination}</Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <AccessTime color="primary" sx={{ mr: 1 }} />
+              <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Created:</Typography>
+              <Typography>{new Date(session.createdAt).toLocaleString()}</Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <BusinessCenter color="primary" sx={{ mr: 1 }} />
+              <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Company:</Typography>
+              <Typography>{session.company?.name || 'N/A'}</Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Person color="primary" sx={{ mr: 1 }} />
+              <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Operator Created:</Typography>
+              <Typography>{session.createdBy?.name || 'N/A'}</Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <DirectionsCar color="primary" sx={{ mr: 1 }} />
+              <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Vehicle Number:</Typography>
+              <Typography>{session.tripDetails?.vehicleNumber || 'N/A'}</Typography>
+            </Box>
           </Grid>
         </Grid>
       </Paper>
@@ -1356,174 +1361,264 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Typography>
         
         {session.tripDetails ? (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {Object.entries(session.tripDetails)
-                  .filter(([key]) => !isSystemField(key))
-                  .map(([key, value]) => (
-                    <TableRow key={key}>
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        {getFieldLabel(key)}
-                      </TableCell>
-                      <TableCell>{value || 'N/A'}</TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <DirectionsCar color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Transporter Name:</Typography>
+                <Typography>{session.tripDetails.transporterName || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Inventory color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Material Name:</Typography>
+                <Typography>{session.tripDetails.materialName || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <DirectionsCar color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Vehicle Number:</Typography>
+                <Typography>{session.tripDetails.vehicleNumber || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Router color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>GPS/IMEI Number:</Typography>
+                <Typography>{session.tripDetails.gpsImeiNumber || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Person color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Driver Name:</Typography>
+                <Typography>{session.tripDetails.driverName || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Phone color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Driver Contact Number:</Typography>
+                <Typography>{session.tripDetails.driverContactNumber || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Person color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Loader Name:</Typography>
+                <Typography>{session.tripDetails.loaderName || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Description color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Challan Royalty Number:</Typography>
+                <Typography>{session.tripDetails.challanRoyaltyNumber || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Description color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>DO Number:</Typography>
+                <Typography>{session.tripDetails.doNumber || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Money color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Freight:</Typography>
+                <Typography>{session.tripDetails.freight ? `${session.tripDetails.freight} kg` : 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Assessment color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Quality of Materials:</Typography>
+                <Typography>{session.tripDetails.qualityOfMaterials || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Description color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>TP Number:</Typography>
+                <Typography>{session.tripDetails.tpNumber || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Scale color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Gross Weight:</Typography>
+                <Typography>{session.tripDetails.grossWeight ? `${session.tripDetails.grossWeight} kg` : 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Scale color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Tare Weight:</Typography>
+                <Typography>{session.tripDetails.tareWeight ? `${session.tripDetails.tareWeight} kg` : 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Scale color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Net Material Weight:</Typography>
+                <Typography>{session.tripDetails.netMaterialWeight ? `${session.tripDetails.netMaterialWeight} kg` : 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Phone color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Loader Mobile Number:</Typography>
+                <Typography>{session.tripDetails.loaderMobileNumber || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <LocationOn color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Loading Site:</Typography>
+                <Typography>{session.tripDetails.loadingSite || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Person color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Receiver Party Name:</Typography>
+                <Typography>{session.tripDetails.receiverPartyName || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <VerifiedUser color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Driver License:</Typography>
+                <Typography>{session.tripDetails.driverLicense || 'N/A'}</Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Description color="primary" sx={{ mr: 1 }} />
+                <Typography sx={{ fontWeight: 'bold', mr: 1 }}>Registration Certificate:</Typography>
+                <Typography>N/A</Typography>
+              </Box>
+            </Grid>
+          </Grid>
         ) : (
           <Alert severity="info">No trip details available</Alert>
         )}
       </Paper>
       
-      {/* Driver Details Section */}
+      {/* Seal Information Section */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>
-          Driver Details
-        </Typography>
-        
-        {session.tripDetails ? (
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle1">
-                <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
-              </Typography>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle1">
-                <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
-              </Typography>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle1">
-                <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
-              </Typography>
-            </Grid>
-            
-            {session.images?.driverPicture && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" gutterBottom>
-                  <Person fontSize="small" /> Driver Photo
-                </Typography>
-                <Box 
-                  component="img" 
-                  src={session.images.driverPicture}
-                  alt="Driver Photo"
-                  sx={{ 
-                    maxWidth: '200px', 
-                    maxHeight: '200px',
-                    cursor: 'pointer',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    p: 1
-                  }}
-                  onClick={() => {
-                    setSelectedImage(session.images?.driverPicture || '');
-                    setOpenImageModal(true);
-                  }}
-                />
-              </Grid>
-            )}
-          </Grid>
-        ) : (
-          <Alert severity="info">No driver details available</Alert>
-        )}
-      </Paper>
-      
-      {/* Seal Tags Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Seal Tags
+          Seal Information
         </Typography>
         
         {session.sealTags && session.sealTags.length > 0 ? (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Seal ID</TableCell>
-                  <TableCell>Scanned By</TableCell>
-                  <TableCell>Method</TableCell>
-                  <TableCell>Created At</TableCell>
-                  <TableCell>Image</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {session.sealTags.map((tag) => (
-                  <TableRow key={tag.id}>
-                    <TableCell>{tag.barcode}</TableCell>
-                    <TableCell>
-                      {tag.scannedByName || 'Unknown Operator'}
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={getMethodDisplay(tag.method)}
-                        color={getMethodColor(tag.method)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
-                    <TableCell>
-                      {tag.imageUrl || tag.imageData ? (
-                        <Box
-                          sx={{
-                            width: '50px',
-                            height: '50px',
-                            cursor: 'pointer',
-                            border: '1px solid #ddd',
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center'
-                          }}
-                          onClick={() => {
-                            setSelectedImage(tag.imageUrl || tag.imageData || '');
-                            setOpenImageModal(true);
-                          }}
-                        >
-                          <img
-                            src={tag.imageUrl || tag.imageData || ''}
-                            alt={`Seal tag ${tag.barcode}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                            onError={(e) => {
-                              console.error(`Failed to load image for seal tag ${tag.barcode}:`, e);
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              target.parentElement!.innerHTML = 'Load Error';
-                            }}
-                          />
-                        </Box>
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          No image
-                        </Typography>
-                      )}
-                    </TableCell>
+          <>
+            <Box sx={{ mb: 2 }}>
+              <Typography sx={{ fontWeight: 'bold' }}>
+                Total Seal Tags: {session.sealTags.length}
+              </Typography>
+            </Box>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>No.</TableCell>
+                    <TableCell>Seal Tag ID</TableCell>
+                    <TableCell>Method</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Created By</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {session.sealTags.map((tag, index) => (
+                    <TableRow key={tag.id}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{tag.barcode}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={getMethodDisplay(tag.method)}
+                          color={getMethodColor(tag.method)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {tag.imageUrl || tag.imageData ? (
+                          <Box
+                            sx={{
+                              width: '50px',
+                              height: '50px',
+                              cursor: 'pointer',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              overflow: 'hidden',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center'
+                            }}
+                            onClick={() => {
+                              setSelectedImage(tag.imageUrl || tag.imageData || '');
+                              setOpenImageModal(true);
+                            }}
+                          >
+                            <img
+                              src={tag.imageUrl || tag.imageData || ''}
+                              alt={`Seal tag ${tag.barcode}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                console.error(`Failed to load image for seal tag ${tag.barcode}:`, e);
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = 'Load Error';
+                              }}
+                            />
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            No image
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
         ) : (
           <Alert severity="info">No seal tags available</Alert>
         )}
       </Paper>
       
-      {/* Images Section */}
+      {/* Vehicle & Document Images Section */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>
           Vehicle & Document Images
