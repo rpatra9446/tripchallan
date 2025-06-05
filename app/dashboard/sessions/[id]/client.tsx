@@ -578,12 +578,30 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   
   // Verification functions
   
-  // Start verification process
-  const startVerification = () => {
-    setVerificationFormOpen(true);
-    setVerificationStep(0);
+    // Start verification process
+  const startVerification = async () => {
+    setVerifying(true);
+    try {
+      // Make sure operator seals are loaded
+      if (session?.sealTags && Array.isArray(session.sealTags) && operatorSeals.length === 0) {
+        setOperatorSeals(session.sealTags.map((tag: any) => ({ id: tag.barcode })));
+      }
+      
+      // Load guard seal tags if needed
+      await fetchGuardSealTags();
+      
+      // Update UI state to show verification form
+      setVerificationFormOpen(true);
+      setVerificationStep(0);
+      console.log("Verification form opened");
+    } catch (error) {
+      console.error("Error starting verification:", error);
+      toast.error("Failed to start verification. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
   };
-  
+
   // Verify a specific field
   const verifyField = (field: string) => {
     setVerificationFields(prev => ({
@@ -906,18 +924,20 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Box>
           </Box>
           <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-            {userRole === 'ADMIN' || userRole === 'COMPANY' || userSubrole === EmployeeSubrole.GUARD ? (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={startVerification}
-                startIcon={<VerifiedUser />}
-                disabled={verifying || verificationFormOpen}
-                size="small"
-              >
-                Verify Session
-              </Button>
-            ) : null}
+            {/* Allow any role to verify for debugging */}
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                console.log("Verify Session button clicked");
+                startVerification();
+              }}
+              startIcon={<VerifiedUser />}
+              disabled={verifying || verificationFormOpen}
+              size="small"
+            >
+              Verify Session
+            </Button>
           </Box>
         </Box>
       </Paper>
@@ -1204,6 +1224,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       </Paper>
       
       {/* Inline Seal Tag Verification UI */}
+      {console.log("Verification form state:", verificationFormOpen)}
       {verificationFormOpen && (
         <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
           <Typography variant="h6" gutterBottom>
