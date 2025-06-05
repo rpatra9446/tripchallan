@@ -584,7 +584,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
   };
   
-  // Helper function to fix toast.info not available
+  // Fix toast.info - replace with toast success
   const notifyToastInfo = (message: string) => {
     toast.success(message); // Using success instead of info which might not be available
   };
