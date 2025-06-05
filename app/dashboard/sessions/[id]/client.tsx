@@ -17,7 +17,7 @@ import {
   CheckCircle, Warning, PictureAsPdf, TableChart, Description, Edit,
   BusinessCenter, RadioButtonUnchecked, Comment, ArrowForward, Delete,
   CloudUpload, Close, QrCode, InfoOutlined, Refresh, Person,
-  KeyboardArrowUp, KeyboardArrowDown
+  KeyboardArrowUp, KeyboardArrowDown, Phone
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
@@ -694,6 +694,215 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </TableContainer>
             ) : (
               <Alert severity="info">No trip details available</Alert>
+            )}
+          </Paper>
+          
+          {/* Driver Details Section */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              Driver Details
+            </Typography>
+            
+            {session.tripDetails ? (
+              <Grid container spacing={2}>
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                {session.images?.driverPicture && (
+                  <Box sx={{ width: '100%', p: 1 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <Person fontSize="small" /> Driver Photo
+                    </Typography>
+                    <Box 
+                      component="img" 
+                      src={session.images.driverPicture}
+                      alt="Driver Photo"
+                      sx={{ 
+                        maxWidth: '200px', 
+                        maxHeight: '200px',
+                        cursor: 'pointer',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        p: 1
+                      }}
+                      onClick={() => {
+                        setSelectedImage(session.images?.driverPicture || '');
+                        setOpenImageModal(true);
+                      }}
+                    />
+                  </Box>
+                )}
+              </Grid>
+            ) : (
+              <Alert severity="info">No driver details available</Alert>
+            )}
+          </Paper>
+          
+          {/* Seal Tags Section */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              Seal Tags
+            </Typography>
+            
+            {session.sealTags && session.sealTags.length > 0 ? (
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Seal ID</TableCell>
+                      <TableCell>Scanned By</TableCell>
+                      <TableCell>Method</TableCell>
+                      <TableCell>Created At</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {session.sealTags.map((tag) => (
+                      <TableRow key={tag.id}>
+                        <TableCell>{tag.barcode}</TableCell>
+                        <TableCell>Operator</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={getMethodDisplay(tag.method)}
+                            color={getMethodColor(tag.method)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Alert severity="info">No seal tags available</Alert>
+            )}
+          </Paper>
+          
+          {/* Images Section */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              Vehicle & Document Images
+            </Typography>
+            
+            {session.images ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {session.images.vehicleNumberPlatePicture && (
+                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
+                    <Paper 
+                      elevation={2} 
+                      sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                    >
+                      <Typography variant="subtitle1" gutterBottom>
+                        Vehicle Number Plate
+                      </Typography>
+                      <Box 
+                        component="img" 
+                        src={session.images.vehicleNumberPlatePicture}
+                        alt="Vehicle Number Plate"
+                        sx={{ 
+                          width: '100%', 
+                          height: '200px',
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          mb: 1
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Box>
+                )}
+                
+                {session.images.gpsImeiPicture && (
+                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
+                    <Paper 
+                      elevation={2} 
+                      sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                    >
+                      <Typography variant="subtitle1" gutterBottom>
+                        GPS IMEI Photo
+                      </Typography>
+                      <Box 
+                        component="img" 
+                        src={session.images.gpsImeiPicture}
+                        alt="GPS IMEI"
+                        sx={{ 
+                          width: '100%', 
+                          height: '200px',
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          mb: 1
+                        }}
+                        onClick={() => {
+                          setSelectedImage(session.images?.gpsImeiPicture || '');
+                          setOpenImageModal(true);
+                        }}
+                      />
+                    </Paper>
+                  </Box>
+                )}
+                
+                {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
+                  session.images.vehicleImages.map((imageUrl, index) => (
+                    <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }} key={`vehicle-${index}`}>
+                      <Paper 
+                        elevation={2} 
+                        sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
+                      >
+                        <Typography variant="subtitle1" gutterBottom>
+                          Vehicle Image {index + 1}
+                        </Typography>
+                        <Box 
+                          component="img" 
+                          src={imageUrl}
+                          alt={`Vehicle Image ${index + 1}`}
+                          sx={{ 
+                            width: '100%', 
+                            height: '200px',
+                            objectFit: 'cover',
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                            mb: 1
+                          }}
+                          onClick={() => {
+                            setSelectedImage(imageUrl);
+                            setOpenImageModal(true);
+                          }}
+                        />
+                      </Paper>
+                    </Box>
+                  ))
+                )}
+                
+                {(!session.images.vehicleNumberPlatePicture && 
+                  !session.images.gpsImeiPicture && 
+                  (!session.images.vehicleImages || session.images.vehicleImages.length === 0)) && (
+                  <Box sx={{ width: '100%', p: 2 }}>
+                    <Alert severity="info">No images available</Alert>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              <Alert severity="info">No images available</Alert>
             )}
           </Paper>
           
