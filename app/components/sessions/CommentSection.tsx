@@ -86,7 +86,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
       
       if (!response.ok) {
         console.error(`Comments API Error (${response.status}):`, await response.text());
-        throw new AppError("Failed to fetch comments");
+        throw new Error("Failed to fetch comments");
       }
       
       const data = await response.json();
@@ -169,9 +169,9 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           if (response.status === 413) {
-            throw new AppError(errorData.error || "Image is too large. Please use a smaller image (max 5MB).");
+            throw new Error(errorData.error || "Image is too large. Please use a smaller image (max 5MB).");
           } else {
-            throw new AppError(errorData.error || "Failed to add comment");
+            throw new Error(errorData.error || "Failed to add comment");
           }
         }
 
@@ -193,7 +193,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new AppError(errorData.error || "Failed to add comment");
+          throw new Error(errorData.error || "Failed to add comment");
         }
 
         const newComment = await response.json();
