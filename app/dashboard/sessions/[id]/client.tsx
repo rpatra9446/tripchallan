@@ -912,20 +912,40 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     </TableCell>
                     <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
                     <TableCell>
-                      {(tag.imageUrl || tag.imageData) ? (
-                        <IconButton
-                          size="small"
+                      {tag.imageUrl || tag.imageData ? (
+                        <Box
+                          sx={{
+                            width: '50px',
+                            height: '50px',
+                            cursor: 'pointer',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                          }}
                           onClick={() => {
                             setSelectedImage(tag.imageUrl || tag.imageData || '');
                             setOpenImageModal(true);
                           }}
                         >
-                          <img 
-                            src={tag.imageUrl || tag.imageData || ''} 
+                          <img
+                            src={tag.imageUrl || tag.imageData || ''}
                             alt={`Seal tag ${tag.barcode}`}
-                            style={{ width: '50px', height: '50px', objectFit: 'cover' }}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              console.error(`Failed to load image for seal tag ${tag.barcode}:`, e);
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.parentElement!.innerHTML = 'Load Error';
+                            }}
                           />
-                        </IconButton>
+                        </Box>
                       ) : (
                         <Typography variant="caption" color="text.secondary">
                           No image
@@ -1326,13 +1346,23 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {selectedImage && (
+          {selectedImage ? (
             <Box
               component="img"
               src={selectedImage}
               alt="Preview"
               sx={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+              onError={(e) => {
+                console.error("Failed to load image in modal:", e);
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = 'Failed to load image. The image data may be corrupted or in an unsupported format.';
+              }}
             />
+          ) : (
+            <Typography variant="body1" color="text.secondary" align="center">
+              No image selected
+            </Typography>
           )}
         </DialogContent>
       </Dialog>
