@@ -86,7 +86,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
       
       if (!response.ok) {
         console.error(`Comments API Error (${response.status}):`, await response.text());
-        throw new Error("Failed to fetch comments");
+        throw new TypedError("Failed to fetch comments");
       }
       
       const data = await response.json();
@@ -169,9 +169,9 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           if (response.status === 413) {
-            throw new Error(errorData.error || "Image is too large. Please use a smaller image (max 5MB).");
+            throw new TypedError(errorData.error || "Image is too large. Please use a smaller image (max 5MB).");
           } else {
-            throw new Error(errorData.error || "Failed to add comment");
+            throw new TypedError(errorData.error || "Failed to add comment");
           }
         }
 
@@ -193,7 +193,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to add comment");
+          throw new TypedError(errorData.error || "Failed to add comment");
         }
 
         const newComment = await response.json();
@@ -394,7 +394,7 @@ export default function CommentSection({ sessionId }: CommentSectionProps) {
         </Box>
       </form>
 
-      <List sx={{ mt: 2 }}>
+      <List sx={{ mt: 2 }} aria-label="Comments list">
         {isFetching ? (
           <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
             <CircularProgress aria-label="Loading comments" />
