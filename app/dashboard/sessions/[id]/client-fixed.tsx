@@ -271,6 +271,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
   }, [sessionId]);
 
+  // Add useEffect to call fetchSessionDetails on mount
+  useEffect(() => {
+    console.log("SessionDetailClient mounted, fetching session details...");
+    fetchSessionDetails();
+  }, [fetchSessionDetails]);
+
   // Other functions and useEffect hooks
 
   // Modified Verification Box for Guards
