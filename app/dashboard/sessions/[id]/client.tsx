@@ -277,6 +277,13 @@ function GuardVerificationTabbedView({
   const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
     setTabValue(newValue);
   };
+  
+  // Local wrapper for handleVerifySeal to ensure it's defined in this component
+  const onVerifySealClick = () => {
+    if (handleVerifySeal) {
+      handleVerifySeal();
+    }
+  };
 
   return (
     <Container maxWidth="xl">
@@ -816,7 +823,7 @@ function GuardVerificationTabbedView({
           color="primary"
           size="large"
           startIcon={<CheckCircle />}
-          onClick={handleVerifySeal}
+          onClick={onVerifySealClick}
           disabled={sealComparison.matched.length !== operatorSeals.length}
         >
           Complete Verification
