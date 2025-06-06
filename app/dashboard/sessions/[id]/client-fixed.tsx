@@ -602,6 +602,96 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Box>
           </Paper>
 
+          {/* Loading Details Section - Added as per requirements */}
+          <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Loading Details</Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            <Grid container spacing={2}>
+              {session.tripDetails && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Transporter Name:</Typography>
+                    <Typography variant="body1">{session.tripDetails.transporterName || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Material Name:</Typography>
+                    <Typography variant="body1">{session.tripDetails.materialName || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">GPS IMEI Number:</Typography>
+                    <Typography variant="body1">{session.tripDetails.gpsImeiNumber || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Loader Name:</Typography>
+                    <Typography variant="body1">{session.tripDetails.loaderName || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Loader Mobile Number:</Typography>
+                    <Typography variant="body1">{session.tripDetails.loaderMobileNumber || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Loading Site:</Typography>
+                    <Typography variant="body1">{session.tripDetails.loadingSite || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Challan/Royalty Number:</Typography>
+                    <Typography variant="body1">{session.tripDetails.challanRoyaltyNumber || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">DO Number:</Typography>
+                    <Typography variant="body1">{session.tripDetails.doNumber || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">TP Number:</Typography>
+                    <Typography variant="body1">{session.tripDetails.tpNumber || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Freight:</Typography>
+                    <Typography variant="body1">{session.tripDetails.freight || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Quality of Materials:</Typography>
+                    <Typography variant="body1">{session.tripDetails.qualityOfMaterials || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Gross Weight:</Typography>
+                    <Typography variant="body1">{session.tripDetails.grossWeight || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Tare Weight:</Typography>
+                    <Typography variant="body1">{session.tripDetails.tareWeight || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Net Material Weight:</Typography>
+                    <Typography variant="body1">{session.tripDetails.netMaterialWeight || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Receiver Party Name:</Typography>
+                    <Typography variant="body1">{session.tripDetails.receiverPartyName || 'N/A'}</Typography>
+                  </Grid>
+                </>
+              )}
+            </Grid>
+            {!session.tripDetails && (
+              <Alert severity="info">No loading details available</Alert>
+            )}
+          </Paper>
+
           <CommentSection sessionId={sessionId} />
 
           {/* Operator Seal Tag Table Section */}
@@ -682,6 +772,62 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </TableContainer>
             </Paper>
           )}
+
+          {/* Driver Details Section */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              Driver Details
+            </Typography>
+            
+            {session.tripDetails ? (
+              <Grid container spacing={2}>
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                {session.images?.driverPicture && (
+                  <Box sx={{ width: '100%', p: 1 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <Person fontSize="small" /> Driver Photo
+                    </Typography>
+                    <Box 
+                      component="img" 
+                      src={session.images.driverPicture}
+                      alt="Driver Photo"
+                      sx={{ 
+                        maxWidth: '200px', 
+                        maxHeight: '200px',
+                        cursor: 'pointer',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        p: 1
+                      }}
+                      onClick={() => {
+                        setSelectedImage(session.images?.driverPicture || '');
+                        setOpenImageModal(true);
+                      }}
+                    />
+                  </Box>
+                )}
+              </Grid>
+            ) : (
+              <Alert severity="info">No driver details available</Alert>
+            )}
+          </Paper>
 
           {/* Images Section - Comes before Reports section */}
           {session.images && Object.keys(session.images).some(key => {
@@ -781,62 +927,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </Box>
             </Paper>
           )}
-
-          {/* Driver Details Section */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Driver Details
-            </Typography>
-            
-            {session.tripDetails ? (
-              <Grid container spacing={2}>
-                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                  <Typography variant="subtitle1">
-                    <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
-                  </Typography>
-                </Box>
-                
-                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                  <Typography variant="subtitle1">
-                    <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
-                  </Typography>
-                </Box>
-                
-                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-                  <Typography variant="subtitle1">
-                    <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
-                  </Typography>
-                </Box>
-                
-                {session.images?.driverPicture && (
-                  <Box sx={{ width: '100%', p: 1 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <Person fontSize="small" /> Driver Photo
-                    </Typography>
-                    <Box 
-                      component="img" 
-                      src={session.images.driverPicture}
-                      alt="Driver Photo"
-                      sx={{ 
-                        maxWidth: '200px', 
-                        maxHeight: '200px',
-                        cursor: 'pointer',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        p: 1
-                      }}
-                      onClick={() => {
-                        setSelectedImage(session.images?.driverPicture || '');
-                        setOpenImageModal(true);
-                      }}
-                    />
-                  </Box>
-                )}
-              </Grid>
-            ) : (
-              <Alert severity="info">No driver details available</Alert>
-            )}
-          </Paper>
           
           {/* Report Download Section - Only shown to authorized users */}
           {canAccessReports && (
