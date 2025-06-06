@@ -916,48 +916,9 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     handleScanComplete: (barcodeData: string, method: string, imageFile?: File) => Promise<void>;
     setSealTagsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
-    const [showScanner, setShowScanner] = useState(false);
-    const [manualEntry, setManualEntry] = useState(false);
     const [sealTagImage, setSealTagImage] = useState<File | null>(null);
     const [expandedSealId, setExpandedSealId] = useState<string | null>(null);
     const [error, setError] = useState<string>("");
-    const textFieldRef = useRef<HTMLInputElement>(null);
-
-    // Handle scanned barcode with image
-    const handleScannedBarcode = (data: string, imageFile: File) => {
-      setShowScanner(false);
-      handleScanComplete(data, "digital", imageFile);
-    };
-
-    // Handle manual seal tag image change
-    const handleManualSealTagImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (files && files.length > 0) {
-        try {
-          setSealTagImage(files[0]);
-        } catch (error) {
-          console.error("Error processing seal tag image:", error);
-          setSealTagImage(null);
-        }
-      }
-    };
-
-    // Handle adding manual seal tag
-    const handleAddManualSealTag = async () => {
-      if (!scanInput.trim()) {
-        setError("Please enter a seal tag ID");
-        return;
-      }
-
-      if (!sealTagImage) {
-        setError("Please attach an image of the seal tag");
-        return;
-      }
-
-      setError("");
-      handleScanComplete(scanInput.trim(), "manual", sealTagImage);
-      setSealTagImage(null);
-    };
 
     // Toggle expanded seal details
     const toggleSealDetails = (sealId: string) => {
@@ -1027,129 +988,102 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
           Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
         </Typography>
         
-        {/* Scan or Enter Seal Tag Section */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="subtitle1" sx={{ mb: 2 }}>
-            Scan Seal Tags
-          </Typography>
-          
-          {showScanner ? (
-            <Box sx={{ mb: 2 }}>
+        {/* Scan or Enter Seal Tag Section - Updated to match Operator UI */}
+        <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Scan QR/Barcode
+            </Typography>
+            <Box sx={{ height: '56px' }}>
               <ClientSideQrScanner
-                onScanWithImage={handleScannedBarcode}
-                buttonText="Close Scanner"
+                onScanWithImage={(data, imageFile) => {
+                  handleScanComplete(data, 'digital', imageFile);
+                }}
+                buttonText="Scan QR Code"
+                scannerTitle="Scan Seal Tag"
                 buttonVariant="outlined"
               />
             </Box>
-          ) : (
-            <Box>
-              {manualEntry ? (
-                <>
-                  <TextField
-                    fullWidth
-                    label="Seal Tag ID"
-                    value={scanInput}
-                    onChange={(e) => setScanInput(e.target.value)}
-                    placeholder="Enter seal tag ID"
-                    inputRef={textFieldRef}
-                    error={!!scanError || !!error}
-                    helperText={scanError || error}
-                    sx={{ mb: 2 }}
-                    inputProps={{
-                      maxLength: 50, // Set a reasonable max length
-                    }}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton 
-                            onClick={() => setScanInput('')}
-                            edge="end"
-                          >
-                            <Close />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  
-                  <Box sx={{ mb: 2 }}>
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      startIcon={<PhotoCamera />}
-                      sx={{ mr: 1 }}
-                    >
-                      Take Photo
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleManualSealTagImageChange}
-                      />
-                    </Button>
-                    
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      startIcon={<AddAPhoto />}
-                    >
-                      Upload Image
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={handleManualSealTagImageChange}
-                      />
-                    </Button>
-                  </Box>
-                  
-                  {renderImagePreview(sealTagImage)}
-                  
-                  {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          </Box>
+          
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Manual Entry
+            </Typography>
+            <TextField
+              fullWidth
+              label="Seal Tag ID"
+              value={scanInput}
+              onChange={(e) => setScanInput(e.target.value)}
+              error={!!scanError || !!error}
+              helperText={scanError || error}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
                     <Button 
-                      variant="outlined"
                       onClick={() => {
-                        setManualEntry(false);
-                        setScanInput('');
-                        setSealTagImage(null);
-                        setError('');
+                        if (sealTagImage) {
+                          handleScanComplete(scanInput, 'manual', sealTagImage);
+                          setSealTagImage(null);
+                        } else {
+                          setError("Please attach an image of the seal tag");
+                        }
                       }}
+                      disabled={!scanInput}
                     >
-                      Cancel
+                      Add
                     </Button>
-                    <Button 
-                      variant="contained"
-                      onClick={handleAddManualSealTag}
-                      disabled={!scanInput.trim() || !sealTagImage}
-                    >
-                      Add Seal Tag
-                    </Button>
-                  </Box>
-                </>
-              ) : (
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button
-                    variant="contained"
-                    startIcon={<QrCodeScanner />}
-                    onClick={() => setShowScanner(true)}
-                  >
-                    Scan QR/Barcode
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<Create />}
-                    onClick={() => setManualEntry(true)}
-                  >
-                    Manual Entry
-                  </Button>
-                </Box>
-              )}
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 2 }}
+            />
+            
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<PhotoCamera />}
+              >
+                Take Photo
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      setSealTagImage(file);
+                      setError("");
+                    }
+                  }}
+                />
+              </Button>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUpload />}
+              >
+                Upload
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      setSealTagImage(file);
+                      setError("");
+                    }
+                  }}
+                />
+              </Button>
             </Box>
-          )}
-        </Paper>
+            
+            {sealTagImage && renderImagePreview(sealTagImage)}
+          </Box>
+        </Box>
         
         {/* Verification Progress */}
         <Box sx={{ mb: 3 }}>

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import {
   Box, Paper, Typography, Tabs, Tab, Button, Chip, Grid,
   TableContainer, Table, TableHead, TableBody, TableRow, TableCell,
-  TextField, IconButton, Alert
+  TextField, IconButton, Alert, InputAdornment
 } from '@mui/material';
 import {
   InfoOutlined, QrCode, PhotoLibrary, CheckCircle, Warning,
-  KeyboardArrowDown, Cancel
+  KeyboardArrowDown, Cancel, PhotoCamera, CloudUpload
 } from '@mui/icons-material';
 import ClientSideQrScanner from '@/app/components/ClientSideQrScanner';
 
@@ -185,59 +185,94 @@ export default function GuardVerificationUI({
           Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
         </Typography>
         
-        {/* Scan Seal Tags */}
-        <Box sx={{ mt: 3, mb: 3 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Scan Seal Tags
-          </Typography>
+        {/* Scan Seal Tags - Updated UI to exactly match OPERATOR's UI */}
+        <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Scan QR/Barcode
+            </Typography>
+            <Box sx={{ height: '56px' }}>
+              <ClientSideQrScanner
+                onScanWithImage={(data, imageFile) => {
+                  onScanComplete(data, 'digital', imageFile);
+                }}
+                buttonText="Scan QR Code"
+                scannerTitle="Scan Seal Tag"
+                buttonVariant="outlined"
+              />
+            </Box>
+          </Box>
           
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Manual Entry
+            </Typography>
             <TextField
-              variant="outlined"
-              size="small"
-              placeholder="Seal Tag ID"
+              fullWidth
+              label="Seal Tag ID"
               value={scanInput}
               onChange={(e) => onScanInputChange(e.target.value)}
-              sx={{ flexGrow: 1 }}
-            />
-            
-            <Button
-              variant="outlined"
-              onClick={() => onScanComplete(scanInput, 'manual')}
-              sx={{ minWidth: 120 }}
-            >
-              Add Manually
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<QrCode />}
-              onClick={() => {
-                // Show QR scanner
-                const scanner = document.getElementById('qr-scanner-container');
-                if (scanner) {
-                  scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                }
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button 
+                      onClick={() => onScanComplete(scanInput, 'manual')}
+                      disabled={!scanInput}
+                    >
+                      Add
+                    </Button>
+                  </InputAdornment>
+                ),
               }}
-              sx={{ minWidth: 200 }}
-            >
-              Scan QR/Barcode
-            </Button>
-          </Box>
-          
-          <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-            <ClientSideQrScanner 
-              onScan={(data) => onScanComplete(data, 'digital')}
-              buttonText="Scan QR Code"
+              error={!!scanError}
+              helperText={scanError}
+              sx={{ mb: 2 }}
             />
+            
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<PhotoCamera />}
+              >
+                Take Photo
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      if (scanInput) {
+                        onScanComplete(scanInput, 'manual', file);
+                      }
+                    }
+                  }}
+                />
+              </Button>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUpload />}
+              >
+                Upload
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      if (scanInput) {
+                        onScanComplete(scanInput, 'manual', file);
+                      }
+                    }
+                  }}
+                />
+              </Button>
+            </Box>
           </Box>
-          
-          {scanError && (
-            <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-              {scanError}
-            </Alert>
-          )}
         </Box>
         
         {/* Verification Progress */}
