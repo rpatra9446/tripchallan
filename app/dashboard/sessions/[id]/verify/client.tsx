@@ -1011,14 +1011,53 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     // Get the method display for a seal
     const getSealMethod = (sealId: string) => {
       const { guardSeal, operatorSeal } = getSealById(sealId);
-      const method = guardSeal?.method || operatorSeal?.method || "Unknown";
-      return method === 'digital' ? "Digitally Scanned" : "Manually Entered";
+      
+      // First check if it's an operator seal, use its method directly from session data
+      if (operatorSeal) {
+        // Get the actual method from session data
+        const actualSeal = session.sealTags?.find(tag => tag.barcode === sealId);
+        if (actualSeal) {
+          return actualSeal.method === 'digital' ? "Digitally Scanned" : "Manually Entered";
+        }
+      }
+      
+      // If it's a guard-only seal, use the guard's method
+      if (guardSeal) {
+        return guardSeal.method === 'digital' ? "Digitally Scanned" : "Manually Entered";
+      }
+      
+      return "Unknown";
     };
 
     // Delete a guard seal
     const deleteGuardSeal = async (sealId: string) => {
-      // TODO: Implement delete functionality if needed
-      console.log("Delete seal", sealId);
+      try {
+        // Confirm with user before deleting
+        if (!confirm(`Are you sure you want to delete seal tag ${sealId}?`)) {
+          return;
+        }
+        
+        // Send delete request to API
+        const response = await fetch(`/api/sessions/${sessionId}/guardSealTags/${sealId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete seal tag: ${response.status}`);
+        }
+        
+        // Remove from local state
+        setGuardScannedSeals(prev => prev.filter(seal => seal.id !== sealId));
+        
+        // Update comparison
+        const updatedSeals = guardScannedSeals.filter(seal => seal.id !== sealId);
+        updateSealComparison(updatedSeals);
+        
+        toast.success("Seal tag deleted successfully");
+      } catch (error) {
+        console.error("Error deleting seal tag:", error);
+        toast.error(`Failed to delete seal tag: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
     };
 
     return (
@@ -1189,9 +1228,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
             mt: 1, 
             p: 2, 
             bgcolor: 'background.paper', 
-            borderRadius: 1,
-            maxHeight: '400px',
-            overflowY: 'auto'
+            borderRadius: 1
           }}>
             <Table size="small">
               <TableHead>
@@ -1295,7 +1332,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                                         <Typography variant="body2" color="text.secondary">Image:</Typography>
                                         <Box sx={{ mt: 1, maxWidth: '200px', maxHeight: '200px' }}>
                                           <img 
-                                            src="/placeholder-image.jpg" 
+                                            src={session.sealTags?.find(tag => tag.barcode === sealId)?.imageUrl || "/placeholder-image.jpg"}
                                             alt="Seal Tag" 
                                             style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
                                           />
