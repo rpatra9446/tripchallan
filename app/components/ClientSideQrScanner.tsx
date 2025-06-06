@@ -62,11 +62,26 @@ const ClientSideQrScanner: React.FC<ClientSideQrScannerProps> = ({
     setOpen(false);
   }, [onScanWithImage]);
 
+  // Check for camera permissions before opening scanner
+  const handleOpenScanner = useCallback(async () => {
+    try {
+      // Try to get camera permissions
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Clean up the stream
+      stream.getTracks().forEach(track => track.stop());
+      // If we get here, permission was granted
+      setOpen(true);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      alert('Camera access is required for scanning. Please grant camera permissions and try again.');
+    }
+  }, []);
+
   return (
     <>
       <Button 
         variant={buttonVariant} 
-        onClick={() => setOpen(true)}
+        onClick={handleOpenScanner}
         fullWidth
         sx={{ height: '56px' }}
       >
@@ -95,40 +110,25 @@ const ClientSideQrScanner: React.FC<ClientSideQrScannerProps> = ({
             </IconButton>
           </DialogTitle>
           <DialogContent>
-            <Box sx={{ position: 'relative' }}>
-              <div id="html5-qrcode-scanner" style={{ width: '100%' }}></div>
-              <Typography variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
-                Point your camera at a QR code or barcode to scan
-              </Typography>
-            </Box>
+            <QrScannerContent 
+              onScan={onScan ? handleScan : undefined}
+              onScanWithImage={onScanWithImage ? handleScanWithImage : undefined}
+            />
           </DialogContent>
-          <QrScannerDialog 
-            open={open}
-            onClose={handleClose}
-            onScan={onScan ? handleScan : undefined}
-            onScanWithImage={onScanWithImage ? handleScanWithImage : undefined}
-            title={scannerTitle}
-          />
         </Dialog>
       )}
     </>
   );
 };
 
-interface QrScannerDialogProps {
-  open: boolean;
-  onClose: () => void;
+interface QrScannerContentProps {
   onScan?: (data: string) => void;
   onScanWithImage?: (data: string, imageFile: File) => void;
-  title: string;
 }
 
-const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
-  open,
-  onClose,
+const QrScannerContent: React.FC<QrScannerContentProps> = ({
   onScan,
-  onScanWithImage,
-  title
+  onScanWithImage
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
@@ -354,28 +354,24 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
       }
     };
     
-    if (open) {
-      // Short delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        initScanner();
-      }, 300);
-      
-      return () => {
-        clearTimeout(timer);
-        if (scanner) {
-          try {
-            scanner.stop().catch((err: any) => {
-              console.warn('Error stopping scanner:', err);
-            });
-          } catch (err) {
-            console.warn('Error stopping scanner:', err);
-          }
-        }
-      };
-    }
+    // Initialize scanner
+    const timer = setTimeout(() => {
+      initScanner();
+    }, 300);
     
-    return undefined;
-  }, [open, onScan, onScanWithImage]);
+    return () => {
+      clearTimeout(timer);
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.stop().catch((err: any) => {
+            console.warn('Error stopping scanner:', err);
+          });
+        } catch (err) {
+          console.warn('Error stopping scanner:', err);
+        }
+      }
+    };
+  }, [onScan, onScanWithImage]);
   
   const handleRetry = () => {
     if (scannerRef.current) {
@@ -425,7 +421,11 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
               qrbox: { width: 250, height: 250 }
             },
             (decodedText: string) => {
-              if (onScan) onScan(decodedText);
+              if (onScanWithImage) {
+                captureFrame(decodedText);
+              } else if (onScan) {
+                onScan(decodedText);
+              }
             },
             () => {}
           ).catch(err => {
@@ -471,7 +471,11 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
           qrbox: { width: 250, height: 250 }
         },
         (decodedText: string) => {
-          if (onScan) onScan(decodedText);
+          if (onScanWithImage) {
+            captureFrame(decodedText);
+          } else if (onScan) {
+            onScan(decodedText);
+          }
         },
         () => {}
       );
@@ -481,76 +485,139 @@ const QrScannerDialog: React.FC<QrScannerDialogProps> = ({
       handleRetry();
     }
   };
+
+  // Function to capture a frame from video
+  const captureFrame = async (decodedText: string) => {
+    try {
+      console.log('Attempting to capture frame from video...');
+      if (!videoRef.current) {
+        // Try to find the video element if not already set
+        console.log('Video ref not set, looking for video element...');
+        const videoElement = document.querySelector('#' + scannerContainerId + ' video') as HTMLVideoElement;
+        if (!videoElement) {
+          console.error('Video element not found for frame capture');
+          if (onScan) {
+            console.log('Falling back to onScan without image');
+            onScan(decodedText);
+          }
+          return;
+        }
+        videoRef.current = videoElement;
+      }
+
+      // Create a canvas element if it doesn't exist
+      if (!canvasRef.current) {
+        console.log('Creating canvas for frame capture');
+        const canvas = document.createElement('canvas');
+        canvasRef.current = canvas;
+      }
+
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      // Make sure video is ready
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        console.log('Video not ready yet, waiting for data...');
+        // Wait a moment and try again
+        setTimeout(() => captureFrame(decodedText), 100);
+        return;
+      }
+      
+      // Set canvas dimensions to match video but reduce size to improve performance
+      const scaleFactor = 0.8; // 80% of original size
+      canvas.width = video.videoWidth * scaleFactor;
+      canvas.height = video.videoHeight * scaleFactor;
+      console.log(`Canvas dimensions set to ${canvas.width}x${canvas.height}`);
+      
+      // Draw the current video frame to the canvas
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Clear canvas first
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw video frame
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert canvas to blob with reduced quality for smaller file size
+        canvas.toBlob((blob) => {
+          if (blob && onScanWithImage) {
+            // Create a file from the blob
+            const imageFile = new File([blob], `qr-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            console.log('Image captured successfully, size:', blob.size);
+            
+            // Call the callback with the decoded text and image file
+            onScanWithImage(decodedText, imageFile);
+          } else if (onScan) {
+            console.log('No blob created or onScanWithImage not provided, falling back to onScan');
+            onScan(decodedText);
+          }
+        }, 'image/jpeg', 0.6); // Use 60% JPEG quality for better compression
+      } else if (onScan) {
+        console.error('Could not get canvas context');
+        onScan(decodedText);
+      }
+    } catch (error) {
+      console.error('Error capturing frame:', error);
+      if (onScan) {
+        console.log('Error in frame capture, falling back to onScan');
+        onScan(decodedText);
+      }
+    }
+  };
   
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {title}
-        <IconButton onClick={onClose} size="small">
-          <Close />
-        </IconButton>
-      </DialogTitle>
+    <>
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleRetry}>
+              Try again
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      )}
       
-      <DialogContent>
-        {error && (
-          <Alert 
-            severity="error" 
-            sx={{ mb: 2 }}
-            action={
-              <Button color="inherit" size="small" onClick={handleRetry}>
-                Try again
-              </Button>
-            }
-          >
-            {error}
-          </Alert>
-        )}
-        
-        <Box 
-          id={scannerContainerId} 
-          sx={{ 
-            width: '100%', 
-            height: 300,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            border: '1px solid #ddd',
-            borderRadius: 1,
-            position: 'relative',
-            overflow: 'hidden'
-          }}
-        />
-        
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Position the QR code in the center of the frame
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Your browser might not fully support QR scanning. Try using Google Chrome for best experience.
-          </Typography>
-        </Box>
-      </DialogContent>
+      <Box 
+        id={scannerContainerId} 
+        sx={{ 
+          width: '100%', 
+          height: 300,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          border: '1px solid #ddd',
+          borderRadius: 1,
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      />
       
-      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-        {cameras.length > 1 && (
+      <Box sx={{ mt: 2, textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Position the QR code in the center of the frame
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          For best results, ensure good lighting and hold the device steady
+        </Typography>
+      </Box>
+      
+      {cameras.length > 1 && (
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
           <Button 
             startIcon={<Cameraswitch />} 
             onClick={handleSwitchCamera}
+            variant="outlined"
             size="small"
           >
             Switch Camera
           </Button>
-        )}
-        <Button onClick={onClose} color="primary">
-          Cancel
-        </Button>
-      </DialogActions>
-    </Dialog>
+        </Box>
+      )}
+    </>
   );
 };
 
