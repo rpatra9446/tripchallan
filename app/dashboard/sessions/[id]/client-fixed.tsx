@@ -183,8 +183,26 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
   // Define placeholder functions for the fixed client version
   const renderVerificationResults = () => null;
-  const startVerification = () => {};
-  const closeConfirmDialog = () => {};
+  const startVerification = () => {
+    if (session && sessionId) {
+      // If user is a guard, directly go to guard verification
+      if (userRole === "EMPLOYEE" && userSubrole === EmployeeSubrole.GUARD) {
+        router.push(`/dashboard/sessions/${sessionId}/verify`);
+      } else {
+        // Otherwise confirm starting verification
+        setConfirmDialogOpen(true);
+      }
+    }
+  };
+  const closeConfirmDialog = () => {
+    setConfirmDialogOpen(false);
+  };
+
+  // Confirmation dialog for non-guard users
+  const confirmVerification = () => {
+    setConfirmDialogOpen(false);
+    router.push(`/dashboard/sessions/${sessionId}/verify`);
+  };
 
   // Report download handlers
   const handleDownloadReport = async (format: string) => {
@@ -667,6 +685,41 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           {renderVerificationResults()}
         </>
       )}
+
+      {/* Start Trip Verification Button (for all users) */}
+      {!canVerify && session?.status === SessionStatus.IN_PROGRESS && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            startIcon={<Lock />}
+            onClick={startVerification}
+            sx={{ px: 4, py: 1.5, borderRadius: '4px', fontWeight: 'bold' }}
+          >
+            Start Trip Verification
+          </Button>
+        </Box>
+      )}
+
+      {/* Confirmation Dialog for non-guard users */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={closeConfirmDialog}
+      >
+        <DialogTitle>Start Verification</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to start the verification process for this trip?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeConfirmDialog}>Cancel</Button>
+          <Button onClick={confirmVerification} color="primary" autoFocus>
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 } 
