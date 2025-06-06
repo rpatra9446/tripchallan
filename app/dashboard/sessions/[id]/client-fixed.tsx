@@ -354,296 +354,313 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Button>
       </Box>
 
-      {/* Trip Details Section */}
-      <Paper elevation={1} sx={{ mb: 3, overflow: 'hidden' }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          p: 2,
-          borderBottom: '1px solid rgba(0,0,0,0.1)' 
-        }}>
-          <Typography variant="h5" component="h1">Trip Details</Typography>
-          <Chip 
-            label={session?.status === "IN_PROGRESS" ? "IN PROGRESS" : session?.status} 
-            color={
-              session?.status === "IN_PROGRESS" ? "primary" : 
-              session?.status === "COMPLETED" ? "success" : 
-              session?.status === "CANCELLED" ? "error" : 
-              "default"
-            }
-          />
+      {/* Loading indicator while session data is being fetched */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
         </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ my: 2 }}>
+          <AlertTitle>Error</AlertTitle>
+          {error}
+        </Alert>
+      ) : !session ? (
+        <Alert severity="warning" sx={{ my: 2 }}>
+          <AlertTitle>Session Not Found</AlertTitle>
+          The requested session could not be found.
+        </Alert>
+      ) : (
+        <>
+          {/* Trip Details Section */}
+          <Paper elevation={1} sx={{ mb: 3, overflow: 'hidden' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              p: 2,
+              borderBottom: '1px solid rgba(0,0,0,0.1)' 
+            }}>
+              <Typography variant="h5" component="h1">Trip Details</Typography>
+              <Chip 
+                label={session.status === "IN_PROGRESS" ? "IN PROGRESS" : session.status} 
+                color={
+                  session.status === "IN_PROGRESS" ? "primary" : 
+                  session.status === "COMPLETED" ? "success" : 
+                  session.status === "CANCELLED" ? "error" : 
+                  "default"
+                }
+              />
+            </Box>
 
-        <Box sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Basic Information</Typography>
-          
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-            {/* Left Column: Source, Destination, Created At */}
-            <Box sx={{ flex: 1 }}>
-              {/* Source */}
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Source:</Typography>
-                  <Typography variant="body1">{session?.source || 'SourceData'}</Typography>
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Basic Information</Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+                {/* Left Column: Source, Destination, Created At */}
+                <Box sx={{ flex: 1 }}>
+                  {/* Source */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Source:</Typography>
+                      <Typography variant="body1">{session.source || 'SourceData'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Destination */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Destination:</Typography>
+                      <Typography variant="body1">{session.destination || 'DestinationData'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Created Timestamp */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Created:</Typography>
+                      <Typography variant="body1">
+                        {new Date(session.createdAt).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: 'numeric',
+                          hour12: true
+                        })}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Right Column: Vehicle Number, Company, Created By */}
+                <Box sx={{ flex: 1 }}>
+                  {/* Vehicle Number */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
+                      <Typography variant="body1">{session.tripDetails?.vehicleNumber || 'MH02AB1234'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Company */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Company:</Typography>
+                      <Typography variant="body1">{session.company?.name || 'N/A'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Operator Created */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Operator Created:</Typography>
+                      <Typography variant="body1">{session.createdBy?.name || 'N/A'}</Typography>
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
+            </Box>
+          </Paper>
 
-              {/* Destination */}
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Destination:</Typography>
-                  <Typography variant="body1">{session?.destination || 'DestinationData'}</Typography>
-                </Box>
+          <CommentSection sessionId={sessionId} />
+
+          {/* Images Section - Comes before Reports section */}
+          {session.images && Object.keys(session.images).some(key => {
+            const value = session.images && session.images[key as keyof typeof session.images];
+            return !!value;
+          }) && (
+            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Images
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {session.images.driverPicture && (
+                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                    <Typography variant="subtitle2" gutterBottom>Driver</Typography>
+                    <img 
+                      src={session.images.driverPicture} 
+                      alt="Driver" 
+                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
+                    />
+                  </Box>
+                )}
+                {session.images.vehicleNumberPlatePicture && (
+                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                    <Typography variant="subtitle2" gutterBottom>Number Plate</Typography>
+                    <img 
+                      src={session.images.vehicleNumberPlatePicture} 
+                      alt="Vehicle Number Plate" 
+                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
+                    />
+                  </Box>
+                )}
+                {session.images.gpsImeiPicture && (
+                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                    <Typography variant="subtitle2" gutterBottom>GPS/IMEI</Typography>
+                    <img 
+                      src={session.images.gpsImeiPicture} 
+                      alt="GPS IMEI" 
+                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
+                    />
+                  </Box>
+                )}
+                
+                {/* Display all sealing images */}
+                {session.images.sealingImages && session.images.sealingImages.length > 0 && (
+                  <>
+                    <Box sx={{ width: '100%', mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Sealing Images</Typography>
+                    </Box>
+                    {session.images.sealingImages.map((image, index) => (
+                      <Box key={`sealing-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                        <img 
+                          src={image} 
+                          alt={`Sealing ${index + 1}`} 
+                          style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
+                        />
+                      </Box>
+                    ))}
+                  </>
+                )}
+                
+                {/* Display all vehicle images */}
+                {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
+                  <>
+                    <Box sx={{ width: '100%', mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Vehicle Images</Typography>
+                    </Box>
+                    {session.images.vehicleImages.map((image, index) => (
+                      <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                        <img 
+                          src={image} 
+                          alt={`Vehicle ${index + 1}`} 
+                          style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
+                        />
+                      </Box>
+                    ))}
+                  </>
+                )}
+                
+                {/* Display all additional images */}
+                {session.images.additionalImages && session.images.additionalImages.length > 0 && (
+                  <>
+                    <Box sx={{ width: '100%', mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Additional Images</Typography>
+                    </Box>
+                    {session.images.additionalImages.map((image, index) => (
+                      <Box key={`additional-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                        <img 
+                          src={image} 
+                          alt={`Additional ${index + 1}`} 
+                          style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
+                        />
+                      </Box>
+                    ))}
+                  </>
+                )}
               </Box>
+            </Paper>
+          )}
 
-              {/* Created Timestamp */}
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Created:</Typography>
-                  <Typography variant="body1">
-                    {session ? new Date(session.createdAt).toLocaleString('en-US', {
-                      year: 'numeric',
-                      month: 'numeric',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: 'numeric',
-                      hour12: true
-                    }) : 'N/A'}
+          {/* Driver Details Section */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              Driver Details
+            </Typography>
+            
+            {session.tripDetails ? (
+              <Grid container spacing={2}>
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
                   </Typography>
                 </Box>
-              </Box>
-            </Box>
-
-            {/* Right Column: Vehicle Number, Company, Created By */}
-            <Box sx={{ flex: 1 }}>
-              {/* Vehicle Number */}
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
-                  <Typography variant="body1">{session?.tripDetails?.vehicleNumber || 'MH02AB1234'}</Typography>
+                
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
+                  </Typography>
                 </Box>
-              </Box>
-
-              {/* Company */}
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Company:</Typography>
-                  <Typography variant="body1">{session?.company?.name || 'N/A'}</Typography>
+                
+                <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+                  </Typography>
                 </Box>
-              </Box>
-
-              {/* Operator Created */}
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Operator Created:</Typography>
-                  <Typography variant="body1">{session?.createdBy?.name || 'N/A'}</Typography>
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </Paper>
-
-      <CommentSection sessionId={sessionId} />
-
-      {/* Images Section - Comes before Reports section */}
-      {session && session.images && Object.keys(session.images).some(key => {
-        const value = session.images && session.images[key as keyof typeof session.images];
-        return !!value;
-      }) && (
-        <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Images
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            {session.images.driverPicture && (
-              <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                <Typography variant="subtitle2" gutterBottom>Driver</Typography>
-                <img 
-                  src={session.images.driverPicture} 
-                  alt="Driver" 
-                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                />
-              </Box>
-            )}
-            {session.images.vehicleNumberPlatePicture && (
-              <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                <Typography variant="subtitle2" gutterBottom>Number Plate</Typography>
-                <img 
-                  src={session.images.vehicleNumberPlatePicture} 
-                  alt="Vehicle Number Plate" 
-                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                />
-              </Box>
-            )}
-            {session.images.gpsImeiPicture && (
-              <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                <Typography variant="subtitle2" gutterBottom>GPS/IMEI</Typography>
-                <img 
-                  src={session.images.gpsImeiPicture} 
-                  alt="GPS IMEI" 
-                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                />
-              </Box>
-            )}
-            
-            {/* Display all sealing images */}
-            {session.images.sealingImages && session.images.sealingImages.length > 0 && (
-              <>
-                <Box sx={{ width: '100%', mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>Sealing Images</Typography>
-                </Box>
-                {session.images.sealingImages.map((image, index) => (
-                  <Box key={`sealing-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <img 
-                      src={image} 
-                      alt={`Sealing ${index + 1}`} 
-                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
+                
+                {session.images?.driverPicture && (
+                  <Box sx={{ width: '100%', p: 1 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <Person fontSize="small" /> Driver Photo
+                    </Typography>
+                    <Box 
+                      component="img" 
+                      src={session.images.driverPicture}
+                      alt="Driver Photo"
+                      sx={{ 
+                        maxWidth: '200px', 
+                        maxHeight: '200px',
+                        cursor: 'pointer',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        p: 1
+                      }}
+                      onClick={() => {
+                        setSelectedImage(session.images?.driverPicture || '');
+                        setOpenImageModal(true);
+                      }}
                     />
                   </Box>
-                ))}
-              </>
+                )}
+              </Grid>
+            ) : (
+              <Alert severity="info">No driver details available</Alert>
             )}
-            
-            {/* Display all vehicle images */}
-            {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
-              <>
-                <Box sx={{ width: '100%', mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>Vehicle Images</Typography>
-                </Box>
-                {session.images.vehicleImages.map((image, index) => (
-                  <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <img 
-                      src={image} 
-                      alt={`Vehicle ${index + 1}`} 
-                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                    />
-                  </Box>
-                ))}
-              </>
-            )}
-            
-            {/* Display all additional images */}
-            {session.images.additionalImages && session.images.additionalImages.length > 0 && (
-              <>
-                <Box sx={{ width: '100%', mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>Additional Images</Typography>
-                </Box>
-                {session.images.additionalImages.map((image, index) => (
-                  <Box key={`additional-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <img 
-                      src={image} 
-                      alt={`Additional ${index + 1}`} 
-                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                    />
-                  </Box>
-                ))}
-              </>
-            )}
-          </Box>
-        </Paper>
+          </Paper>
+          
+          {/* Report Download Section - Only shown to authorized users */}
+          {canAccessReports && (
+            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Reports
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<PictureAsPdf />}
+                  onClick={() => handleDownloadReport("pdf")}
+                  disabled={reportLoading !== null}
+                  size="small"
+                  sx={{ color: 'error.main', borderColor: 'error.main', '&:hover': { borderColor: 'error.dark' } }}
+                >
+                  {reportLoading === "pdf" ? "Downloading..." : "Download PDF"}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<TableChart />}
+                  onClick={() => handleDownloadReport("excel")}
+                  disabled={reportLoading !== null}
+                  size="small"
+                  sx={{ color: 'success.main', borderColor: 'success.main', '&:hover': { borderColor: 'success.dark' } }}
+                >
+                  {reportLoading === "excel" ? "Downloading..." : "Download Excel"}
+                </Button>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Verification Results */}
+          {renderVerificationResults()}
+        </>
       )}
-
-      {/* Driver Details Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Driver Details
-        </Typography>
-        
-        {session.tripDetails ? (
-          <Grid container spacing={2}>
-            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              <Typography variant="subtitle1">
-                <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              <Typography variant="subtitle1">
-                <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ width: { xs: '100%', md: '50%' }, p: 1 }}>
-              <Typography variant="subtitle1">
-                <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
-              </Typography>
-            </Box>
-            
-            {session.images?.driverPicture && (
-              <Box sx={{ width: '100%', p: 1 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  <Person fontSize="small" /> Driver Photo
-                </Typography>
-                <Box 
-                  component="img" 
-                  src={session.images.driverPicture}
-                  alt="Driver Photo"
-                  sx={{ 
-                    maxWidth: '200px', 
-                    maxHeight: '200px',
-                    cursor: 'pointer',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    p: 1
-                  }}
-                  onClick={() => {
-                    setSelectedImage(session.images?.driverPicture || '');
-                    setOpenImageModal(true);
-                  }}
-                />
-              </Box>
-            )}
-          </Grid>
-        ) : (
-          <Alert severity="info">No driver details available</Alert>
-        )}
-      </Paper>
-      
-      {/* Seal Tags Section */}
-
-      {/* Report Download Section - Only shown to authorized users */}
-      {canAccessReports && (
-        <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Reports
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdf />}
-              onClick={() => handleDownloadReport("pdf")}
-              disabled={reportLoading !== null}
-              size="small"
-              sx={{ color: 'error.main', borderColor: 'error.main', '&:hover': { borderColor: 'error.dark' } }}
-            >
-              {reportLoading === "pdf" ? "Downloading..." : "Download PDF"}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<TableChart />}
-              onClick={() => handleDownloadReport("excel")}
-              disabled={reportLoading !== null}
-              size="small"
-              sx={{ color: 'success.main', borderColor: 'success.main', '&:hover': { borderColor: 'success.dark' } }}
-            >
-              {reportLoading === "excel" ? "Downloading..." : "Download Excel"}
-            </Button>
-          </Box>
-        </Paper>
-      )}
-
-      {/* Verification Results */}
-      {renderVerificationResults()}
     </Container>
   );
 } 
