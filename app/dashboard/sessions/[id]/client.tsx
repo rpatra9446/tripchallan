@@ -1019,8 +1019,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           <Typography variant="h6" gutterBottom>Basic Information</Typography>
           
           <Grid container spacing={3}>
-            {/* Source */}
-            <Grid item xs={12} sm={6}>
+            {/* Left Column: Source, Destination, Created At */}
+            <Grid item xs={12} md={6}>
+              {/* Source */}
               <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
                 <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
                 <Box>
@@ -1028,10 +1029,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <Typography variant="body1">{session.source || 'SourceData'}</Typography>
                 </Box>
               </Box>
-            </Grid>
 
-            {/* Destination */}
-            <Grid item xs={12} sm={6}>
+              {/* Destination */}
               <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
                 <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
                 <Box>
@@ -1039,10 +1038,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <Typography variant="body1">{session.destination || 'DestinationData'}</Typography>
                 </Box>
               </Box>
-            </Grid>
 
-            {/* Created Timestamp */}
-            <Grid item xs={12} sm={6}>
+              {/* Created Timestamp */}
               <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
                 <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
                 <Box>
@@ -1061,8 +1058,18 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </Box>
             </Grid>
 
-            {/* Company */}
-            <Grid item xs={12} sm={6}>
+            {/* Right Column: Vehicle Number, Company, Created By */}
+            <Grid item xs={12} md={6}>
+              {/* Vehicle Number */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
+                  <Typography variant="body1">{session.tripDetails?.vehicleNumber || 'MH02AB1234'}</Typography>
+                </Box>
+              </Box>
+
+              {/* Company */}
               <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
                 <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
                 <Box>
@@ -1070,10 +1077,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   <Typography variant="body1">{session.company?.name || 'roshanzpatra'}</Typography>
                 </Box>
               </Box>
-            </Grid>
 
-            {/* Operator Created */}
-            <Grid item xs={12} sm={6}>
+              {/* Operator Created */}
               <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
                 <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
                 <Box>
@@ -1082,29 +1087,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 </Box>
               </Box>
             </Grid>
-
-            {/* Vehicle Number */}
-            <Grid item xs={12} sm={6}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
-                  <Typography variant="body1">{session.tripDetails?.vehicleNumber || 'MH02AB1234'}</Typography>
-                </Box>
-              </Box>
-            </Grid>
           </Grid>
-        </Box>
-      </Paper>
-
-      {/* Vehicle Number repeated for consistency with image */}
-      <Paper elevation={1} sx={{ mb: 3, p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-          <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
-          <Box>
-            <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
-            <Typography variant="body1">{session.tripDetails?.vehicleNumber || 'MH02AB1234'}</Typography>
-          </Box>
         </Box>
       </Paper>
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import {
   Box, Button, Container, Paper, Typography, Tab, Tabs, 
@@ -180,6 +180,11 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   const [driverDetailsVerified, setDriverDetailsVerified] = useState(false);
   const [sealTagsVerified, setSealTagsVerified] = useState(false);
   const [imagesVerified, setImagesVerified] = useState(false);
+  
+  // 2FA dialog state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [guardPassword, setGuardPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   
   // Load session data on mount
   useEffect(() => {
@@ -509,60 +514,65 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     };
   };
 
-  // Complete verification process
+  // Complete verification process (now called after password check)
   const handleVerifySeal = async () => {
     if (!sessionId || !session) return;
-    
+    if (!authSession?.user || authSession?.user?.subrole !== EmployeeSubrole.GUARD) {
+      toast.error('Only Guards can complete verification');
+      return;
+    }
+    setPasswordDialogOpen(true);
+  };
+
+  // Called after password is entered and confirmed
+  const handlePasswordConfirm = async () => {
+    setPasswordError('');
+    setVerifying(true);
+    // Try to re-authenticate with password
+    const email = authSession?.user?.email ?? '';
+    if (!email) {
+      setPasswordError('No user email found.');
+      setVerifying(false);
+      return;
+    }
+    const result = await signIn('credentials', {
+      redirect: false,
+      username: email,
+      password: guardPassword,
+    });
+    if (!result || result.error) {
+      setPasswordError('Incorrect password. Please try again.');
+      setVerifying(false);
+      return;
+    }
+    // Prepare verification data (all GUARD seal data)
+    const verificationData = {
+      sessionId,
+      fieldVerifications: verificationFields,
+      guardImages,
+      imageComments,
+      sealTags: {
+        matched: sealComparison.matched,
+        mismatched: sealComparison.mismatched,
+        operator: operatorSeals.map(seal => seal.id),
+        guard: guardScannedSeals.map(seal => seal.id),
+        guardSealData: guardScannedSeals // send all guard seal tag objects
+      },
+      allMatch: sealComparison.mismatched.length === 0 && sealComparison.matched.length > 0
+    };
     try {
-      setVerifying(true);
-      
-      // Check if all required items are verified
-      const stats = getVerificationStats();
-      if (stats.percentage < 100) {
-        toast.error('Please verify all fields before completing the verification');
-        setVerifying(false);
-        return;
-      }
-      
-      // Prepare verification data
-      const verificationData = {
-        sessionId,
-        fieldVerifications: verificationFields,
-        guardImages,
-        imageComments,
-        sealTags: {
-          matched: sealComparison.matched,
-          mismatched: sealComparison.mismatched,
-          operator: operatorSeals.map(seal => seal.id),
-          guard: guardScannedSeals.map(seal => seal.id)
-        },
-        allMatch: sealComparison.mismatched.length === 0 && sealComparison.matched.length > 0
-      };
-      
-      // Submit verification
       const response = await fetch(`/api/sessions/${sessionId}/verify`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(verificationData),
       });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to complete verification: ${response.status}`);
-      }
-      
+      if (!response.ok) throw new Error(`Failed to complete verification: ${response.status}`);
       const result = await response.json();
-      console.log('Verification result:', result);
-      
       toast.success('Verification completed successfully!');
-      
-      // Navigate back to sessions
-      setTimeout(() => {
-        router.push('/dashboard/sessions');
-      }, 2000);
+      setPasswordDialogOpen(false);
+      setGuardPassword('');
+      setTimeout(() => { router.push('/dashboard/sessions'); }, 2000);
     } catch (error) {
-      console.error('Error completing verification:', error);
       toast.error('Failed to complete verification. Please try again.');
     } finally {
       setVerifying(false);
@@ -1718,7 +1728,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               variant="contained"
               color="primary"
               onClick={handleVerifySeal}
-              disabled={verifying || !(loadingDetailsVerified && driverDetailsVerified && sealTagsVerified && imagesVerified)}
+              disabled={verifying}
               startIcon={verifying ? <CircularProgress size={20} /> : <CheckCircle />}
             >
               {verifying ? 'Verifying...' : 'Complete Verification'}
@@ -1753,6 +1763,32 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 </Box>
               )}
             </DialogContent>
+          </Dialog>
+          
+          {/* Password Dialog for 2FA */}
+          <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)}>
+            <DialogTitle>Guard Password Required</DialogTitle>
+            <DialogContent>
+              <Typography gutterBottom>Enter your password to complete verification.</Typography>
+              <TextField
+                label="Password"
+                type="password"
+                fullWidth
+                value={guardPassword}
+                onChange={e => setGuardPassword(e.target.value)}
+                error={!!passwordError}
+                helperText={passwordError}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') handlePasswordConfirm(); }}
+                sx={{ mt: 2 }}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setPasswordDialogOpen(false)} disabled={verifying}>Cancel</Button>
+              <Button onClick={handlePasswordConfirm} disabled={verifying || !guardPassword} variant="contained" color="primary">
+                {verifying ? 'Verifying...' : 'Confirm'}
+              </Button>
+            </DialogActions>
           </Dialog>
         </>
       ) : (
