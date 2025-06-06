@@ -15,7 +15,7 @@ import {
   ArrowBack, CheckCircle, Lock, QrCodeScanner, Camera, 
   AddAPhoto, FileUpload, Close, LocationOn, AccessTime,
   Business, Person, DirectionsCar, Info, PhotoCamera,
-  Delete, CloudUpload, ExpandLess, ExpandMore, Warning
+  Delete, CloudUpload, ExpandLess, ExpandMore, Warning, Create
 } from '@mui/icons-material';
 import { EmployeeSubrole, SessionStatus } from '@/prisma/enums';
 import ClientSideQrScanner from '@/app/components/ClientSideQrScanner';
@@ -303,16 +303,43 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       const data = await response.json();
       console.log("Guard seal tags received:", data);
       
+      // Fetch operator seal tag images from activity logs
+      console.log("Fetching operator seal tag images from activity logs");
+      const activityResponse = await fetch(`/api/sessions/${sessionId}/seals`);
+      
+      if (!activityResponse.ok) {
+        throw new Error(`Failed to fetch operator seal tag images: ${activityResponse.status}`);
+      }
+      
+      const activityData = await activityResponse.json();
+      console.log("Operator seal data received:", activityData);
+      
+      // Create a map of operator seal tags with their methods and images
+      const operatorSealMap = new Map();
+      activityData.forEach((seal: any) => {
+        if (seal.type === 'tag') {
+          operatorSealMap.set(seal.barcode, {
+            method: seal.method,
+            imageData: seal.imageData
+          });
+        }
+      });
+      
       // Process and set guard scanned seals
       if (data && Array.isArray(data)) {
-        const processedSeals = data.map((tag: any) => ({
-          id: tag.barcode,
-          method: tag.method,
-          image: tag.imageUrl || null,
-          imagePreview: null,
-          timestamp: tag.createdAt,
-          verified: false // Will be updated during comparison
-        }));
+        const processedSeals = data.map((tag: any) => {
+          const operatorData = operatorSealMap.get(tag.barcode);
+          return {
+            id: tag.barcode,
+            method: tag.method,
+            image: tag.imageData || null,
+            imagePreview: tag.imageData || null,
+            timestamp: tag.createdAt,
+            verified: false, // Will be updated during comparison
+            operatorMethod: operatorData?.method || null,
+            operatorImage: operatorData?.imageData || null
+          };
+        });
         
         setGuardScannedSeals(processedSeals);
         updateSealComparison(processedSeals);
@@ -882,586 +909,399 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     handleScanComplete: (barcodeData: string, method: string, imageFile?: File) => Promise<void>;
     setSealTagsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
-    // Add state for manual entry image
-    const [manualEntryImage, setManualEntryImage] = useState<File | null>(null);
-    // Create a ref for the text field to maintain focus
-    const textFieldRef = useRef<HTMLInputElement>(null);
-    // Add state for expanded seal tag details
-    const [expandedSeal, setExpandedSeal] = useState<string | null>(null);
-    // Add state for error message
+    const [showScanner, setShowScanner] = useState(false);
+    const [manualEntry, setManualEntry] = useState(false);
+    const [sealTagImage, setSealTagImage] = useState<File | null>(null);
+    const [expandedSealId, setExpandedSealId] = useState<string | null>(null);
     const [error, setError] = useState<string>("");
-    
-    // Handle image upload for manual seal tag entries
+    const textFieldRef = useRef<HTMLInputElement>(null);
+
+    // Handle scanned barcode
+    const handleScannedBarcode = (barcode: string) => {
+      setShowScanner(false);
+      handleScanComplete(barcode, "digital");
+    };
+
+    // Handle manual seal tag image change
     const handleManualSealTagImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files?.length) return;
-      
-      try {
-        const file = e.target.files[0];
-        // Process the image (resize/compress) before setting it
-        const processedFile = await processImageForUpload(file);
-        setManualEntryImage(file);
-        
-        // Refocus the text field after image selection
-        setTimeout(() => {
-          if (textFieldRef.current) {
-            textFieldRef.current.focus();
-          }
-        }, 0);
-      } catch (error) {
-        console.error("Error processing seal tag image:", error);
-        setError("Failed to process image. Please try with a smaller image.");
-        setTimeout(() => setError(""), 3000);
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        try {
+          setSealTagImage(files[0]);
+        } catch (error) {
+          console.error("Error processing seal tag image:", error);
+          setSealTagImage(null);
+        }
       }
     };
-    
-    // Handle adding seal tag with manual entry
+
+    // Handle adding manual seal tag
     const handleAddManualSealTag = async () => {
       if (!scanInput.trim()) {
         setError("Please enter a seal tag ID");
         return;
       }
-      
-      if (!manualEntryImage) {
+
+      if (!sealTagImage) {
         setError("Please attach an image of the seal tag");
         return;
       }
-      
-      // Call the existing handleScanComplete with the manual method and image
-      await handleScanComplete(scanInput.trim(), 'manual', manualEntryImage);
-      
-      // Clear the manual entry image after successful addition
-      setManualEntryImage(null);
-      
-      // Refocus the text field
-      setTimeout(() => {
-        if (textFieldRef.current) {
-          textFieldRef.current.focus();
-        }
-      }, 0);
+
+      setError("");
+      handleScanComplete(scanInput.trim(), "manual", sealTagImage);
+      setSealTagImage(null);
     };
-    
+
     // Toggle expanded seal details
     const toggleSealDetails = (sealId: string) => {
-      if (expandedSeal === sealId) {
-        setExpandedSeal(null);
+      if (expandedSealId === sealId) {
+        setExpandedSealId(null);
       } else {
-        setExpandedSeal(sealId);
+        setExpandedSealId(sealId);
       }
     };
-    
-    // Check if all seals are verified
-    useEffect(() => {
-      const allSealsVerified = operatorSeals.length > 0 && 
-        sealComparison.matched.length === operatorSeals.length;
-      
-      setSealTagsVerified(allSealsVerified);
-    }, [operatorSeals, sealComparison, setSealTagsVerified]);
 
-    // Function to render image preview
+    // Render image preview
     const renderImagePreview = (file: File | null) => {
       if (!file) return null;
       
       return (
-        <img 
-          src={URL.createObjectURL(file)}
-          alt="Seal Tag Preview"
-          style={{ 
-            maxWidth: '100%', 
-            maxHeight: '150px', 
-            borderRadius: '4px',
-            objectFit: 'contain'
-          }}
-        />
+        <Box sx={{ mt: 1, mb: 2 }}>
+          <Typography variant="subtitle2">Image Preview:</Typography>
+          <Box
+            component="img"
+            src={URL.createObjectURL(file)}
+            alt="Seal Tag Preview"
+            sx={{ 
+              maxWidth: '100%', 
+              maxHeight: '150px',
+              borderRadius: 1,
+              border: '1px solid #ccc'
+            }}
+          />
+        </Box>
       );
     };
 
-    // Determine the source of a seal (Operator, Guard, or Both)
-    const getSealSource = (sealId: string) => {
-      const isOperator = operatorSeals.some(seal => seal.id === sealId);
-      const isGuard = guardScannedSeals.some(seal => seal.id === sealId);
-      
-      if (isOperator && isGuard) return "Both";
-      if (isOperator) return "Operator";
-      if (isGuard) return "Guard";
-      return "Unknown";
-    };
-
-    // Determine the status of a seal (Matched, Not Scanned)
-    const getSealStatus = (sealId: string) => {
-      if (sealComparison.matched.includes(sealId)) return "Matched";
-      return "Not Scanned";
-    };
-
-    // Get seal by ID from either operator or guard seals
-    const getSealById = (sealId: string) => {
-      const guardSeal = guardScannedSeals.find(seal => seal.id === sealId);
-      const operatorSeal = operatorSeals.find(seal => seal.id === sealId);
-      return { guardSeal, operatorSeal };
-    };
-
-    // Get combined list of all seals
+    // Get all seal IDs from both operator and guard
     const getAllSeals = () => {
-      const allSealIds = new Set([
-        ...operatorSeals.map(seal => seal.id),
-        ...guardScannedSeals.map(seal => seal.id)
-      ]);
-      return Array.from(allSealIds);
-    };
-
-    // Get the method display for a seal
-    const getSealMethod = (sealId: string) => {
-      const { guardSeal, operatorSeal } = getSealById(sealId);
-      
-      // First check if it's an operator seal, use its method directly from session data
-      if (operatorSeal) {
-        // Get the actual method from session data
-        const actualSeal = session.sealTags?.find(tag => tag.barcode === sealId);
-        if (actualSeal) {
-          return actualSeal.method === 'digital' ? "Digitally Scanned" : "Manually Entered";
-        }
-      }
-      
-      // If it's a guard-only seal, use the guard's method
-      if (guardSeal) {
-        return guardSeal.method === 'digital' ? "Digitally Scanned" : "Manually Entered";
-      }
-      
-      return "Unknown";
+      const guardIds = guardScannedSeals.map(seal => seal.id);
+      const operatorIds = operatorSeals.map(seal => seal.id);
+      return [...new Set([...guardIds, ...operatorIds])];
     };
 
     // Delete a guard seal
     const deleteGuardSeal = async (sealId: string) => {
-      try {
-        // Confirm with user before deleting
-        if (!confirm(`Are you sure you want to delete seal tag ${sealId}?`)) {
-          return;
-        }
-        
-        // Send delete request to API
-        const response = await fetch(`/api/sessions/${sessionId}/guardSealTags/${sealId}`, {
-          method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to delete seal tag: ${response.status}`);
-        }
-        
-        // Remove from local state
-        setGuardScannedSeals(prev => prev.filter(seal => seal.id !== sealId));
-        
-        // Update comparison
-        const updatedSeals = guardScannedSeals.filter(seal => seal.id !== sealId);
-        updateSealComparison(updatedSeals);
-        
-        toast.success("Seal tag deleted successfully");
-      } catch (error) {
-        console.error("Error deleting seal tag:", error);
-        toast.error(`Failed to delete seal tag: ${error instanceof Error ? error.message : "Unknown error"}`);
+      if (!confirm("Are you sure you want to delete this seal tag?")) {
+        return;
       }
+      
+      const updatedSeals = guardScannedSeals.filter(seal => seal.id !== sealId);
+      setGuardScannedSeals(updatedSeals);
+      updateSealComparison(updatedSeals);
     };
+
+    // Update verification status based on matched seals
+    useEffect(() => {
+      const operatorIds = operatorSeals.map(seal => seal.id);
+      const guardIds = guardScannedSeals.map(seal => seal.id);
+      
+      // Check if all operator seals have been scanned by guard
+      const allSealsVerified = operatorIds.every(id => guardIds.includes(id));
+      setSealTagsVerified(allSealsVerified);
+    }, [operatorSeals, guardScannedSeals, setSealTagsVerified]);
 
     return (
       <Box>
-        <Typography variant="h6" gutterBottom>
-          Seal Tag Verification
+        <Typography variant="h6" component="h2">
+          Seal Tags Verification
         </Typography>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
           Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
         </Typography>
         
-        {/* Scanning and Manual Entry Section */}
-        <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
-          {/* QR Scanner Section */}
-          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Scan QR/Barcode
-            </Typography>
-            <ClientSideQrScanner
-              onScanWithImage={(data: string, imageFile: File) => {
-                // Trim the tag ID to ensure consistent comparison
-                const trimmedData = data.trim();
-                
-                // Check if already scanned
-                if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
-                  setError(`Tag ID "${trimmedData}" already scanned in this session`);
-                  setTimeout(() => setError(""), 3000);
-                  return;
-                }
-                
-                handleScanComplete(trimmedData, 'digital', imageFile);
-              }}
-              buttonText="Scan QR Code"
-              scannerTitle="Scan Seal Tag"
-              buttonVariant="contained"
-            />
-          </Box>
+        {/* Scan or Enter Seal Tag Section */}
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>
+            Scan Seal Tags
+          </Typography>
           
-          {/* Manual Entry Section */}
-          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Manual Entry
-            </Typography>
-            <TextField
-              label="Seal Tag ID"
-              variant="outlined"
-              fullWidth
-              value={scanInput}
-              onChange={(e) => {
-                setScanInput(e.target.value);
-                // Keep focus on the text field
-                if (textFieldRef.current) {
-                  textFieldRef.current.focus();
-                }
-              }}
-              inputRef={textFieldRef}
-              error={!!scanError || !!error}
-              helperText={scanError || error}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Button 
-                      onClick={handleAddManualSealTag} 
-                      disabled={!scanInput || !manualEntryImage}
-                    >
-                      Add
-                    </Button>
-                  </InputAdornment>
-                ),
-              }}
-              autoFocus
-              sx={{ mb: 2 }}
-            />
-            
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-              {!manualEntryImage ? (
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    startIcon={<PhotoCamera />}
-                    sx={{ height: '56px' }}
-                  >
-                    Take Photo
-                    <input
-                      type="file"
-                      hidden
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleManualSealTagImageChange}
-                    />
-                  </Button>
+          {showScanner ? (
+            <Box sx={{ mb: 2 }}>
+              <ClientSideQrScanner
+                onScan={handleScannedBarcode}
+                buttonText="Close Scanner"
+                buttonVariant="outlined"
+              />
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={() => setShowScanner(false)}
+                sx={{ mt: 2, width: '100%' }}
+              >
+                Cancel Scanning
+              </Button>
+            </Box>
+          ) : (
+            <Box>
+              {manualEntry ? (
+                <>
+                  <TextField
+                    fullWidth
+                    label="Seal Tag ID"
+                    value={scanInput}
+                    onChange={(e) => setScanInput(e.target.value)}
+                    placeholder="Enter seal tag ID"
+                    inputRef={textFieldRef}
+                    error={!!scanError}
+                    helperText={scanError}
+                    sx={{ mb: 2 }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton 
+                            onClick={() => setScanInput('')}
+                            edge="end"
+                          >
+                            <Close />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
                   
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    startIcon={<CloudUpload />}
-                    sx={{ height: '56px' }}
-                  >
-                    Upload
-                    <input
-                      type="file"
-                      hidden
-                      accept="image/*"
-                      onChange={handleManualSealTagImageChange}
-                    />
-                  </Button>
-                </Box>
-              ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Box sx={{ maxWidth: '150px', maxHeight: '150px', overflow: 'hidden', borderRadius: '4px' }}>
-                    {renderImagePreview(manualEntryImage)}
+                  <Box sx={{ mb: 2 }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<PhotoCamera />}
+                      sx={{ mr: 1 }}
+                    >
+                      Take Photo
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleManualSealTagImageChange}
+                      />
+                    </Button>
+                    
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<AddAPhoto />}
+                    >
+                      Upload Image
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={handleManualSealTagImageChange}
+                      />
+                    </Button>
                   </Box>
+                  
+                  {renderImagePreview(sealTagImage)}
+                  
+                  {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Button 
+                      variant="outlined"
+                      onClick={() => {
+                        setManualEntry(false);
+                        setScanInput('');
+                        setSealTagImage(null);
+                        setError('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="contained"
+                      onClick={handleAddManualSealTag}
+                      disabled={!scanInput.trim() || !sealTagImage}
+                    >
+                      Add Seal Tag
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<QrCodeScanner />}
+                    onClick={() => setShowScanner(true)}
+                  >
+                    Scan QR/Barcode
+                  </Button>
                   <Button
                     variant="outlined"
-                    color="error"
-                    startIcon={<Delete />}
-                    onClick={() => setManualEntryImage(null)}
+                    startIcon={<Create />}
+                    onClick={() => setManualEntry(true)}
                   >
-                    Remove Image
+                    Manual Entry
                   </Button>
                 </Box>
               )}
             </Box>
-          </Box>
-        </Box>
+          )}
+        </Paper>
         
         {/* Verification Progress */}
-        <Box sx={{ mb: 3, position: 'relative' }}>
-          <Box sx={{ 
-            borderRadius: '4px', 
-            border: '1px solid rgba(0, 0, 0, 0.12)',
-            overflow: 'hidden'
-          }}>
-            <Box sx={{ 
-              width: `${(sealComparison.matched.length / Math.max(operatorSeals.length, 1)) * 100}%`, 
-              height: '6px',
-              bgcolor: 'success.main'
-            }} />
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-            <Typography variant="body2">
-              Verification Progress: <strong>{sealComparison.matched.length}/{operatorSeals.length} Verified</strong>
-            </Typography>
-            
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <CheckCircle color="success" fontSize="small" />
-                <Typography variant="body2">{sealComparison.matched.length} Matched</Typography>
-              </Box>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Warning color="warning" fontSize="small" />
-                <Typography variant="body2">{operatorSeals.length - sealComparison.matched.length} Not Scanned</Typography>
-              </Box>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Verification Progress:
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Chip 
+                label={`${sealComparison.matched.length} Matched`} 
+                color="success" 
+                variant="outlined"
+                icon={<CheckCircle />}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Chip 
+                label={`${operatorSeals.length - sealComparison.matched.length} Remaining`} 
+                color="warning" 
+                variant="outlined"
+                icon={<Warning />}
+              />
             </Box>
           </Box>
         </Box>
         
-        {/* Seals Table */}
-        <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>Registered Seal Tags: {guardScannedSeals.length}</span>
-        </Typography>
-        
-        {guardScannedSeals.length > 0 ? (
-          <Box sx={{ 
-            mt: 1, 
-            p: 2, 
-            bgcolor: 'background.paper', 
-            borderRadius: 1
-          }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Seal Tag ID</TableCell>
-                  <TableCell>Method</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {getAllSeals().map(sealId => {
-                  const isExpanded = expandedSeal === sealId;
-                  const status = getSealStatus(sealId);
-                  const source = getSealSource(sealId);
-                  const method = getSealMethod(sealId);
-                  const isMatched = status === "Matched";
-                  
-                  return (
-                    <React.Fragment key={sealId}>
-                      <TableRow 
-                        sx={{ 
-                          ...(isMatched && { backgroundColor: 'rgba(46, 125, 50, 0.08)' })
-                        }}
+        {/* Seal Tags Table */}
+        <TableContainer component={Paper} sx={{ mb: 3 }}>
+          <Table aria-label="seal tags table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Seal Tag ID</TableCell>
+                <TableCell>Guard Method</TableCell>
+                <TableCell>Operator Method</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="center">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {guardScannedSeals.map(seal => (
+                <React.Fragment key={seal.id}>
+                  <TableRow>
+                    <TableCell>{seal.id}</TableCell>
+                    <TableCell>{seal.method}</TableCell>
+                    <TableCell>{seal.operatorMethod || "Unknown"}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        color={seal.verified ? "success" : "error"}
+                        label={seal.verified ? "Matched" : "No Match"}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton size="small" onClick={() => toggleSealDetails(seal.id)}>
+                        {expandedSealId === seal.id ? <ExpandLess /> : <ExpandMore />}
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        color="error" 
+                        onClick={() => deleteGuardSeal(seal.id)}
+                        sx={{ ml: 1 }}
                       >
-                        <TableCell>
-                          {isMatched && <CheckCircle color="success" fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />}
-                          {sealId}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={method} 
-                            size="small" 
-                            color={method === "Digitally Scanned" ? "primary" : "secondary"}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={source} 
-                            size="small" 
-                            color={source === "Both" ? "success" : "primary"}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={status} 
-                            size="small" 
-                            color={status === "Matched" ? "success" : "warning"}
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <IconButton size="small" onClick={() => toggleSealDetails(sealId)}>
-                            {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                          </IconButton>
-                          
-                          {source === "Guard" && (
-                            <IconButton size="small" color="error" onClick={() => deleteGuardSeal(sealId)}>
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                      
-                      {/* Expanded Details */}
-                      {isExpanded && (
-                        <TableRow>
-                          <TableCell colSpan={5} sx={{ py: 0 }}>
-                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                              <Box sx={{ p: 2, display: 'flex', gap: 2 }}>
-                                {/* Operator Information */}
-                                <Box sx={{ flex: 1, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '4px', p: 2 }}>
-                                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                                    Operator Information
-                                  </Typography>
-                                  
-                                  {source === "Operator" || source === "Both" ? (
-                                    <>
-                                      <Box sx={{ mb: 1 }}>
-                                        <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
-                                        <Typography variant="body1">{sealId}</Typography>
-                                      </Box>
-                                      
-                                      <Box sx={{ mb: 1 }}>
-                                        <Typography variant="body2" color="text.secondary">Method:</Typography>
-                                        <Chip 
-                                          label={getSealMethod(sealId)} 
-                                          size="small" 
-                                          color={method === "Digitally Scanned" ? "primary" : "secondary"}
-                                        />
-                                      </Box>
-                                      
-                                      <Box sx={{ mb: 1 }}>
-                                        <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                        <Typography variant="body1">
-                                          {new Date(operatorSeals.find(seal => seal.id === sealId)?.timestamp || Date.now()).toLocaleString()}
-                                        </Typography>
-                                      </Box>
-                                      
-                                      <Box>
-                                        <Typography variant="body2" color="text.secondary">Image:</Typography>
-                                        <Box sx={{ mt: 1, maxWidth: '200px', maxHeight: '200px' }}>
-                                          <img 
-                                            src={session.sealTags?.find(tag => tag.barcode === sealId)?.imageUrl || "/placeholder-image.jpg"}
-                                            alt="Seal Tag" 
-                                            style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
-                                          />
-                                        </Box>
-                                      </Box>
-                                    </>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      No operator information available
-                                    </Typography>
-                                  )}
-                                </Box>
-                                
-                                {/* Guard Information */}
-                                <Box sx={{ flex: 1, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '4px', p: 2 }}>
-                                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                                    Guard Information
-                                  </Typography>
-                                  
-                                  {source === "Guard" || source === "Both" ? (
-                                    <>
-                                      <Box sx={{ mb: 1 }}>
-                                        <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
-                                        <Typography variant="body1">{sealId}</Typography>
-                                      </Box>
-                                      
-                                      <Box sx={{ mb: 1 }}>
-                                        <Typography variant="body2" color="text.secondary">Method:</Typography>
-                                        <Chip 
-                                          label={getSealMethod(sealId)} 
-                                          size="small" 
-                                          color={method === "Digitally Scanned" ? "primary" : "secondary"}
-                                        />
-                                      </Box>
-                                      
-                                      <Box sx={{ mb: 1 }}>
-                                        <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                        <Typography variant="body1">
-                                          {new Date(guardScannedSeals.find(seal => seal.id === sealId)?.timestamp || Date.now()).toLocaleString()}
-                                        </Typography>
-                                      </Box>
-                                      
-                                      <Box>
-                                        <Typography variant="body2" color="text.secondary">Image:</Typography>
-                                        {guardScannedSeals.find(seal => seal.id === sealId)?.image ? (
-                                          <Box sx={{ mt: 1, maxWidth: '200px', maxHeight: '200px' }}>
-                                            <img 
-                                              src={guardScannedSeals.find(seal => seal.id === sealId)?.image} 
-                                              alt="Seal Tag" 
-                                              style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
-                                            />
-                                          </Box>
-                                        ) : (
-                                          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                                            <Button
-                                              variant="outlined"
-                                              size="small"
-                                              startIcon={<CloudUpload />}
-                                              component="label"
-                                            >
-                                              Upload Image
-                                              <input
-                                                type="file"
-                                                hidden
-                                                accept="image/*"
-                                                onChange={(e) => {
-                                                  // Handle image upload logic
-                                                }}
-                                              />
-                                            </Button>
-                                            
-                                            <Button
-                                              variant="outlined"
-                                              size="small"
-                                              startIcon={<PhotoCamera />}
-                                              component="label"
-                                            >
-                                              Capture Image
-                                              <input
-                                                type="file"
-                                                hidden
-                                                accept="image/*"
-                                                capture="environment"
-                                                onChange={(e) => {
-                                                  // Handle image capture logic
-                                                }}
-                                              />
-                                            </Button>
-                                          </Box>
-                                        )}
-                                      </Box>
-                                    </>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      Not scanned by guard
-                                    </Typography>
-                                  )}
-                                </Box>
-                              </Box>
-                              
-                              <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <Typography variant="body2" sx={{ mr: 1 }}>Verification Status:</Typography>
-                                  <Chip 
-                                    label={status === "Matched" ? "Verified Match" : "Not Scanned"} 
-                                    size="small" 
-                                    color={status === "Matched" ? "success" : "warning"}
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                  {expandedSealId === seal.id && (
+                    <TableRow>
+                      <TableCell colSpan={5}>
+                        <Box sx={{ py: 2, px: 3, bgcolor: 'background.paper', borderRadius: 1 }}>
+                          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="subtitle2">Seal ID: {seal.id}</Typography>
+                              <Typography variant="body2">
+                                Guard Method: {seal.method}
+                              </Typography>
+                              <Typography variant="body2">
+                                Operator Method: {seal.operatorMethod || "Unknown"}
+                              </Typography>
+                              <Typography variant="body2" sx={{ mt: 1 }}>
+                                Status: {seal.verified ? "Matched" : "No Match"}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                              {seal.image && (
+                                <Box>
+                                  <Typography variant="subtitle2">Guard Scan Image:</Typography>
+                                  <Box
+                                    component="img"
+                                    src={seal.image}
+                                    alt={`Seal ${seal.id} image`}
+                                    sx={{
+                                      maxWidth: '100%',
+                                      maxHeight: '150px',
+                                      objectFit: 'contain',
+                                      mt: 1,
+                                      border: '1px solid #ccc',
+                                      borderRadius: 1
+                                    }}
                                   />
                                 </Box>
-                                
-                                <Button size="small" onClick={() => toggleSealDetails(sealId)}>
-                                  Close Details
-                                </Button>
-                              </Box>
-                            </Collapse>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Box>
-        ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
-            No seal tags scanned yet. Scan or manually enter seal tags above.
+                              )}
+                              {seal.operatorImage && (
+                                <Box sx={{ mt: 2 }}>
+                                  <Typography variant="subtitle2">Operator Scan Image:</Typography>
+                                  <Box
+                                    component="img"
+                                    src={seal.operatorImage}
+                                    alt={`Seal ${seal.id} operator image`}
+                                    sx={{
+                                      maxWidth: '100%',
+                                      maxHeight: '150px',
+                                      objectFit: 'contain',
+                                      mt: 1,
+                                      border: '1px solid #ccc',
+                                      borderRadius: 1
+                                    }}
+                                  />
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        
+        {/* Display Operator Seals */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Operator Seals:
           </Typography>
-        )}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {operatorSeals.map(seal => (
+              <Chip 
+                key={seal.id}
+                label={seal.id}
+                color={sealComparison.matched.includes(seal.id) ? "success" : "default"}
+                icon={sealComparison.matched.includes(seal.id) ? <CheckCircle /> : undefined}
+                variant="outlined"
+              />
+            ))}
+            {operatorSeals.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                No operator seals found for this session.
+              </Typography>
+            )}
+          </Box>
+        </Box>
       </Box>
     );
   };
