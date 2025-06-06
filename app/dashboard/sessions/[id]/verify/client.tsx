@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import {
   Box, Button, Container, Paper, Typography, Tab, Tabs, 
   Grid, TextField, Chip, IconButton, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert
 } from '@mui/material';
 import {
   ArrowBack, CheckCircle, Lock, QrCodeScanner, Camera, 
@@ -157,11 +157,20 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   const [scanInput, setScanInput] = useState('');
   const [scanError, setScanError] = useState('');
   const [verifying, setVerifying] = useState(false);
-  const [tabValue, setTabValue] = useState<string>('sealTags');
+  
+  // Updated to support 4 tabs matching OPERATOR's structure
+  const [tabValue, setTabValue] = useState<string>('loadingDetails');
+  
   const [guardImages, setGuardImages] = useState<Record<string, any>>({});
   const [imageComments, setImageComments] = useState<Record<string, string>>({});
   const [openImageModal, setOpenImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  
+  // Track verification status for each tab section
+  const [loadingDetailsVerified, setLoadingDetailsVerified] = useState(false);
+  const [driverDetailsVerified, setDriverDetailsVerified] = useState(false);
+  const [sealTagsVerified, setSealTagsVerified] = useState(false);
+  const [imagesVerified, setImagesVerified] = useState(false);
   
   // Load session data on mount
   useEffect(() => {
@@ -517,7 +526,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     }
   };
 
-  // Tab change handler
+  // Handle tab change
   const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
     setTabValue(newValue);
   };
@@ -527,371 +536,939 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     router.push(`/dashboard/sessions/${sessionId}`);
   };
 
-  if (loading) {
+  // Component for Loading Details Tab
+  const LoadingDetailsTab = ({
+    session,
+    verificationFields,
+    setVerificationFields,
+    setLoadingDetailsVerified
+  }: {
+    session: SessionType;
+    verificationFields: Record<string, any>;
+    setVerificationFields: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+    setLoadingDetailsVerified: React.Dispatch<React.SetStateAction<boolean>>;
+  }) => {
+    // Handle verifying a loading detail field
+    const verifyField = (field: string) => {
+      setVerificationFields(prev => ({
+        ...prev,
+        [field]: { verified: true, timestamp: new Date().toISOString() }
+      }));
+    };
+
+    // Check if all loading detail fields are verified
+    useEffect(() => {
+      if (!session.tripDetails) return;
+      
+      const loadingDetailFields = [
+        'transporterName', 'materialName', 'receiverPartyName', 'vehicleNumber',
+        'gpsImeiNumber', 'loadingSite', 'source', 'destination', 'cargoType'
+      ];
+      
+      const allVerified = loadingDetailFields.every(field => 
+        !session.tripDetails?.[field as keyof typeof session.tripDetails] || 
+        verificationFields[field]?.verified
+      );
+      
+      setLoadingDetailsVerified(allVerified);
+    }, [session, verificationFields, setLoadingDetailsVerified]);
+
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="error" variant="h6">{error}</Typography>
-        <Button variant="outlined" onClick={handleBack} sx={{ mt: 2 }}>
-          Go Back
-        </Button>
-      </Box>
-    );
-  }
-
-  if (!session) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h6">Session not found</Typography>
-        <Button variant="outlined" onClick={handleBack} sx={{ mt: 2 }}>
-          Go Back
-        </Button>
-      </Box>
-    );
-  }
-
-  return (
-    <Container maxWidth="xl">
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Button 
-          variant="outlined" 
-          startIcon={<ArrowBack />} 
-          onClick={handleBack}
-          sx={{ mr: 2 }}
-        >
-          Back to Session
-        </Button>
-        <Typography variant="h5" component="h1">
-          Trip Verification
-        </Typography>
-        <Chip 
-          label="IN PROGRESS" 
-          color="primary" 
-          sx={{ ml: 2, fontWeight: 'bold' }}
-        />
-      </Box>
-
-      {/* Session Details Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Box>
         <Typography variant="h6" gutterBottom>
-          Session Details
+          Loading Details Verification
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-              <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-              <Box>
-                <Typography variant="body2" color="text.secondary">Source</Typography>
-                <Typography variant="body1">{session.source}</Typography>
-              </Box>
-            </Box>
-          </Grid>
+          {session.tripDetails?.transporterName && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('transporterName')}:</Typography>
+                <Typography>{session.tripDetails.transporterName}</Typography>
+                {verificationFields['transporterName']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('transporterName')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
           
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-              <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-              <Box>
-                <Typography variant="body2" color="text.secondary">Destination</Typography>
-                <Typography variant="body1">{session.destination}</Typography>
-              </Box>
-            </Box>
-          </Grid>
+          {session.tripDetails?.materialName && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('materialName')}:</Typography>
+                <Typography>{session.tripDetails.materialName}</Typography>
+                {verificationFields['materialName']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('materialName')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
           
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-              <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
-              <Box>
-                <Typography variant="body2" color="text.secondary">Created At</Typography>
-                <Typography variant="body1">{new Date(session.createdAt).toLocaleString()}</Typography>
-              </Box>
-            </Box>
-          </Grid>
+          {session.tripDetails?.receiverPartyName && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('receiverPartyName')}:</Typography>
+                <Typography>{session.tripDetails.receiverPartyName}</Typography>
+                {verificationFields['receiverPartyName']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('receiverPartyName')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
           
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-              <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
-              <Box>
-                <Typography variant="body2" color="text.secondary">Company</Typography>
-                <Typography variant="body1">{session.company?.name || 'N/A'}</Typography>
-              </Box>
-            </Box>
-          </Grid>
+          {session.tripDetails?.vehicleNumber && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('vehicleNumber')}:</Typography>
+                <Typography>{session.tripDetails.vehicleNumber}</Typography>
+                {verificationFields['vehicleNumber']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('vehicleNumber')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
           
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-              <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
-              <Box>
-                <Typography variant="body2" color="text.secondary">Created By</Typography>
-                <Typography variant="body1">{session.createdBy?.name || 'N/A'}</Typography>
-              </Box>
-            </Box>
-          </Grid>
+          {session.tripDetails?.gpsImeiNumber && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('gpsImeiNumber')}:</Typography>
+                <Typography>{session.tripDetails.gpsImeiNumber}</Typography>
+                {verificationFields['gpsImeiNumber']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('gpsImeiNumber')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
           
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-              <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
-              <Box>
-                <Typography variant="body2" color="text.secondary">Vehicle Number</Typography>
-                <Typography variant="body1">{session.tripDetails?.vehicleNumber || 'N/A'}</Typography>
-              </Box>
-            </Box>
-          </Grid>
+          {/* Additional loading detail fields can be added here */}
         </Grid>
-      </Paper>
+      </Box>
+    );
+  };
 
-      {/* Tabbed Interface */}
-      <Paper sx={{ mb: 3 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange} 
-            aria-label="verification tabs" 
-            variant="scrollable" 
-            scrollButtons="auto"
-          >
-            <Tab label="Loading Details" value="loadingDetails" />
-            <Tab label="Session Info" value="sessionInfo" />
-            <Tab label="Seal Tags" value="sealTags" />
-            <Tab label="Driver Details" value="driverDetails" />
-            <Tab label="Images" value="images" />
-          </Tabs>
-        </Box>
+  // Component for Driver Details Tab
+  const DriverDetailsTab = ({
+    session,
+    verificationFields,
+    setVerificationFields,
+    setDriverDetailsVerified
+  }: {
+    session: SessionType;
+    verificationFields: Record<string, any>;
+    setVerificationFields: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+    setDriverDetailsVerified: React.Dispatch<React.SetStateAction<boolean>>;
+  }) => {
+    // Handle verifying a driver detail field
+    const verifyField = (field: string) => {
+      setVerificationFields(prev => ({
+        ...prev,
+        [field]: { verified: true, timestamp: new Date().toISOString() }
+      }));
+    };
+
+    // Check if all driver detail fields are verified
+    useEffect(() => {
+      if (!session.tripDetails) return;
+      
+      const driverDetailFields = [
+        'driverName', 'driverContactNumber', 'driverLicense'
+      ];
+      
+      const allVerified = driverDetailFields.every(field => 
+        !session.tripDetails?.[field as keyof typeof session.tripDetails] || 
+        verificationFields[field]?.verified
+      );
+      
+      setDriverDetailsVerified(allVerified);
+    }, [session, verificationFields, setDriverDetailsVerified]);
+
+    return (
+      <Box>
+        <Typography variant="h6" gutterBottom>
+          Driver Details Verification
+        </Typography>
+        <Grid container spacing={2}>
+          {session.tripDetails?.driverName && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('driverName')}:</Typography>
+                <Typography>{session.tripDetails.driverName}</Typography>
+                {verificationFields['driverName']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('driverName')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
+          
+          {session.tripDetails?.driverContactNumber && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('driverContactNumber')}:</Typography>
+                <Typography>{session.tripDetails.driverContactNumber}</Typography>
+                {verificationFields['driverContactNumber']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('driverContactNumber')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
+          
+          {session.tripDetails?.driverLicense && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('driverLicense')}:</Typography>
+                <Typography>{session.tripDetails.driverLicense}</Typography>
+                {verificationFields['driverLicense']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('driverLicense')}
+                    sx={{ mt: 1 }}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
+          
+          {/* Driver image if available */}
+          {session.images?.driverPicture && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">Driver Picture:</Typography>
+                <Box sx={{ mt: 1, mb: 1 }}>
+                  <img 
+                    src={session.images.driverPicture} 
+                    alt="Driver" 
+                    style={{ maxWidth: '100%', maxHeight: '200px', cursor: 'pointer' }}
+                    onClick={() => {
+                      setSelectedImage(session.images?.driverPicture || '');
+                      setOpenImageModal(true);
+                    }}
+                  />
+                </Box>
+                {verificationFields['driverPicture']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyField('driverPicture')}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    );
+  };
+
+  // Component for Seal Tags Tab
+  const SealTagsTab = ({
+    session,
+    operatorSeals,
+    guardScannedSeals,
+    sealComparison,
+    scanInput,
+    setScanInput,
+    scanError,
+    handleScanComplete,
+    setSealTagsVerified
+  }: {
+    session: SessionType;
+    operatorSeals: Array<{id: string, method?: string, timestamp?: string}>;
+    guardScannedSeals: Array<any>;
+    sealComparison: {matched: string[], mismatched: string[]};
+    scanInput: string;
+    setScanInput: React.Dispatch<React.SetStateAction<string>>;
+    scanError: string;
+    handleScanComplete: (barcodeData: string, method: string, imageFile?: File) => Promise<void>;
+    setSealTagsVerified: React.Dispatch<React.SetStateAction<boolean>>;
+  }) => {
+    // Check if all seals are verified
+    useEffect(() => {
+      const allSealsVerified = operatorSeals.length > 0 && 
+        sealComparison.matched.length === operatorSeals.length;
+      
+      setSealTagsVerified(allSealsVerified);
+    }, [operatorSeals, sealComparison, setSealTagsVerified]);
+
+    return (
+      <Box>
+        <Typography variant="h6" gutterBottom>
+          Seal Tag Verification
+        </Typography>
         
-        {/* Loading Details Tab */}
-        <TabPanel value={tabValue} index="loadingDetails">
-          <Typography variant="h6" gutterBottom>
-            Loading Details
+        {/* Scanning Form */}
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Scan or Enter Seal Tags
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+            <TextField
+              label="Seal Tag Barcode"
+              variant="outlined"
+              fullWidth
+              value={scanInput}
+              onChange={(e) => setScanInput(e.target.value)}
+              error={!!scanError}
+              helperText={scanError}
+              sx={{ mr: 2 }}
+            />
+            <Button
+              variant="contained"
+              onClick={() => handleScanComplete(scanInput, 'manual')}
+              startIcon={<AddAPhoto />}
+            >
+              Add Manually
+            </Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Use QR scanner or enter seal tag barcode manually
+          </Typography>
+        </Paper>
+        
+        {/* Seal Comparison */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Seal Verification Status
           </Typography>
           <Grid container spacing={2}>
-            {session.tripDetails?.transporterName && (
-              <Grid item xs={12} md={6}>
-                <Paper elevation={1} sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('transporterName')}:</Typography>
-                  <Typography>{session.tripDetails.transporterName}</Typography>
-                  {verificationFields['transporterName']?.verified ? (
-                    <Chip 
-                      icon={<CheckCircle fontSize="small" />}
-                      label="Verified" 
-                      color="success" 
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => verifyField('transporterName')}
-                      sx={{ mt: 1 }}
-                    >
-                      Verify
-                    </Button>
-                  )}
-                </Paper>
-              </Grid>
-            )}
-            
-            {session.tripDetails?.materialName && (
-              <Grid item xs={12} md={6}>
-                <Paper elevation={1} sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('materialName')}:</Typography>
-                  <Typography>{session.tripDetails.materialName}</Typography>
-                  {verificationFields['materialName']?.verified ? (
-                    <Chip 
-                      icon={<CheckCircle fontSize="small" />}
-                      label="Verified" 
-                      color="success" 
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => verifyField('materialName')}
-                      sx={{ mt: 1 }}
-                    >
-                      Verify
-                    </Button>
-                  )}
-                </Paper>
-              </Grid>
-            )}
-            
-            {/* Add more fields as needed */}
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
+              <Paper sx={{ p: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
+                <Typography variant="h6">Operator Seals</Typography>
+                <Typography variant="h4">{operatorSeals.length}</Typography>
+              </Paper>
+            </Grid>
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
+              <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
+                <Typography variant="h6">Matched Seals</Typography>
+                <Typography variant="h4">{sealComparison.matched.length}</Typography>
+              </Paper>
+            </Grid>
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
+              <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
+                <Typography variant="h6">Mismatched Seals</Typography>
+                <Typography variant="h4">{sealComparison.mismatched.length}</Typography>
+              </Paper>
+            </Grid>
           </Grid>
-        </TabPanel>
+        </Box>
         
-        {/* Seal Tags Tab */}
-        <TabPanel value={tabValue} index="sealTags">
-          <Typography variant="h6" gutterBottom>
-            Seal Tag Verification
-          </Typography>
+        {/* Seal Lists */}
+        <Grid container spacing={3}>
+          {/* Operator Seals */}
+          <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+            <Paper sx={{ p: 2, height: '100%' }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Operator Seals
+              </Typography>
+              {operatorSeals.length > 0 ? (
+                operatorSeals.map((seal, index) => (
+                  <Chip 
+                    key={`op-${index}`}
+                    label={seal.id}
+                    color={sealComparison.matched.includes(seal.id) ? "success" : "default"}
+                    sx={{ m: 0.5 }}
+                    icon={sealComparison.matched.includes(seal.id) ? <CheckCircle /> : undefined}
+                  />
+                ))
+              ) : (
+                <Typography color="text.secondary">No operator seals found</Typography>
+              )}
+            </Paper>
+          </Grid>
           
-          {/* Scanning Form */}
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Scan or Enter Seal Tags
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-              <TextField
-                label="Seal Tag Barcode"
-                variant="outlined"
-                fullWidth
-                value={scanInput}
-                onChange={(e) => setScanInput(e.target.value)}
-                error={!!scanError}
-                helperText={scanError}
-                sx={{ mr: 2 }}
-              />
-              <Button
-                variant="contained"
-                onClick={() => handleScanComplete(scanInput, 'manual')}
-                startIcon={<AddAPhoto />}
-              >
-                Add Manually
-              </Button>
-            </Box>
-            <Typography variant="caption" color="text.secondary">
-              Use QR scanner or enter seal tag barcode manually
-            </Typography>
+          {/* Guard Scanned Seals */}
+          <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+            <Paper sx={{ p: 2, height: '100%' }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Guard Scanned Seals
+              </Typography>
+              {guardScannedSeals.length > 0 ? (
+                guardScannedSeals.map((seal, index) => (
+                  <Chip 
+                    key={`guard-${index}`}
+                    label={seal.id}
+                    color={seal.verified ? "success" : "error"}
+                    sx={{ m: 0.5 }}
+                    icon={seal.verified ? <CheckCircle /> : <Info />}
+                  />
+                ))
+              ) : (
+                <Typography color="text.secondary">No seals scanned yet</Typography>
+              )}
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
+
+  // Component for Images Tab
+  const ImagesTab = ({
+    session,
+    guardImages,
+    setGuardImages,
+    imageComments,
+    setImageComments,
+    setImagesVerified
+  }: {
+    session: SessionType;
+    guardImages: Record<string, any>;
+    setGuardImages: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+    imageComments: Record<string, string>;
+    setImageComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    setImagesVerified: React.Dispatch<React.SetStateAction<boolean>>;
+  }) => {
+    // Handle verifying an image
+    const verifyImage = (imageKey: string) => {
+      setVerificationFields(prev => ({
+        ...prev,
+        [imageKey]: { verified: true, timestamp: new Date().toISOString() }
+      }));
+    };
+
+    // Handle image comment change
+    const handleImageCommentChange = (imageKey: string, comment: string) => {
+      setImageComments(prev => ({
+        ...prev,
+        [imageKey]: comment
+      }));
+    };
+
+    // Check if all required images are verified
+    useEffect(() => {
+      if (!session.images) return;
+      
+      const requiredImages = [
+        'vehicleNumberPlatePicture', 'gpsImeiPicture'
+      ];
+      
+      const allVerified = requiredImages.every(imageKey => 
+        !session.images?.[imageKey as keyof typeof session.images] || 
+        verificationFields[imageKey]?.verified
+      );
+      
+      setImagesVerified(allVerified);
+    }, [session, verificationFields, setImagesVerified]);
+
+    return (
+      <Box>
+        <Typography variant="h6" gutterBottom>
+          Images Verification
+        </Typography>
+        <Grid container spacing={2}>
+          {/* Vehicle Number Plate Image */}
+          {session.images?.vehicleNumberPlatePicture && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">Vehicle Number Plate:</Typography>
+                <Box sx={{ mt: 1, mb: 1 }}>
+                  <img 
+                    src={session.images.vehicleNumberPlatePicture} 
+                    alt="Vehicle Number Plate" 
+                    style={{ maxWidth: '100%', maxHeight: '200px', cursor: 'pointer' }}
+                    onClick={() => {
+                      setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
+                      setOpenImageModal(true);
+                    }}
+                  />
+                </Box>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  variant="outlined"
+                  placeholder="Add verification notes..."
+                  value={imageComments['vehicleNumberPlatePicture'] || ''}
+                  onChange={(e) => handleImageCommentChange('vehicleNumberPlatePicture', e.target.value)}
+                  sx={{ mb: 1 }}
+                />
+                {verificationFields['vehicleNumberPlatePicture']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyImage('vehicleNumberPlatePicture')}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
+          
+          {/* GPS IMEI Image */}
+          {session.images?.gpsImeiPicture && (
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold">GPS IMEI Picture:</Typography>
+                <Box sx={{ mt: 1, mb: 1 }}>
+                  <img 
+                    src={session.images.gpsImeiPicture} 
+                    alt="GPS IMEI" 
+                    style={{ maxWidth: '100%', maxHeight: '200px', cursor: 'pointer' }}
+                    onClick={() => {
+                      setSelectedImage(session.images?.gpsImeiPicture || '');
+                      setOpenImageModal(true);
+                    }}
+                  />
+                </Box>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  variant="outlined"
+                  placeholder="Add verification notes..."
+                  value={imageComments['gpsImeiPicture'] || ''}
+                  onChange={(e) => handleImageCommentChange('gpsImeiPicture', e.target.value)}
+                  sx={{ mb: 1 }}
+                />
+                {verificationFields['gpsImeiPicture']?.verified ? (
+                  <Chip 
+                    icon={<CheckCircle fontSize="small" />}
+                    label="Verified" 
+                    color="success" 
+                    size="small"
+                  />
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => verifyImage('gpsImeiPicture')}
+                  >
+                    Verify
+                  </Button>
+                )}
+              </Paper>
+            </Grid>
+          )}
+          
+          {/* Vehicle Images Gallery */}
+          {session.images?.vehicleImages && session.images.vehicleImages.length > 0 && (
+            <Grid sx={{ gridColumn: { xs: 'span 12' } }}>
+              <Paper elevation={1} sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                  Vehicle Images:
+                </Typography>
+                <Grid container spacing={1}>
+                  {session.images.vehicleImages.map((imageUrl, index) => (
+                    <Grid sx={{ gridColumn: { xs: 'span 6', sm: 'span 4', md: 'span 3' } }} key={`vehicle-${index}`}>
+                      <Box 
+                        sx={{ 
+                          border: '1px solid #eee', 
+                          borderRadius: 1, 
+                          overflow: 'hidden',
+                          position: 'relative'
+                        }}
+                      >
+                        <img 
+                          src={imageUrl} 
+                          alt={`Vehicle ${index + 1}`} 
+                          style={{ 
+                            width: '100%', 
+                            height: '150px', 
+                            objectFit: 'cover',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => {
+                            setSelectedImage(imageUrl);
+                            setOpenImageModal(true);
+                          }}
+                        />
+                        {verificationFields[`vehicleImage_${index}`]?.verified ? (
+                          <Chip 
+                            icon={<CheckCircle fontSize="small" />}
+                            label="Verified" 
+                            color="success" 
+                            size="small"
+                            sx={{ 
+                              position: 'absolute', 
+                              bottom: 4, 
+                              right: 4,
+                              fontSize: '0.7rem'
+                            }}
+                          />
+                        ) : (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => verifyImage(`vehicleImage_${index}`)}
+                            sx={{ 
+                              position: 'absolute', 
+                              bottom: 4, 
+                              right: 4,
+                              minWidth: 0,
+                              p: 0.5
+                            }}
+                          >
+                            <CheckCircle fontSize="small" />
+                          </Button>
+                        )}
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    );
+  };
+
+  // Return the UI
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Back button and title */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          onClick={handleBack}
+        >
+          Back
+        </Button>
+        
+        <Typography variant="h5" component="h1">
+          Verify Trip Session
+        </Typography>
+      </Box>
+      
+      {/* Error or Loading states */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : session ? (
+        <>
+          {/* Session info card */}
+          <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
+            <Grid container spacing={2}>
+              <Grid sx={{ gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 3' } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <LocationOn color="primary" sx={{ mr: 1 }} />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Source</Typography>
+                    <Typography variant="body1">{session.source}</Typography>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              <Grid sx={{ gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 3' } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <LocationOn color="primary" sx={{ mr: 1 }} />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Destination</Typography>
+                    <Typography variant="body1">{session.destination}</Typography>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              <Grid sx={{ gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 3' } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <DirectionsCar color="primary" sx={{ mr: 1 }} />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Vehicle</Typography>
+                    <Typography variant="body1">{session.tripDetails?.vehicleNumber || 'N/A'}</Typography>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              <Grid sx={{ gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 3' } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <AccessTime color="primary" sx={{ mr: 1 }} />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Created</Typography>
+                    <Typography variant="body1">
+                      {new Date(session.createdAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+            </Grid>
           </Paper>
           
-          {/* Seal Comparison */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Seal Verification Status
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <Paper sx={{ p: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
-                  <Typography variant="h6">Operator Seals</Typography>
-                  <Typography variant="h4">{operatorSeals.length}</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
-                  <Typography variant="h6">Matched Seals</Typography>
-                  <Typography variant="h4">{sealComparison.matched.length}</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
-                  <Typography variant="h6">Mismatched Seals</Typography>
-                  <Typography variant="h4">{sealComparison.mismatched.length}</Typography>
-                </Paper>
-              </Grid>
-            </Grid>
+          {/* Tabs for verification sections */}
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab 
+                value="loadingDetails" 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography>Loading Details</Typography>
+                    {loadingDetailsVerified && <CheckCircle color="success" sx={{ ml: 1, fontSize: 16 }} />}
+                  </Box>
+                } 
+              />
+              <Tab 
+                value="driverDetails" 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography>Driver Details</Typography>
+                    {driverDetailsVerified && <CheckCircle color="success" sx={{ ml: 1, fontSize: 16 }} />}
+                  </Box>
+                } 
+              />
+              <Tab 
+                value="sealTags" 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography>Seal Tags</Typography>
+                    {sealTagsVerified && <CheckCircle color="success" sx={{ ml: 1, fontSize: 16 }} />}
+                  </Box>
+                } 
+              />
+              <Tab 
+                value="images" 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography>Images</Typography>
+                    {imagesVerified && <CheckCircle color="success" sx={{ ml: 1, fontSize: 16 }} />}
+                  </Box>
+                } 
+              />
+            </Tabs>
+            
+            {/* Tab panels */}
+            <TabPanel value={tabValue} index="loadingDetails">
+              <LoadingDetailsTab 
+                session={session}
+                verificationFields={verificationFields}
+                setVerificationFields={setVerificationFields}
+                setLoadingDetailsVerified={setLoadingDetailsVerified}
+              />
+            </TabPanel>
+            
+            <TabPanel value={tabValue} index="driverDetails">
+              <DriverDetailsTab 
+                session={session}
+                verificationFields={verificationFields}
+                setVerificationFields={setVerificationFields}
+                setDriverDetailsVerified={setDriverDetailsVerified}
+              />
+            </TabPanel>
+            
+            <TabPanel value={tabValue} index="sealTags">
+              <SealTagsTab 
+                session={session}
+                operatorSeals={operatorSeals}
+                guardScannedSeals={guardScannedSeals}
+                sealComparison={sealComparison}
+                scanInput={scanInput}
+                setScanInput={setScanInput}
+                scanError={scanError}
+                handleScanComplete={handleScanComplete}
+                setSealTagsVerified={setSealTagsVerified}
+              />
+            </TabPanel>
+            
+            <TabPanel value={tabValue} index="images">
+              <ImagesTab 
+                session={session}
+                guardImages={guardImages}
+                setGuardImages={setGuardImages}
+                imageComments={imageComments}
+                setImageComments={setImageComments}
+                setImagesVerified={setImagesVerified}
+              />
+            </TabPanel>
+          </Paper>
+          
+          {/* Verification actions */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+            <Button
+              variant="outlined"
+              onClick={handleBack}
+            >
+              Cancel
+            </Button>
+            
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleVerifySeal}
+              disabled={verifying || !(loadingDetailsVerified && driverDetailsVerified && sealTagsVerified && imagesVerified)}
+              startIcon={verifying ? <CircularProgress size={20} /> : <CheckCircle />}
+            >
+              {verifying ? 'Verifying...' : 'Complete Verification'}
+            </Button>
           </Box>
           
-          {/* Seal Lists */}
-          <Grid container spacing={3}>
-            {/* Operator Seals */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2, height: '100%' }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Operator Seals
-                </Typography>
-                {operatorSeals.length > 0 ? (
-                  operatorSeals.map((seal, index) => (
-                    <Chip 
-                      key={`op-${index}`}
-                      label={seal.id}
-                      color={sealComparison.matched.includes(seal.id) ? "success" : "default"}
-                      sx={{ m: 0.5 }}
-                      icon={sealComparison.matched.includes(seal.id) ? <CheckCircle /> : undefined}
-                    />
-                  ))
-                ) : (
-                  <Typography color="text.secondary">No operator seals found</Typography>
-                )}
-              </Paper>
-            </Grid>
-            
-            {/* Guard Scanned Seals */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2, height: '100%' }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Guard Scanned Seals
-                </Typography>
-                {guardScannedSeals.length > 0 ? (
-                  guardScannedSeals.map((seal, index) => (
-                    <Chip 
-                      key={`guard-${index}`}
-                      label={seal.id}
-                      color={seal.verified ? "success" : "error"}
-                      sx={{ m: 0.5 }}
-                      icon={seal.verified ? <CheckCircle /> : <Info />}
-                    />
-                  ))
-                ) : (
-                  <Typography color="text.secondary">No seals scanned yet</Typography>
-                )}
-              </Paper>
-            </Grid>
-          </Grid>
-        </TabPanel>
-        
-        {/* Complete Verification Button */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 4 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            size="large"
-            startIcon={<CheckCircle />}
-            onClick={handleVerifySeal}
-            disabled={verifying || sealComparison.matched.length !== operatorSeals.length}
+          {/* Image preview modal */}
+          <Dialog
+            open={openImageModal}
+            onClose={() => setOpenImageModal(false)}
+            maxWidth="md"
+            fullWidth
           >
-            {verifying ? (
-              <>
-                <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-                Verifying...
-              </>
-            ) : (
-              'Complete Verification'
-            )}
-          </Button>
-        </Box>
-      </Paper>
-      
-      {/* Image Modal */}
-      <Dialog 
-        open={openImageModal} 
-        onClose={() => setOpenImageModal(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          Image Preview
-          <IconButton 
-            aria-label="close"
-            onClick={() => setOpenImageModal(false)}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          {selectedImage && (
-            <Box
-              component="img"
-              src={selectedImage}
-              alt="Preview"
-              sx={{
-                width: '100%',
-                maxHeight: '70vh',
-                objectFit: 'contain'
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+            <DialogTitle>
+              Image Preview
+              <IconButton
+                aria-label="close"
+                onClick={() => setOpenImageModal(false)}
+                sx={{ position: 'absolute', right: 8, top: 8 }}
+              >
+                <Close />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent>
+              {selectedImage && (
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <img 
+                    src={selectedImage} 
+                    alt="Preview" 
+                    style={{ maxWidth: '100%', maxHeight: '70vh' }} 
+                  />
+                </Box>
+              )}
+            </DialogContent>
+          </Dialog>
+        </>
+      ) : (
+        <Alert severity="warning">
+          Session not found or access denied
+        </Alert>
+      )}
     </Container>
   );
 } 
