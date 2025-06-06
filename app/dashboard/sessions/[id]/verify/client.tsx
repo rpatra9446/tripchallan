@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
@@ -884,6 +884,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   }) => {
     // Add state for manual entry image
     const [manualEntryImage, setManualEntryImage] = useState<File | null>(null);
+    // Create a ref for the text field to maintain focus
+    const textFieldRef = useRef<HTMLInputElement>(null);
     
     // Handle image upload for manual seal tag entries
     const handleManualSealTagImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -894,6 +896,13 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         // Process the image (resize/compress) before setting it
         const processedFile = await processImageForUpload(file);
         setManualEntryImage(file);
+        
+        // Refocus the text field after image selection
+        setTimeout(() => {
+          if (textFieldRef.current) {
+            textFieldRef.current.focus();
+          }
+        }, 0);
       } catch (error) {
         console.error("Error processing seal tag image:", error);
         setError("Failed to process image. Please try with a smaller image.");
@@ -918,6 +927,13 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       
       // Clear the manual entry image after successful addition
       setManualEntryImage(null);
+      
+      // Refocus the text field
+      setTimeout(() => {
+        if (textFieldRef.current) {
+          textFieldRef.current.focus();
+        }
+      }, 0);
     };
     
     // Check if all seals are verified
@@ -989,7 +1005,14 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               variant="outlined"
               fullWidth
               value={scanInput}
-              onChange={(e) => setScanInput(e.target.value)}
+              onChange={(e) => {
+                setScanInput(e.target.value);
+                // Keep focus on the text field
+                if (textFieldRef.current) {
+                  textFieldRef.current.focus();
+                }
+              }}
+              inputRef={textFieldRef}
               error={!!scanError}
               helperText={scanError}
               InputProps={{
@@ -1004,6 +1027,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   </InputAdornment>
                 ),
               }}
+              autoFocus
               sx={{ mb: 2 }}
             />
             
