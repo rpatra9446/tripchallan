@@ -40,7 +40,8 @@ import {
   Description,
   Edit,
   Person,
-  Phone
+  Phone,
+  Business
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
@@ -343,6 +344,113 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   return (
     <Container maxWidth="md">
       {/* Content */}
+      <Box mb={3}>
+        <Button
+          component={Link}
+          href="/dashboard/sessions"
+          startIcon={<ArrowBack />}
+        >
+          Back to Sessions
+        </Button>
+      </Box>
+
+      {/* Trip Details Section */}
+      <Paper elevation={1} sx={{ mb: 3, overflow: 'hidden' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          p: 2,
+          borderBottom: '1px solid rgba(0,0,0,0.1)' 
+        }}>
+          <Typography variant="h5" component="h1">Trip Details</Typography>
+          <Chip 
+            label={session?.status === "IN_PROGRESS" ? "IN PROGRESS" : session?.status} 
+            color={
+              session?.status === "IN_PROGRESS" ? "primary" : 
+              session?.status === "COMPLETED" ? "success" : 
+              session?.status === "CANCELLED" ? "error" : 
+              "default"
+            }
+          />
+        </Box>
+
+        <Box sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>Basic Information</Typography>
+          
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+            {/* Left Column: Source, Destination, Created At */}
+            <Box sx={{ flex: 1 }}>
+              {/* Source */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Source:</Typography>
+                  <Typography variant="body1">{session?.source || 'SourceData'}</Typography>
+                </Box>
+              </Box>
+
+              {/* Destination */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Destination:</Typography>
+                  <Typography variant="body1">{session?.destination || 'DestinationData'}</Typography>
+                </Box>
+              </Box>
+
+              {/* Created Timestamp */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Created:</Typography>
+                  <Typography variant="body1">
+                    {session ? new Date(session.createdAt).toLocaleString('en-US', {
+                      year: 'numeric',
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: 'numeric',
+                      hour12: true
+                    }) : 'N/A'}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Right Column: Vehicle Number, Company, Created By */}
+            <Box sx={{ flex: 1 }}>
+              {/* Vehicle Number */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
+                  <Typography variant="body1">{session?.tripDetails?.vehicleNumber || 'MH02AB1234'}</Typography>
+                </Box>
+              </Box>
+
+              {/* Company */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Company:</Typography>
+                  <Typography variant="body1">{session?.company?.name || 'N/A'}</Typography>
+                </Box>
+              </Box>
+
+              {/* Operator Created */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Operator Created:</Typography>
+                  <Typography variant="body1">{session?.createdBy?.name || 'N/A'}</Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Paper>
+
       <CommentSection sessionId={sessionId} />
 
       {/* Images Section - Comes before Reports section */}
