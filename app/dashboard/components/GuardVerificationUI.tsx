@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   QrCode, InfoOutlined, PhotoLibrary, CheckCircle, Warning,
-  KeyboardArrowDown, Cancel, LocationOn
+  KeyboardArrowDown, Cancel, LocationOn, PhotoCamera, CloudUpload, Delete
 } from '@mui/icons-material';
 import ClientSideQrScanner from '../../components/ClientSideQrScanner';
 
@@ -227,6 +227,54 @@ export default function GuardVerificationUI({
               helperText={scanError}
               sx={{ mb: 2 }}
             />
+            
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<PhotoCamera />}
+                  sx={{ height: '56px' }}
+                >
+                  Take Photo
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        if (scanInput) {
+                          onScanComplete(scanInput, 'manual', file);
+                        }
+                      }
+                    }}
+                  />
+                </Button>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                  sx={{ height: '56px' }}
+                >
+                  Upload
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        if (scanInput) {
+                          onScanComplete(scanInput, 'manual', file);
+                        }
+                      }
+                    }}
+                  />
+                </Button>
+              </Box>
+            </Box>
           </Box>
         </Box>
         
