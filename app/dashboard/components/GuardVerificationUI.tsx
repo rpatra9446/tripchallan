@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import {
   Box, Paper, Typography, Tabs, Tab, Button, Chip, Grid,
   TableContainer, Table, TableHead, TableBody, TableRow, TableCell,
-  TextField, IconButton, Alert
+  TextField, IconButton, Alert, InputAdornment
 } from '@mui/material';
 import {
-  InfoOutlined, QrCode, PhotoLibrary, CheckCircle, Warning,
-  KeyboardArrowDown, Cancel
+  QrCode, InfoOutlined, PhotoLibrary, CheckCircle, Warning,
+  KeyboardArrowDown, Cancel, LocationOn
 } from '@mui/icons-material';
-import ClientSideQrScanner from '@/app/components/ClientSideQrScanner';
+import ClientSideQrScanner from '../../components/ClientSideQrScanner';
 
 // TabPanel component for verification mode
 function TabPanel(props: {
@@ -185,59 +185,49 @@ export default function GuardVerificationUI({
           Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
         </Typography>
         
-        {/* Scan Seal Tags */}
-        <Box sx={{ mt: 3, mb: 3 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Scan Seal Tags
-          </Typography>
+        {/* Scan Seal Tags - Updated UI to match OPERATOR's Create New Trip page */}
+        <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Scan QR/Barcode
+            </Typography>
+            <ClientSideQrScanner
+              onScanWithImage={(data, imageFile) => {
+                // Handle scan with image
+                onScanComplete(data, 'digital', imageFile);
+              }}
+              buttonText="Scan QR Code"
+              scannerTitle="Scan Seal Tag"
+              buttonVariant="outlined"
+            />
+          </Box>
           
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Manual Entry
+            </Typography>
             <TextField
-              variant="outlined"
-              size="small"
-              placeholder="Seal Tag ID"
+              fullWidth
+              label="Seal Tag ID"
               value={scanInput}
               onChange={(e) => onScanInputChange(e.target.value)}
-              sx={{ flexGrow: 1 }}
-            />
-            
-            <Button
-              variant="outlined"
-              onClick={() => onScanComplete(scanInput, 'manual')}
-              sx={{ minWidth: 120 }}
-            >
-              Add Manually
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<QrCode />}
-              onClick={() => {
-                // Show QR scanner
-                const scanner = document.getElementById('qr-scanner-container');
-                if (scanner) {
-                  scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
-                }
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button 
+                      onClick={() => onScanComplete(scanInput, 'manual')}
+                      disabled={!scanInput}
+                    >
+                      Add
+                    </Button>
+                  </InputAdornment>
+                ),
               }}
-              sx={{ minWidth: 200 }}
-            >
-              Scan QR/Barcode
-            </Button>
-          </Box>
-          
-          <Box id="qr-scanner-container" sx={{ mb: 2, display: 'none' }}>
-            <ClientSideQrScanner 
-              onScan={(data) => onScanComplete(data, 'digital')}
-              buttonText="Scan QR Code"
+              error={!!scanError}
+              helperText={scanError}
+              sx={{ mb: 2 }}
             />
           </Box>
-          
-          {scanError && (
-            <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-              {scanError}
-            </Alert>
-          )}
         </Box>
         
         {/* Verification Progress */}
