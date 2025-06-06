@@ -700,12 +700,38 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     setVerificationFields: React.Dispatch<React.SetStateAction<Record<string, any>>>;
     setDriverDetailsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
+    // Add state for comments
+    const [fieldComments, setFieldComments] = useState<Record<string, string>>({});
+
     // Handle verifying a driver detail field
     const verifyField = (field: string) => {
       setVerificationFields(prev => ({
         ...prev,
-        [field]: { verified: true, timestamp: new Date().toISOString() }
+        [field]: { 
+          verified: !prev[field]?.verified, 
+          timestamp: new Date().toISOString(),
+          comment: fieldComments[field] || ''
+        }
       }));
+    };
+
+    // Handle comment changes
+    const handleCommentChange = (field: string, comment: string) => {
+      setFieldComments(prev => ({
+        ...prev,
+        [field]: comment
+      }));
+      
+      // Update the verification field if already verified
+      if (verificationFields[field]?.verified) {
+        setVerificationFields(prev => ({
+          ...prev,
+          [field]: {
+            ...prev[field],
+            comment
+          }
+        }));
+      }
     };
 
     // Check if all driver detail fields are verified
@@ -713,140 +739,120 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       if (!session.tripDetails) return;
       
       const driverDetailFields = [
-        'driverName', 'driverContactNumber', 'driverLicense'
+        'driverName', 'driverContactNumber', 'driverLicense', 'driverPicture'
       ];
       
-      const allVerified = driverDetailFields.every(field => 
-        !session.tripDetails?.[field as keyof typeof session.tripDetails] || 
-        verificationFields[field]?.verified
-      );
+      const allVerified = driverDetailFields.every(field => {
+        if (field === 'driverPicture') {
+          return !session.images?.driverPicture || verificationFields[field]?.verified;
+        }
+        return !session.tripDetails?.[field as keyof typeof session.tripDetails] || 
+          verificationFields[field]?.verified;
+      });
       
       setDriverDetailsVerified(allVerified);
     }, [session, verificationFields, setDriverDetailsVerified]);
+
+    // Define the field display data
+    const fieldDisplayData = [
+      { field: 'driverName', label: 'Driver Name' },
+      { field: 'driverContactNumber', label: 'Driver Contact Number' },
+      { field: 'driverLicense', label: 'Driver License' },
+    ];
 
     return (
       <Box>
         <Typography variant="h6" gutterBottom>
           Driver Details Verification
         </Typography>
-        <Grid container spacing={2}>
-          {session.tripDetails?.driverName && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('driverName')}:</Typography>
-                <Typography>{session.tripDetails.driverName}</Typography>
-                {verificationFields['driverName']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
+        
+        <Table>
+          <TableHead>
+            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+              <TableCell width="25%">Field Name</TableCell>
+              <TableCell width="25%">Field Value</TableCell>
+              <TableCell width="15%" align="center">Verification</TableCell>
+              <TableCell width="35%">Comment</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {fieldDisplayData.map(({ field, label }) => {
+              const value = session.tripDetails?.[field as keyof typeof session.tripDetails];
+              if (value === undefined || value === null) return null;
+              
+              return (
+                <TableRow key={field} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                  <TableCell sx={{ fontWeight: 'medium' }}>{label}</TableCell>
+                  <TableCell>{value.toString()}</TableCell>
+                  <TableCell align="center">
+                    <FormControlLabel
+                      control={
+                        <Radio
+                          checked={!!verificationFields[field]?.verified}
+                          onChange={() => verifyField(field)}
+                          color="success"
+                        />
+                      }
+                      label="Verified"
+                      sx={{ m: 0 }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Add verification"
+                      value={fieldComments[field] || ''}
+                      onChange={(e) => handleCommentChange(field, e.target.value)}
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            }).filter(Boolean)}
+            
+            {/* Driver image if available */}
+            {session.images?.driverPicture && (
+              <TableRow sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                <TableCell sx={{ fontWeight: 'medium' }}>Driver Picture</TableCell>
+                <TableCell>
+                  <Box sx={{ mt: 1, mb: 1 }}>
+                    <img 
+                      src={session.images.driverPicture} 
+                      alt="Driver" 
+                      style={{ maxWidth: '100%', maxHeight: '120px', cursor: 'pointer' }}
+                      onClick={() => {
+                        setSelectedImage(session.images?.driverPicture || '');
+                        setOpenImageModal(true);
+                      }}
+                    />
+                  </Box>
+                </TableCell>
+                <TableCell align="center">
+                  <FormControlLabel
+                    control={
+                      <Radio
+                        checked={!!verificationFields['driverPicture']?.verified}
+                        onChange={() => verifyField('driverPicture')}
+                        color="success"
+                      />
+                    }
+                    label="Verified"
+                    sx={{ m: 0 }}
                   />
-                ) : (
-                  <Button
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    fullWidth
                     size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('driverName')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {session.tripDetails?.driverContactNumber && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('driverContactNumber')}:</Typography>
-                <Typography>{session.tripDetails.driverContactNumber}</Typography>
-                {verificationFields['driverContactNumber']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
+                    placeholder="Add verification"
+                    value={fieldComments['driverPicture'] || ''}
+                    onChange={(e) => handleCommentChange('driverPicture', e.target.value)}
                   />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('driverContactNumber')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {session.tripDetails?.driverLicense && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('driverLicense')}:</Typography>
-                <Typography>{session.tripDetails.driverLicense}</Typography>
-                {verificationFields['driverLicense']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('driverLicense')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {/* Driver image if available */}
-          {session.images?.driverPicture && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">Driver Picture:</Typography>
-                <Box sx={{ mt: 1, mb: 1 }}>
-                  <img 
-                    src={session.images.driverPicture} 
-                    alt="Driver" 
-                    style={{ maxWidth: '100%', maxHeight: '200px', cursor: 'pointer' }}
-                    onClick={() => {
-                      setSelectedImage(session.images?.driverPicture || '');
-                      setOpenImageModal(true);
-                    }}
-                  />
-                </Box>
-                {verificationFields['driverPicture']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('driverPicture')}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-        </Grid>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </Box>
     );
   };
