@@ -185,20 +185,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const renderVerificationResults = () => null;
   const startVerification = () => {
     if (session && sessionId) {
-      // If user is a guard, directly go to guard verification
-      if (userRole === "EMPLOYEE" && userSubrole === EmployeeSubrole.GUARD) {
-        router.push(`/dashboard/sessions/${sessionId}/verify`);
-      } else {
-        // Otherwise confirm starting verification
-        setConfirmDialogOpen(true);
-      }
+      router.push(`/dashboard/sessions/${sessionId}/verify`);
     }
   };
   const closeConfirmDialog = () => {
     setConfirmDialogOpen(false);
   };
 
-  // Confirmation dialog for non-guard users
+  // Confirmation dialog for guard users
   const confirmVerification = () => {
     setConfirmDialogOpen(false);
     router.push(`/dashboard/sessions/${sessionId}/verify`);
@@ -294,6 +288,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     console.log("SessionDetailClient mounted, fetching session details...");
     fetchSessionDetails();
   }, [fetchSessionDetails]);
+
+  // Set user role from auth session
+  useEffect(() => {
+    if (authSession?.user) {
+      setUserRole(authSession.user.role || "");
+      setUserSubrole(authSession.user.subrole || "");
+      console.log("User role set:", authSession.user.role, "Subrole:", authSession.user.subrole);
+    }
+  }, [authSession]);
 
   // Other functions and useEffect hooks
 
@@ -686,8 +689,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </>
       )}
 
-      {/* Start Trip Verification Button (for all users) */}
-      {!canVerify && session?.status === SessionStatus.IN_PROGRESS && (
+      {/* Start Trip Verification Button - Only for Guards */}
+      {isGuard && session?.status === SessionStatus.IN_PROGRESS && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
           <Button
             variant="contained"
@@ -702,7 +705,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Box>
       )}
 
-      {/* Confirmation Dialog for non-guard users */}
+      {/* Dialog only needed for Guard confirmation */}
       <Dialog
         open={confirmDialogOpen}
         onClose={closeConfirmDialog}
