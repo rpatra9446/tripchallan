@@ -318,7 +318,99 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         {!verificationFormOpen && (
           <>
             <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              {/* Content for session details */}
+              {/* Trip Details Section */}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                borderBottom: '1px solid rgba(0,0,0,0.1)',
+                pb: 2,
+                mb: 2
+              }}>
+                <Typography variant="h5" component="h1">Trip Details</Typography>
+                <Chip 
+                  label={session?.status === "IN_PROGRESS" ? "IN PROGRESS" : session?.status} 
+                  color={
+                    session?.status === "IN_PROGRESS" ? "primary" : 
+                    session?.status === "COMPLETED" ? "success" : 
+                    session?.status === "CANCELLED" ? "error" : 
+                    "default"
+                  }
+                />
+              </Box>
+
+              <Typography variant="h6" gutterBottom>Basic Information</Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+                {/* Left Column: Source, Destination, Created At */}
+                <Box sx={{ flex: 1 }}>
+                  {/* Source */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Source:</Typography>
+                      <Typography variant="body1">{session?.source || 'N/A'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Destination */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Destination:</Typography>
+                      <Typography variant="body1">{session?.destination || 'N/A'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Created Timestamp */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Created:</Typography>
+                      <Typography variant="body1">
+                        {session?.createdAt ? new Date(session.createdAt).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: 'numeric',
+                          hour12: true
+                        }) : 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Right Column: Vehicle Number, Company, Created By */}
+                <Box sx={{ flex: 1 }}>
+                  {/* Vehicle Number */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
+                      <Typography variant="body1">{session?.tripDetails?.vehicleNumber || 'N/A'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Company */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Company:</Typography>
+                      <Typography variant="body1">{session?.company?.name || 'N/A'}</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Operator Created */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                    <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Operator Created:</Typography>
+                      <Typography variant="body1">{session?.createdBy?.name || 'N/A'}</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
             </Paper>
 
             {/* Comment section */}
