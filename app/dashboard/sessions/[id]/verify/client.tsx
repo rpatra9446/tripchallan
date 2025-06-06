@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 import {
   Box, Button, Container, Paper, Typography, Tab, Tabs, 
   Grid, TextField, Chip, IconButton, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions, Alert
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert,
+  FormControlLabel, Radio
 } from '@mui/material';
 import {
   ArrowBack, CheckCircle, Lock, QrCodeScanner, Camera, 
@@ -66,6 +67,11 @@ type SessionType = {
     loadingSite?: string;
     receiverPartyName?: string;
     driverLicense?: string;
+    registrationCertificate?: string;
+    cargoType?: string;
+    numberOfPackages?: number;
+    source?: string;
+    destination?: string;
   };
   images?: {
     gpsImeiPicture?: string;
@@ -548,12 +554,38 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     setVerificationFields: React.Dispatch<React.SetStateAction<Record<string, any>>>;
     setLoadingDetailsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
+    // Add state for comments
+    const [fieldComments, setFieldComments] = useState<Record<string, string>>({});
+
     // Handle verifying a loading detail field
     const verifyField = (field: string) => {
       setVerificationFields(prev => ({
         ...prev,
-        [field]: { verified: true, timestamp: new Date().toISOString() }
+        [field]: { 
+          verified: true, 
+          timestamp: new Date().toISOString(),
+          comment: fieldComments[field] || ''
+        }
       }));
+    };
+
+    // Handle comment changes
+    const handleCommentChange = (field: string, comment: string) => {
+      setFieldComments(prev => ({
+        ...prev,
+        [field]: comment
+      }));
+      
+      // Update the verification field if already verified
+      if (verificationFields[field]?.verified) {
+        setVerificationFields(prev => ({
+          ...prev,
+          [field]: {
+            ...prev[field],
+            comment
+          }
+        }));
+      }
     };
 
     // Check if all loading detail fields are verified
@@ -562,7 +594,10 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       
       const loadingDetailFields = [
         'transporterName', 'materialName', 'receiverPartyName', 'vehicleNumber',
-        'gpsImeiNumber', 'loadingSite', 'source', 'destination', 'cargoType'
+        'registrationCertificate', 'gpsImeiNumber', 'cargoType', 'loadingSite', 
+        'source', 'destination', 'loaderName', 'challanRoyaltyNumber', 'doNumber', 
+        'freight', 'qualityOfMaterials', 'numberOfPackages', 'tpNumber', 
+        'grossWeight', 'tareWeight', 'netMaterialWeight', 'loaderMobileNumber'
       ];
       
       const allVerified = loadingDetailFields.every(field => 
@@ -573,148 +608,84 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       setLoadingDetailsVerified(allVerified);
     }, [session, verificationFields, setLoadingDetailsVerified]);
 
+    // Render a verification field with comment
+    const renderVerificationField = (fieldName: string, displayLabel: string, value: any) => {
+      if (value === undefined || value === null) return null;
+      
+      return (
+        <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Typography variant="subtitle1" fontWeight="bold">{displayLabel}:</Typography>
+            <Typography>{value.toString()}</Typography>
+            
+            {/* Comment field */}
+            <TextField
+              fullWidth
+              multiline
+              rows={1}
+              variant="outlined"
+              placeholder="Add verification comment..."
+              value={fieldComments[fieldName] || ''}
+              onChange={(e) => handleCommentChange(fieldName, e.target.value)}
+              sx={{ mt: 1, mb: 1 }}
+              size="small"
+            />
+            
+            {/* Verification status */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <FormControlLabel
+                control={
+                  <Radio
+                    checked={!!verificationFields[fieldName]?.verified}
+                    onChange={() => verifyField(fieldName)}
+                    color="success"
+                    size="small"
+                  />
+                }
+                label="Verified"
+              />
+              
+              {verificationFields[fieldName]?.verified && (
+                <Chip 
+                  icon={<CheckCircle fontSize="small" />}
+                  label="Verified" 
+                  color="success" 
+                  size="small"
+                />
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+      );
+    };
+
     return (
       <Box>
         <Typography variant="h6" gutterBottom>
           Loading Details Verification
         </Typography>
         <Grid container spacing={2}>
-          {session.tripDetails?.transporterName && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('transporterName')}:</Typography>
-                <Typography>{session.tripDetails.transporterName}</Typography>
-                {verificationFields['transporterName']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('transporterName')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {session.tripDetails?.materialName && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('materialName')}:</Typography>
-                <Typography>{session.tripDetails.materialName}</Typography>
-                {verificationFields['materialName']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('materialName')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {session.tripDetails?.receiverPartyName && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('receiverPartyName')}:</Typography>
-                <Typography>{session.tripDetails.receiverPartyName}</Typography>
-                {verificationFields['receiverPartyName']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('receiverPartyName')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {session.tripDetails?.vehicleNumber && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('vehicleNumber')}:</Typography>
-                <Typography>{session.tripDetails.vehicleNumber}</Typography>
-                {verificationFields['vehicleNumber']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('vehicleNumber')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {session.tripDetails?.gpsImeiNumber && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{getFieldLabel('gpsImeiNumber')}:</Typography>
-                <Typography>{session.tripDetails.gpsImeiNumber}</Typography>
-                {verificationFields['gpsImeiNumber']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyField('gpsImeiNumber')}
-                    sx={{ mt: 1 }}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {/* Additional loading detail fields can be added here */}
+          {renderVerificationField('transporterName', 'Transporter Name', session.tripDetails?.transporterName)}
+          {renderVerificationField('materialName', 'Material Name', session.tripDetails?.materialName)}
+          {renderVerificationField('receiverPartyName', 'Receiver Party Name', session.tripDetails?.receiverPartyName)}
+          {renderVerificationField('vehicleNumber', 'Vehicle Number', session.tripDetails?.vehicleNumber)}
+          {renderVerificationField('registrationCertificate', 'Registration Certificate', session.tripDetails?.registrationCertificate)}
+          {renderVerificationField('gpsImeiNumber', 'GPS IMEI Number', session.tripDetails?.gpsImeiNumber)}
+          {renderVerificationField('cargoType', 'Cargo Type', session.tripDetails?.cargoType)}
+          {renderVerificationField('qualityOfMaterials', 'Quality of Materials', session.tripDetails?.qualityOfMaterials)}
+          {renderVerificationField('numberOfPackages', 'Number of Packages', session.tripDetails?.numberOfPackages)}
+          {renderVerificationField('loadingSite', 'Loading Site', session.tripDetails?.loadingSite)}
+          {renderVerificationField('source', 'Source', session.tripDetails?.source)}
+          {renderVerificationField('destination', 'Destination', session.tripDetails?.destination)}
+          {renderVerificationField('loaderName', 'Loader Name', session.tripDetails?.loaderName)}
+          {renderVerificationField('loaderMobileNumber', 'Loader Mobile Number', session.tripDetails?.loaderMobileNumber)}
+          {renderVerificationField('challanRoyaltyNumber', 'Challan Royalty Number', session.tripDetails?.challanRoyaltyNumber)}
+          {renderVerificationField('doNumber', 'DO Number', session.tripDetails?.doNumber)}
+          {renderVerificationField('freight', 'Freight', session.tripDetails?.freight ? `₹${session.tripDetails?.freight}` : null)}
+          {renderVerificationField('tpNumber', 'TP Number', session.tripDetails?.tpNumber)}
+          {renderVerificationField('grossWeight', 'Gross Weight (kg)', session.tripDetails?.grossWeight)}
+          {renderVerificationField('tareWeight', 'Tare Weight (kg)', session.tripDetails?.tareWeight)}
+          {renderVerificationField('netMaterialWeight', 'Net Material Weight (kg)', session.tripDetails?.netMaterialWeight)}
         </Grid>
       </Box>
     );
