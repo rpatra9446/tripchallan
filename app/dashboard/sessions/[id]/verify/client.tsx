@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import {
   Box, Button, Container, Paper, Typography, Tab, Tabs, 
   Grid, TextField, Chip, IconButton, CircularProgress,
@@ -337,6 +337,21 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     setGuardScannedSeals(updatedGuardSeals as any);
   };
 
+  // Process images for upload
+  const processImageForUpload = async (imageFile: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        resolve(base64data);
+      };
+      reader.onerror = () => {
+        reject(new Error("Failed to read image file"));
+      };
+      reader.readAsDataURL(imageFile);
+    });
+  };
+
   // Handle scanned barcode
   const handleScanComplete = async (barcodeData: string, method: string = 'digital', imageFile?: File) => {
     if (!sessionId || !barcodeData.trim()) {
@@ -399,21 +414,6 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       console.error("Error registering seal tag:", error);
       toast.error(`Failed to register seal tag: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
-  };
-
-  // Process images for upload
-  const processImageForUpload = async (imageFile: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        resolve(base64data);
-      };
-      reader.onerror = () => {
-        reject(new Error("Failed to read image file"));
-      };
-      reader.readAsDataURL(imageFile);
-    });
   };
 
   // Verify a field
