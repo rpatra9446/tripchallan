@@ -211,7 +211,9 @@ export default function GuardVerificationUI({
               fullWidth
               label="Seal Tag ID"
               value={scanInput}
-              onChange={(e) => onScanInputChange(e.target.value)}
+              onChange={(e) => {
+                onScanInputChange(e.target.value);
+              }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">

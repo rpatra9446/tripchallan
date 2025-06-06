@@ -1014,7 +1014,10 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               fullWidth
               label="Seal Tag ID"
               value={scanInput}
-              onChange={(e) => setScanInput(e.target.value)}
+              onChange={(e) => {
+                setScanInput(e.target.value);
+                setError("");
+              }}
               error={!!scanError || !!error}
               helperText={scanError || error}
               InputProps={{
