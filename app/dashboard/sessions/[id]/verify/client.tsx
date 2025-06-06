@@ -413,6 +413,12 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         return;
       }
 
+      // Check if image is provided for both methods
+      if (!imageFile) {
+        toast.error("Image is required for seal tag verification");
+        return;
+      }
+
       // Prepare image data if provided
       let imageData = null;
       if (imageFile) {
@@ -428,7 +434,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         body: JSON.stringify({
           barcode: barcodeData,
           method,
-          imageData
+          imageData,
+          timestamp: new Date().toISOString()
         }),
       });
       
@@ -916,10 +923,10 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     const [error, setError] = useState<string>("");
     const textFieldRef = useRef<HTMLInputElement>(null);
 
-    // Handle scanned barcode
-    const handleScannedBarcode = (barcode: string) => {
+    // Handle scanned barcode with image
+    const handleScannedBarcode = (data: string, imageFile: File) => {
       setShowScanner(false);
-      handleScanComplete(barcode, "digital");
+      handleScanComplete(data, "digital", imageFile);
     };
 
     // Handle manual seal tag image change
@@ -1029,18 +1036,10 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
           {showScanner ? (
             <Box sx={{ mb: 2 }}>
               <ClientSideQrScanner
-                onScan={handleScannedBarcode}
+                onScanWithImage={handleScannedBarcode}
                 buttonText="Close Scanner"
                 buttonVariant="outlined"
               />
-              <Button 
-                variant="contained" 
-                color="primary" 
-                onClick={() => setShowScanner(false)}
-                sx={{ mt: 2, width: '100%' }}
-              >
-                Cancel Scanning
-              </Button>
             </Box>
           ) : (
             <Box>
@@ -1053,9 +1052,12 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     onChange={(e) => setScanInput(e.target.value)}
                     placeholder="Enter seal tag ID"
                     inputRef={textFieldRef}
-                    error={!!scanError}
-                    helperText={scanError}
+                    error={!!scanError || !!error}
+                    helperText={scanError || error}
                     sx={{ mb: 2 }}
+                    inputProps={{
+                      maxLength: 50, // Set a reasonable max length
+                    }}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
@@ -1237,18 +1239,9 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                             <Delete />
                           </IconButton>
                         )}
-                        {!guardSeal && operatorSeal && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => handleScanComplete(sealId, 'manual')}
-                            sx={{ ml: 1 }}
-                          >
-                            Scan
-                          </Button>
-                        )}
                       </TableCell>
                     </TableRow>
+                    
                     {expandedSealId === sealId && (
                       <TableRow>
                         <TableCell colSpan={5}>
@@ -1349,20 +1342,6 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                                         borderRadius: 1
                                       }}
                                     />
-                                  </Box>
-                                )}
-                                
-                                {/* Actions if not scanned by guard */}
-                                {!guardSeal && operatorSeal && (
-                                  <Box sx={{ mt: 2 }}>
-                                    <Button
-                                      variant="contained"
-                                      size="small"
-                                      onClick={() => handleScanComplete(sealId, 'manual')}
-                                      sx={{ mt: 1 }}
-                                    >
-                                      Mark as Scanned
-                                    </Button>
                                   </Box>
                                 )}
                               </Box>

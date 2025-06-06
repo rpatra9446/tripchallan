@@ -47,7 +47,6 @@ const ClientSideQrScanner: React.FC<ClientSideQrScannerProps> = ({
   buttonVariant = 'contained',
 }) => {
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
   const handleClose = useCallback(() => {
     setOpen(false);
@@ -75,13 +74,42 @@ const ClientSideQrScanner: React.FC<ClientSideQrScannerProps> = ({
       </Button>
       
       {open && (
-        <QrScannerDialog 
+        <Dialog
           open={open}
           onClose={handleClose}
-          onScan={onScan ? handleScan : undefined}
-          onScanWithImage={onScanWithImage ? handleScanWithImage : undefined}
-          title={scannerTitle}
-        />
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>
+            {scannerTitle}
+            <IconButton
+              aria-label="close"
+              onClick={handleClose}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+              }}
+            >
+              <Close />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ position: 'relative' }}>
+              <div id="html5-qrcode-scanner" style={{ width: '100%' }}></div>
+              <Typography variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
+                Point your camera at a QR code or barcode to scan
+              </Typography>
+            </Box>
+          </DialogContent>
+          <QrScannerDialog 
+            open={open}
+            onClose={handleClose}
+            onScan={onScan ? handleScan : undefined}
+            onScanWithImage={onScanWithImage ? handleScanWithImage : undefined}
+            title={scannerTitle}
+          />
+        </Dialog>
       )}
     </>
   );
