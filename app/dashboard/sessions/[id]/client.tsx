@@ -257,7 +257,8 @@ function GuardVerificationTabbedView({
   setScanInput,
   scanError,
   sealComparison,
-  handleBack
+  handleBack,
+  handleVerifySeal
 }: {
   session: SessionType;
   sessionId: string;
@@ -269,6 +270,7 @@ function GuardVerificationTabbedView({
   scanError: string;
   sealComparison: {matched: string[], mismatched: string[]};
   handleBack: () => void;
+  handleVerifySeal: () => Promise<void>;
 }) {
   const [tabValue, setTabValue] = useState<string>('sealTags');
 
@@ -1701,6 +1703,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           setVerificationFormOpen(false);
           router.push('/dashboard/sessions');
         }}
+        handleVerifySeal={handleVerifySeal}
       />
     );
   }
@@ -2066,11 +2069,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         {session.images ? (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {session.images.vehicleNumberPlatePicture && (
-              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
-                <Paper 
-                  elevation={2} 
-                  sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                >
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
                   <Typography variant="subtitle1" gutterBottom>
                     Vehicle Number Plate
                   </Typography>
@@ -2092,15 +2092,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     }}
                   />
                 </Paper>
-              </Box>
+              </Grid>
             )}
             
             {session.images.gpsImeiPicture && (
-              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }}>
-                <Paper 
-                  elevation={2} 
-                  sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                >
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
                   <Typography variant="subtitle1" gutterBottom>
                     GPS IMEI Photo
                   </Typography>
@@ -2122,16 +2119,13 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     }}
                   />
                 </Paper>
-              </Box>
+              </Grid>
             )}
             
             {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
               session.images.vehicleImages.map((imageUrl, index) => (
-                <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 11px)' } }} key={`vehicle-${index}`}>
-                  <Paper 
-                    elevation={2} 
-                    sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}
-                  >
+                <Grid item xs={12} sm={6} md={4} key={`vehicle-${index}`}>
+                  <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
                     <Typography variant="subtitle1" gutterBottom>
                       Vehicle Image {index + 1}
                     </Typography>
@@ -2153,7 +2147,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       }}
                     />
                   </Paper>
-                </Box>
+                </Grid>
               ))
             )}
             
