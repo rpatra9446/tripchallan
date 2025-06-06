@@ -185,21 +185,22 @@ export default function GuardVerificationUI({
           Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
         </Typography>
         
-        {/* Scan Seal Tags - Updated UI to match OPERATOR's Create New Trip page */}
+        {/* Scan Seal Tags - Updated UI to exactly match OPERATOR's UI shown in the image */}
         <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
           <Box sx={{ width: { xs: '100%', md: '47%' } }}>
             <Typography variant="subtitle1" gutterBottom>
               Scan QR/Barcode
             </Typography>
-            <ClientSideQrScanner
-              onScanWithImage={(data, imageFile) => {
-                // Handle scan with image
-                onScanComplete(data, 'digital', imageFile);
-              }}
-              buttonText="Scan QR Code"
-              scannerTitle="Scan Seal Tag"
-              buttonVariant="outlined"
-            />
+            <Box sx={{ height: '56px' }}>
+              <ClientSideQrScanner
+                onScanWithImage={(data, imageFile) => {
+                  onScanComplete(data, 'digital', imageFile);
+                }}
+                buttonText="Scan QR Code"
+                scannerTitle="Scan Seal Tag"
+                buttonVariant="outlined"
+              />
+            </Box>
           </Box>
           
           <Box sx={{ width: { xs: '100%', md: '47%' } }}>
@@ -228,52 +229,48 @@ export default function GuardVerificationUI({
               sx={{ mb: 2 }}
             />
             
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<PhotoCamera />}
-                  sx={{ height: '56px' }}
-                >
-                  Take Photo
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        const file = e.target.files[0];
-                        if (scanInput) {
-                          onScanComplete(scanInput, 'manual', file);
-                        }
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<PhotoCamera />}
+              >
+                Take Photo
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      if (scanInput) {
+                        onScanComplete(scanInput, 'manual', file);
                       }
-                    }}
-                  />
-                </Button>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUpload />}
-                  sx={{ height: '56px' }}
-                >
-                  Upload
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        const file = e.target.files[0];
-                        if (scanInput) {
-                          onScanComplete(scanInput, 'manual', file);
-                        }
+                    }
+                  }}
+                />
+              </Button>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUpload />}
+              >
+                Upload
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      if (scanInput) {
+                        onScanComplete(scanInput, 'manual', file);
                       }
-                    }}
-                  />
-                </Button>
-              </Box>
+                    }
+                  }}
+                />
+              </Button>
             </Box>
           </Box>
         </Box>
