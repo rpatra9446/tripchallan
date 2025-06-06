@@ -1024,23 +1024,48 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     return (
       <Box>
         <Typography variant="h6" gutterBottom>
-          Seal Tags Verification
+          Seal Tag Verification
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
           Verify the seal tags by scanning each seal's barcode/QR code. Each tag should match with those applied by the operator.
         </Typography>
         
         {/* Scanning and Manual Entry Section */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-            Scan Seal Tags
-          </Typography>
+        <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+          {/* QR Scanner Section */}
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Scan QR/Barcode
+            </Typography>
+            <ClientSideQrScanner
+              onScanWithImage={(data: string, imageFile: File) => {
+                // Trim the tag ID to ensure consistent comparison
+                const trimmedData = data.trim();
+                
+                // Check if already scanned
+                if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
+                  setError(`Tag ID "${trimmedData}" already scanned in this session`);
+                  setTimeout(() => setError(""), 3000);
+                  return;
+                }
+                
+                handleScanComplete(trimmedData, 'digital', imageFile);
+              }}
+              buttonText="Scan QR Code"
+              scannerTitle="Scan Seal Tag"
+              buttonVariant="contained"
+            />
+          </Box>
           
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2, alignItems: 'center' }}>
+          {/* Manual Entry Section */}
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Manual Entry
+            </Typography>
             <TextField
               label="Seal Tag ID"
               variant="outlined"
-              size="small"
+              fullWidth
               value={scanInput}
               onChange={(e) => {
                 setScanInput(e.target.value);
@@ -1052,84 +1077,74 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               inputRef={textFieldRef}
               error={!!scanError || !!error}
               helperText={scanError || error}
-              sx={{ flexGrow: 1, maxWidth: '300px' }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button 
+                      onClick={handleAddManualSealTag} 
+                      disabled={!scanInput || !manualEntryImage}
+                    >
+                      Add
+                    </Button>
+                  </InputAdornment>
+                ),
+              }}
+              autoFocus
+              sx={{ mb: 2 }}
             />
             
-            <Button 
-              variant="contained"
-              color="primary"
-              size="small"
-              onClick={handleAddManualSealTag} 
-              disabled={!scanInput || !manualEntryImage}
-              sx={{ height: '40px' }}
-            >
-              Add Manually
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth={false}
-              size="medium"
-              sx={{ 
-                height: '40px', 
-                ml: 'auto',
-                width: { xs: '100%', sm: 'auto' },
-                minWidth: '180px',
-                display: 'flex',
-                justifyContent: 'center'
-              }}
-              component="label"
-            >
-              Scan QR/Barcode
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                capture="environment"
-                onChange={async (e) => {
-                  if (!e.target.files?.length) return;
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              {!manualEntryImage ? (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<PhotoCamera />}
+                    sx={{ height: '56px' }}
+                  >
+                    Take Photo
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleManualSealTagImageChange}
+                    />
+                  </Button>
                   
-                  try {
-                    const file = e.target.files[0];
-                    // In a real QR scanner, this would process the image and extract a code
-                    // For now, we'll just use the manual entry
-                    setManualEntryImage(file);
-                    
-                    // TODO: Implement actual QR scanning
-                    // For now, just prompt the user to enter the code manually
-                    setError("QR code scanning not implemented. Please enter the code manually.");
-                    
-                    // Focus the text input
-                    if (textFieldRef.current) {
-                      textFieldRef.current.focus();
-                    }
-                  } catch (error) {
-                    console.error("Error processing QR code:", error);
-                    setError("Failed to process QR code.");
-                  }
-                }}
-              />
-            </Button>
-          </Box>
-          
-          {/* Manual entry image preview */}
-          {manualEntryImage && (
-            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ maxWidth: '150px', maxHeight: '150px', overflow: 'hidden', borderRadius: '4px' }}>
-                {renderImagePreview(manualEntryImage)}
-              </Box>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<Delete />}
-                onClick={() => setManualEntryImage(null)}
-              >
-                Remove Image
-              </Button>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ height: '56px' }}
+                  >
+                    Upload
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={handleManualSealTagImageChange}
+                    />
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ maxWidth: '150px', maxHeight: '150px', overflow: 'hidden', borderRadius: '4px' }}>
+                    {renderImagePreview(manualEntryImage)}
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<Delete />}
+                    onClick={() => setManualEntryImage(null)}
+                  >
+                    Remove Image
+                  </Button>
+                </Box>
+              )}
             </Box>
-          )}
-        </Paper>
+          </Box>
+        </Box>
         
         {/* Verification Progress */}
         <Box sx={{ mb: 3, position: 'relative' }}>
@@ -1165,234 +1180,251 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         </Box>
         
         {/* Seals Table */}
-        <TableContainer component={Paper} sx={{ mb: 3 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Seal Tag ID</TableCell>
-                <TableCell>Method</TableCell>
-                <TableCell>Source</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {getAllSeals().map(sealId => {
-                const isExpanded = expandedSeal === sealId;
-                const status = getSealStatus(sealId);
-                const source = getSealSource(sealId);
-                const method = getSealMethod(sealId);
-                const isMatched = status === "Matched";
-                
-                return (
-                  <React.Fragment key={sealId}>
-                    <TableRow 
-                      sx={{ 
-                        ...(isMatched && { backgroundColor: 'rgba(46, 125, 50, 0.08)' })
-                      }}
-                    >
-                      <TableCell>
-                        {isMatched && <CheckCircle color="success" fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />}
-                        {sealId}
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={method} 
-                          size="small" 
-                          color={method === "Digitally Scanned" ? "primary" : "secondary"}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={source} 
-                          size="small" 
-                          color={source === "Both" ? "success" : "primary"}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={status} 
-                          size="small" 
-                          color={status === "Matched" ? "success" : "warning"}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton size="small" onClick={() => toggleSealDetails(sealId)}>
-                          {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                        </IconButton>
-                        
-                        {source === "Guard" && (
-                          <IconButton size="small" color="error" onClick={() => deleteGuardSeal(sealId)}>
-                            <Delete fontSize="small" />
+        <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Registered Seal Tags: {guardScannedSeals.length}</span>
+        </Typography>
+        
+        {guardScannedSeals.length > 0 ? (
+          <Box sx={{ 
+            mt: 1, 
+            p: 2, 
+            bgcolor: 'background.paper', 
+            borderRadius: 1,
+            maxHeight: '400px',
+            overflowY: 'auto'
+          }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Seal Tag ID</TableCell>
+                  <TableCell>Method</TableCell>
+                  <TableCell>Source</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {getAllSeals().map(sealId => {
+                  const isExpanded = expandedSeal === sealId;
+                  const status = getSealStatus(sealId);
+                  const source = getSealSource(sealId);
+                  const method = getSealMethod(sealId);
+                  const isMatched = status === "Matched";
+                  
+                  return (
+                    <React.Fragment key={sealId}>
+                      <TableRow 
+                        sx={{ 
+                          ...(isMatched && { backgroundColor: 'rgba(46, 125, 50, 0.08)' })
+                        }}
+                      >
+                        <TableCell>
+                          {isMatched && <CheckCircle color="success" fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />}
+                          {sealId}
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={method} 
+                            size="small" 
+                            color={method === "Digitally Scanned" ? "primary" : "secondary"}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={source} 
+                            size="small" 
+                            color={source === "Both" ? "success" : "primary"}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={status} 
+                            size="small" 
+                            color={status === "Matched" ? "success" : "warning"}
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton size="small" onClick={() => toggleSealDetails(sealId)}>
+                            {isExpanded ? <ExpandLess /> : <ExpandMore />}
                           </IconButton>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                    
-                    {/* Expanded Details */}
-                    {isExpanded && (
-                      <TableRow>
-                        <TableCell colSpan={5} sx={{ py: 0 }}>
-                          <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, display: 'flex', gap: 2 }}>
-                              {/* Operator Information */}
-                              <Box sx={{ flex: 1, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '4px', p: 2 }}>
-                                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                                  Operator Information
-                                </Typography>
-                                
-                                {source === "Operator" || source === "Both" ? (
-                                  <>
-                                    <Box sx={{ mb: 1 }}>
-                                      <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
-                                      <Typography variant="body1">{sealId}</Typography>
-                                    </Box>
-                                    
-                                    <Box sx={{ mb: 1 }}>
-                                      <Typography variant="body2" color="text.secondary">Method:</Typography>
-                                      <Chip 
-                                        label={getSealMethod(sealId)} 
-                                        size="small" 
-                                        color={method === "Digitally Scanned" ? "primary" : "secondary"}
-                                      />
-                                    </Box>
-                                    
-                                    <Box sx={{ mb: 1 }}>
-                                      <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                      <Typography variant="body1">
-                                        {new Date(operatorSeals.find(seal => seal.id === sealId)?.timestamp || Date.now()).toLocaleString()}
-                                      </Typography>
-                                    </Box>
-                                    
-                                    <Box>
-                                      <Typography variant="body2" color="text.secondary">Image:</Typography>
-                                      <Box sx={{ mt: 1, maxWidth: '200px', maxHeight: '200px' }}>
-                                        <img 
-                                          src="/placeholder-image.jpg" 
-                                          alt="Seal Tag" 
-                                          style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
+                          
+                          {source === "Guard" && (
+                            <IconButton size="small" color="error" onClick={() => deleteGuardSeal(sealId)}>
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      
+                      {/* Expanded Details */}
+                      {isExpanded && (
+                        <TableRow>
+                          <TableCell colSpan={5} sx={{ py: 0 }}>
+                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Box sx={{ p: 2, display: 'flex', gap: 2 }}>
+                                {/* Operator Information */}
+                                <Box sx={{ flex: 1, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '4px', p: 2 }}>
+                                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                                    Operator Information
+                                  </Typography>
+                                  
+                                  {source === "Operator" || source === "Both" ? (
+                                    <>
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
+                                        <Typography variant="body1">{sealId}</Typography>
+                                      </Box>
+                                      
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">Method:</Typography>
+                                        <Chip 
+                                          label={getSealMethod(sealId)} 
+                                          size="small" 
+                                          color={method === "Digitally Scanned" ? "primary" : "secondary"}
                                         />
                                       </Box>
-                                    </Box>
-                                  </>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary">
-                                    No operator information available
-                                  </Typography>
-                                )}
-                              </Box>
-                              
-                              {/* Guard Information */}
-                              <Box sx={{ flex: 1, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '4px', p: 2 }}>
-                                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                                  Guard Information
-                                </Typography>
-                                
-                                {source === "Guard" || source === "Both" ? (
-                                  <>
-                                    <Box sx={{ mb: 1 }}>
-                                      <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
-                                      <Typography variant="body1">{sealId}</Typography>
-                                    </Box>
-                                    
-                                    <Box sx={{ mb: 1 }}>
-                                      <Typography variant="body2" color="text.secondary">Method:</Typography>
-                                      <Chip 
-                                        label={getSealMethod(sealId)} 
-                                        size="small" 
-                                        color={method === "Digitally Scanned" ? "primary" : "secondary"}
-                                      />
-                                    </Box>
-                                    
-                                    <Box sx={{ mb: 1 }}>
-                                      <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
-                                      <Typography variant="body1">
-                                        {new Date(guardScannedSeals.find(seal => seal.id === sealId)?.timestamp || Date.now()).toLocaleString()}
-                                      </Typography>
-                                    </Box>
-                                    
-                                    <Box>
-                                      <Typography variant="body2" color="text.secondary">Image:</Typography>
-                                      {guardScannedSeals.find(seal => seal.id === sealId)?.image ? (
+                                      
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
+                                        <Typography variant="body1">
+                                          {new Date(operatorSeals.find(seal => seal.id === sealId)?.timestamp || Date.now()).toLocaleString()}
+                                        </Typography>
+                                      </Box>
+                                      
+                                      <Box>
+                                        <Typography variant="body2" color="text.secondary">Image:</Typography>
                                         <Box sx={{ mt: 1, maxWidth: '200px', maxHeight: '200px' }}>
                                           <img 
-                                            src={guardScannedSeals.find(seal => seal.id === sealId)?.image} 
+                                            src="/placeholder-image.jpg" 
                                             alt="Seal Tag" 
                                             style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
                                           />
                                         </Box>
-                                      ) : (
-                                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                                          <Button
-                                            variant="outlined"
-                                            size="small"
-                                            startIcon={<CloudUpload />}
-                                            component="label"
-                                          >
-                                            Upload Image
-                                            <input
-                                              type="file"
-                                              hidden
-                                              accept="image/*"
-                                              onChange={(e) => {
-                                                // Handle image upload logic
-                                              }}
-                                            />
-                                          </Button>
-                                          
-                                          <Button
-                                            variant="outlined"
-                                            size="small"
-                                            startIcon={<PhotoCamera />}
-                                            component="label"
-                                          >
-                                            Capture Image
-                                            <input
-                                              type="file"
-                                              hidden
-                                              accept="image/*"
-                                              capture="environment"
-                                              onChange={(e) => {
-                                                // Handle image capture logic
-                                              }}
-                                            />
-                                          </Button>
-                                        </Box>
-                                      )}
-                                    </Box>
-                                  </>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary">
-                                    Not scanned by guard
+                                      </Box>
+                                    </>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      No operator information available
+                                    </Typography>
+                                  )}
+                                </Box>
+                                
+                                {/* Guard Information */}
+                                <Box sx={{ flex: 1, border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '4px', p: 2 }}>
+                                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                                    Guard Information
                                   </Typography>
-                                )}
-                              </Box>
-                            </Box>
-                            
-                            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant="body2" sx={{ mr: 1 }}>Verification Status:</Typography>
-                                <Chip 
-                                  label={status === "Matched" ? "Verified Match" : "Not Scanned"} 
-                                  size="small" 
-                                  color={status === "Matched" ? "success" : "warning"}
-                                />
+                                  
+                                  {source === "Guard" || source === "Both" ? (
+                                    <>
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">Seal ID:</Typography>
+                                        <Typography variant="body1">{sealId}</Typography>
+                                      </Box>
+                                      
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">Method:</Typography>
+                                        <Chip 
+                                          label={getSealMethod(sealId)} 
+                                          size="small" 
+                                          color={method === "Digitally Scanned" ? "primary" : "secondary"}
+                                        />
+                                      </Box>
+                                      
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">Timestamp:</Typography>
+                                        <Typography variant="body1">
+                                          {new Date(guardScannedSeals.find(seal => seal.id === sealId)?.timestamp || Date.now()).toLocaleString()}
+                                        </Typography>
+                                      </Box>
+                                      
+                                      <Box>
+                                        <Typography variant="body2" color="text.secondary">Image:</Typography>
+                                        {guardScannedSeals.find(seal => seal.id === sealId)?.image ? (
+                                          <Box sx={{ mt: 1, maxWidth: '200px', maxHeight: '200px' }}>
+                                            <img 
+                                              src={guardScannedSeals.find(seal => seal.id === sealId)?.image} 
+                                              alt="Seal Tag" 
+                                              style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
+                                            />
+                                          </Box>
+                                        ) : (
+                                          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                                            <Button
+                                              variant="outlined"
+                                              size="small"
+                                              startIcon={<CloudUpload />}
+                                              component="label"
+                                            >
+                                              Upload Image
+                                              <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                  // Handle image upload logic
+                                                }}
+                                              />
+                                            </Button>
+                                            
+                                            <Button
+                                              variant="outlined"
+                                              size="small"
+                                              startIcon={<PhotoCamera />}
+                                              component="label"
+                                            >
+                                              Capture Image
+                                              <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*"
+                                                capture="environment"
+                                                onChange={(e) => {
+                                                  // Handle image capture logic
+                                                }}
+                                              />
+                                            </Button>
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    </>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Not scanned by guard
+                                    </Typography>
+                                  )}
+                                </Box>
                               </Box>
                               
-                              <Button size="small" onClick={() => toggleSealDetails(sealId)}>
-                                Close Details
-                              </Button>
-                            </Box>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                              <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <Typography variant="body2" sx={{ mr: 1 }}>Verification Status:</Typography>
+                                  <Chip 
+                                    label={status === "Matched" ? "Verified Match" : "Not Scanned"} 
+                                    size="small" 
+                                    color={status === "Matched" ? "success" : "warning"}
+                                  />
+                                </Box>
+                                
+                                <Button size="small" onClick={() => toggleSealDetails(sealId)}>
+                                  Close Details
+                                </Button>
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+            No seal tags scanned yet. Scan or manually enter seal tags above.
+          </Typography>
+        )}
       </Box>
     );
   };
