@@ -8,14 +8,17 @@ import {
   Box, Button, Container, Paper, Typography, Tab, Tabs, 
   Grid, TextField, Chip, IconButton, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Alert,
-  FormControlLabel, Radio, Table, TableHead, TableBody, TableRow, TableCell
+  FormControlLabel, Radio, Table, TableHead, TableBody, TableRow, TableCell,
+  InputAdornment
 } from '@mui/material';
 import {
   ArrowBack, CheckCircle, Lock, QrCodeScanner, Camera, 
   AddAPhoto, FileUpload, Close, LocationOn, AccessTime,
-  Business, Person, DirectionsCar, Info, PhotoCamera
+  Business, Person, DirectionsCar, Info, PhotoCamera,
+  Delete, CloudUpload
 } from '@mui/icons-material';
 import { EmployeeSubrole, SessionStatus } from '@/prisma/enums';
+import ClientSideQrScanner from '@/app/components/ClientSideQrScanner';
 
 // Define types
 type SealType = {
@@ -879,6 +882,44 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     handleScanComplete: (barcodeData: string, method: string, imageFile?: File) => Promise<void>;
     setSealTagsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
+    // Add state for manual entry image
+    const [manualEntryImage, setManualEntryImage] = useState<File | null>(null);
+    
+    // Handle image upload for manual seal tag entries
+    const handleManualSealTagImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files?.length) return;
+      
+      try {
+        const file = e.target.files[0];
+        // Process the image (resize/compress) before setting it
+        const processedFile = await processImageForUpload(file);
+        setManualEntryImage(file);
+      } catch (error) {
+        console.error("Error processing seal tag image:", error);
+        setError("Failed to process image. Please try with a smaller image.");
+        setTimeout(() => setError(""), 3000);
+      }
+    };
+    
+    // Handle adding seal tag with manual entry
+    const handleAddManualSealTag = async () => {
+      if (!scanInput.trim()) {
+        setError("Please enter a seal tag ID");
+        return;
+      }
+      
+      if (!manualEntryImage) {
+        setError("Please attach an image of the seal tag");
+        return;
+      }
+      
+      // Call the existing handleScanComplete with the manual method and image
+      await handleScanComplete(scanInput.trim(), 'manual', manualEntryImage);
+      
+      // Clear the manual entry image after successful addition
+      setManualEntryImage(null);
+    };
+    
     // Check if all seals are verified
     useEffect(() => {
       const allSealsVerified = operatorSeals.length > 0 && 
@@ -887,40 +928,137 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       setSealTagsVerified(allSealsVerified);
     }, [operatorSeals, sealComparison, setSealTagsVerified]);
 
+    // Function to render image preview
+    const renderImagePreview = (file: File | null) => {
+      if (!file) return null;
+      
+      return (
+        <img 
+          src={URL.createObjectURL(file)}
+          alt="Seal Tag Preview"
+          style={{ 
+            maxWidth: '100%', 
+            maxHeight: '150px', 
+            borderRadius: '4px',
+            objectFit: 'contain'
+          }}
+        />
+      );
+    };
+
     return (
       <Box>
         <Typography variant="h6" gutterBottom>
           Seal Tag Verification
         </Typography>
         
-        {/* Scanning Form */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Scan or Enter Seal Tags
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+        {/* Scanning and Manual Entry Section */}
+        <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+          {/* QR Scanner Section */}
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Scan QR/Barcode
+            </Typography>
+            <ClientSideQrScanner
+              onScanWithImage={(data: string, imageFile: File) => {
+                // Trim the tag ID to ensure consistent comparison
+                const trimmedData = data.trim();
+                
+                // Check if already scanned
+                if (guardScannedSeals.some(seal => seal.id.toLowerCase() === trimmedData.toLowerCase())) {
+                  setError(`Tag ID "${trimmedData}" already scanned in this session`);
+                  setTimeout(() => setError(""), 3000);
+                  return;
+                }
+                
+                handleScanComplete(trimmedData, 'digital', imageFile);
+              }}
+              buttonText="Scan QR Code"
+              scannerTitle="Scan Seal Tag"
+              buttonVariant="outlined"
+            />
+          </Box>
+          
+          {/* Manual Entry Section */}
+          <Box sx={{ width: { xs: '100%', md: '47%' } }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Manual Entry
+            </Typography>
             <TextField
-              label="Seal Tag Barcode"
+              label="Seal Tag ID"
               variant="outlined"
               fullWidth
               value={scanInput}
               onChange={(e) => setScanInput(e.target.value)}
               error={!!scanError}
               helperText={scanError}
-              sx={{ mr: 2 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button 
+                      onClick={handleAddManualSealTag} 
+                      disabled={!scanInput || !manualEntryImage}
+                    >
+                      Add
+                    </Button>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 2 }}
             />
-            <Button
-              variant="contained"
-              onClick={() => handleScanComplete(scanInput, 'manual')}
-              startIcon={<AddAPhoto />}
-            >
-              Add Manually
-            </Button>
+            
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              {!manualEntryImage ? (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<PhotoCamera />}
+                    sx={{ height: '56px' }}
+                  >
+                    Take Photo
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleManualSealTagImageChange}
+                    />
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    sx={{ height: '56px' }}
+                  >
+                    Upload
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={handleManualSealTagImageChange}
+                    />
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ maxWidth: '150px', maxHeight: '150px', overflow: 'hidden', borderRadius: '4px' }}>
+                    {renderImagePreview(manualEntryImage)}
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<Delete />}
+                    onClick={() => setManualEntryImage(null)}
+                  >
+                    Remove Image
+                  </Button>
+                </Box>
+              )}
+            </Box>
           </Box>
-          <Typography variant="caption" color="text.secondary">
-            Use QR scanner or enter seal tag barcode manually
-          </Typography>
-        </Paper>
+        </Box>
         
         {/* Seal Comparison */}
         <Box sx={{ mb: 3 }}>
