@@ -8,7 +8,7 @@ import {
   Box, Button, Container, Paper, Typography, Tab, Tabs, 
   Grid, TextField, Chip, IconButton, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Alert,
-  FormControlLabel, Radio
+  FormControlLabel, Radio, Table, TableHead, TableBody, TableRow, TableCell
 } from '@mui/material';
 import {
   ArrowBack, CheckCircle, Lock, QrCodeScanner, Camera, 
@@ -562,7 +562,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       setVerificationFields(prev => ({
         ...prev,
         [field]: { 
-          verified: true, 
+          verified: !prev[field]?.verified, 
           timestamp: new Date().toISOString(),
           comment: fieldComments[field] || ''
         }
@@ -608,85 +608,82 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       setLoadingDetailsVerified(allVerified);
     }, [session, verificationFields, setLoadingDetailsVerified]);
 
-    // Render a verification field with comment
-    const renderVerificationField = (fieldName: string, displayLabel: string, value: any) => {
-      if (value === undefined || value === null) return null;
-      
-      return (
-        <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-          <Paper elevation={1} sx={{ p: 2 }}>
-            <Typography variant="subtitle1" fontWeight="bold">{displayLabel}:</Typography>
-            <Typography>{value.toString()}</Typography>
-            
-            {/* Comment field */}
-            <TextField
-              fullWidth
-              multiline
-              rows={1}
-              variant="outlined"
-              placeholder="Add verification comment..."
-              value={fieldComments[fieldName] || ''}
-              onChange={(e) => handleCommentChange(fieldName, e.target.value)}
-              sx={{ mt: 1, mb: 1 }}
-              size="small"
-            />
-            
-            {/* Verification status */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <FormControlLabel
-                control={
-                  <Radio
-                    checked={!!verificationFields[fieldName]?.verified}
-                    onChange={() => verifyField(fieldName)}
-                    color="success"
-                    size="small"
-                  />
-                }
-                label="Verified"
-              />
-              
-              {verificationFields[fieldName]?.verified && (
-                <Chip 
-                  icon={<CheckCircle fontSize="small" />}
-                  label="Verified" 
-                  color="success" 
-                  size="small"
-                />
-              )}
-            </Box>
-          </Paper>
-        </Grid>
-      );
-    };
+    // Define the field display data
+    const fieldDisplayData = [
+      { field: 'transporterName', label: 'Transporter Name' },
+      { field: 'materialName', label: 'Material Name' },
+      { field: 'receiverPartyName', label: 'Receiver Party Name' },
+      { field: 'vehicleNumber', label: 'Vehicle Number' },
+      { field: 'registrationCertificate', label: 'Registration Certificate' },
+      { field: 'gpsImeiNumber', label: 'GPS IMEI Number' },
+      { field: 'cargoType', label: 'Cargo Type' },
+      { field: 'qualityOfMaterials', label: 'Quality of Materials' },
+      { field: 'numberOfPackages', label: 'Number of Packages' },
+      { field: 'loadingSite', label: 'Loading Site' },
+      { field: 'source', label: 'Source' },
+      { field: 'destination', label: 'Destination' },
+      { field: 'loaderName', label: 'Loader Name' },
+      { field: 'loaderMobileNumber', label: 'Loader Mobile Number' },
+      { field: 'challanRoyaltyNumber', label: 'Challan Royalty Number' },
+      { field: 'doNumber', label: 'DO Number' },
+      { field: 'freight', label: 'Freight' },
+      { field: 'tpNumber', label: 'TP Number' },
+      { field: 'grossWeight', label: 'Gross Weight (kg)' },
+      { field: 'tareWeight', label: 'Tare Weight (kg)' },
+      { field: 'netMaterialWeight', label: 'Net Material Weight (kg)' }
+    ];
 
     return (
       <Box>
         <Typography variant="h6" gutterBottom>
           Loading Details Verification
         </Typography>
-        <Grid container spacing={2}>
-          {renderVerificationField('transporterName', 'Transporter Name', session.tripDetails?.transporterName)}
-          {renderVerificationField('materialName', 'Material Name', session.tripDetails?.materialName)}
-          {renderVerificationField('receiverPartyName', 'Receiver Party Name', session.tripDetails?.receiverPartyName)}
-          {renderVerificationField('vehicleNumber', 'Vehicle Number', session.tripDetails?.vehicleNumber)}
-          {renderVerificationField('registrationCertificate', 'Registration Certificate', session.tripDetails?.registrationCertificate)}
-          {renderVerificationField('gpsImeiNumber', 'GPS IMEI Number', session.tripDetails?.gpsImeiNumber)}
-          {renderVerificationField('cargoType', 'Cargo Type', session.tripDetails?.cargoType)}
-          {renderVerificationField('qualityOfMaterials', 'Quality of Materials', session.tripDetails?.qualityOfMaterials)}
-          {renderVerificationField('numberOfPackages', 'Number of Packages', session.tripDetails?.numberOfPackages)}
-          {renderVerificationField('loadingSite', 'Loading Site', session.tripDetails?.loadingSite)}
-          {renderVerificationField('source', 'Source', session.tripDetails?.source)}
-          {renderVerificationField('destination', 'Destination', session.tripDetails?.destination)}
-          {renderVerificationField('loaderName', 'Loader Name', session.tripDetails?.loaderName)}
-          {renderVerificationField('loaderMobileNumber', 'Loader Mobile Number', session.tripDetails?.loaderMobileNumber)}
-          {renderVerificationField('challanRoyaltyNumber', 'Challan Royalty Number', session.tripDetails?.challanRoyaltyNumber)}
-          {renderVerificationField('doNumber', 'DO Number', session.tripDetails?.doNumber)}
-          {renderVerificationField('freight', 'Freight', session.tripDetails?.freight ? `₹${session.tripDetails?.freight}` : null)}
-          {renderVerificationField('tpNumber', 'TP Number', session.tripDetails?.tpNumber)}
-          {renderVerificationField('grossWeight', 'Gross Weight (kg)', session.tripDetails?.grossWeight)}
-          {renderVerificationField('tareWeight', 'Tare Weight (kg)', session.tripDetails?.tareWeight)}
-          {renderVerificationField('netMaterialWeight', 'Net Material Weight (kg)', session.tripDetails?.netMaterialWeight)}
-        </Grid>
+        
+        <Table>
+          <TableHead>
+            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+              <TableCell width="25%">Field Name</TableCell>
+              <TableCell width="25%">Field Value</TableCell>
+              <TableCell width="15%" align="center">Verification</TableCell>
+              <TableCell width="35%">Comment</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {fieldDisplayData.map(({ field, label }) => {
+              const value = session.tripDetails?.[field as keyof typeof session.tripDetails];
+              if (value === undefined || value === null) return null;
+              
+              return (
+                <TableRow key={field} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                  <TableCell sx={{ fontWeight: 'medium' }}>{label}</TableCell>
+                  <TableCell>{field === 'freight' ? `₹${value}` : value.toString()}</TableCell>
+                  <TableCell align="center">
+                    <FormControlLabel
+                      control={
+                        <Radio
+                          checked={!!verificationFields[field]?.verified}
+                          onChange={() => verifyField(field)}
+                          color="success"
+                        />
+                      }
+                      label="Verified"
+                      sx={{ m: 0 }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Add verification"
+                      value={fieldComments[field] || ''}
+                      onChange={(e) => handleCommentChange(field, e.target.value)}
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            }).filter(Boolean)}
+          </TableBody>
+        </Table>
       </Box>
     );
   };
