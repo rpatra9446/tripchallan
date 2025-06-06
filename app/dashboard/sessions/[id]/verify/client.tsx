@@ -528,46 +528,40 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   const handlePasswordConfirm = async () => {
     setPasswordError('');
     setVerifying(true);
-    // Try to re-authenticate with password
-    const email = authSession?.user?.email ?? '';
-    if (!email) {
-      setPasswordError('No user email found.');
-      setVerifying(false);
-      return;
-    }
-    const result = await signIn('credentials', {
-      redirect: false,
-      username: email,
-      password: guardPassword,
-    });
-    if (!result || result.error) {
-      setPasswordError('Incorrect password. Please try again.');
-      setVerifying(false);
-      return;
-    }
-    // Prepare verification data (all GUARD seal data)
-    const verificationData = {
-      sessionId,
-      fieldVerifications: verificationFields,
-      guardImages,
-      imageComments,
-      sealTags: {
-        matched: sealComparison.matched,
-        mismatched: sealComparison.mismatched,
-        operator: operatorSeals.map(seal => seal.id),
-        guard: guardScannedSeals.map(seal => seal.id),
-        guardSealData: guardScannedSeals // send all guard seal tag objects
-      },
-      allMatch: sealComparison.mismatched.length === 0 && sealComparison.matched.length > 0
-    };
+    // Use API to verify password for current user
     try {
+      const resp = await fetch('/api/auth/verify-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: guardPassword })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.verified) {
+        setPasswordError('Incorrect password. Please try again.');
+        setVerifying(false);
+        return;
+      }
+      // Password verified, proceed with verification
+      const verificationData = {
+        sessionId,
+        fieldVerifications: verificationFields,
+        guardImages,
+        imageComments,
+        sealTags: {
+          matched: sealComparison.matched,
+          mismatched: sealComparison.mismatched,
+          operator: operatorSeals.map(seal => seal.id),
+          guard: guardScannedSeals.map(seal => seal.id),
+          guardSealData: guardScannedSeals
+        },
+        allMatch: sealComparison.mismatched.length === 0 && sealComparison.matched.length > 0
+      };
       const response = await fetch(`/api/sessions/${sessionId}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(verificationData),
       });
       if (!response.ok) throw new Error(`Failed to complete verification: ${response.status}`);
-      const result = await response.json();
       toast.success('Verification completed successfully!');
       setPasswordDialogOpen(false);
       setGuardPassword('');
