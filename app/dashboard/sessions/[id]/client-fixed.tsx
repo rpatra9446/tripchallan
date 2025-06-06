@@ -24,7 +24,13 @@ import {
   List,
   ListItem,
   ListItemText,
-  Grid
+  Grid,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell
 } from "@mui/material";
 import { 
   LocationOn, 
@@ -125,6 +131,15 @@ type SessionType = {
         allMatch?: boolean;
       };
     };
+  }[];
+  sealTags?: {
+    id: string;
+    barcode: string;
+    method: string;
+    imageUrl?: string;
+    imageData?: string;
+    createdAt: string;
+    scannedByName: string;
   }[];
 };
 
@@ -589,6 +604,85 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
           <CommentSection sessionId={sessionId} />
 
+          {/* Operator Seal Tag Table Section */}
+          {session.sealTags && session.sealTags.length > 0 && (
+            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Seal Tags
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>No.</TableCell>
+                      <TableCell>Seal Tag ID</TableCell>
+                      <TableCell>Method</TableCell>
+                      <TableCell>Image</TableCell>
+                      <TableCell>Created At</TableCell>
+                      <TableCell>Created By</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {session.sealTags.map((sealTag, index) => (
+                      <TableRow key={sealTag.id}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{sealTag.barcode}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={sealTag.method ? 
+                              (sealTag.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned') 
+                              : 'Unknown'
+                            } 
+                            color={sealTag.method ? 
+                              (sealTag.method.toLowerCase().includes('manual') ? 'secondary' : 'primary') 
+                              : 'default'
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {sealTag.imageUrl || sealTag.imageData ? (
+                            <Box 
+                              component="img" 
+                              src={sealTag.imageUrl || sealTag.imageData}
+                              alt="Seal Tag"
+                              sx={{ 
+                                maxWidth: '80px', 
+                                maxHeight: '80px',
+                                cursor: 'pointer',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px',
+                                p: 0.5
+                              }}
+                              onClick={() => {
+                                setSelectedImage(sealTag.imageUrl || sealTag.imageData || '');
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">No image</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {sealTag.createdAt ? new Date(sealTag.createdAt).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'numeric',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: 'numeric',
+                            hour12: true
+                          }) : 'N/A'}
+                        </TableCell>
+                        <TableCell>{sealTag.scannedByName || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
+
           {/* Images Section - Comes before Reports section */}
           {session.images && Object.keys(session.images).some(key => {
             const value = session.images && session.images[key as keyof typeof session.images];
@@ -600,7 +694,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {session.images.driverPicture && (
+                {session.images && session.images.driverPicture && (
                   <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
                     <Typography variant="subtitle2" gutterBottom>Driver</Typography>
                     <img 
@@ -610,7 +704,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     />
                   </Box>
                 )}
-                {session.images.vehicleNumberPlatePicture && (
+                {session.images && session.images.vehicleNumberPlatePicture && (
                   <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
                     <Typography variant="subtitle2" gutterBottom>Number Plate</Typography>
                     <img 
@@ -620,7 +714,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     />
                   </Box>
                 )}
-                {session.images.gpsImeiPicture && (
+                {session.images && session.images.gpsImeiPicture && (
                   <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
                     <Typography variant="subtitle2" gutterBottom>GPS/IMEI</Typography>
                     <img 
@@ -632,7 +726,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 )}
                 
                 {/* Display all sealing images */}
-                {session.images.sealingImages && session.images.sealingImages.length > 0 && (
+                {session.images && session.images.sealingImages && session.images.sealingImages.length > 0 && (
                   <>
                     <Box sx={{ width: '100%', mt: 2 }}>
                       <Typography variant="subtitle2" gutterBottom>Sealing Images</Typography>
@@ -650,7 +744,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 )}
                 
                 {/* Display all vehicle images */}
-                {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
+                {session.images && session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
                   <>
                     <Box sx={{ width: '100%', mt: 2 }}>
                       <Typography variant="subtitle2" gutterBottom>Vehicle Images</Typography>
@@ -668,7 +762,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 )}
                 
                 {/* Display all additional images */}
-                {session.images.additionalImages && session.images.additionalImages.length > 0 && (
+                {session.images && session.images.additionalImages && session.images.additionalImages.length > 0 && (
                   <>
                     <Box sx={{ width: '100%', mt: 2 }}>
                       <Typography variant="subtitle2" gutterBottom>Additional Images</Typography>
@@ -813,6 +907,26 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           <Button onClick={confirmVerification} color="primary" autoFocus>
             Confirm
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Image Modal for viewing full-size images */}
+      <Dialog
+        open={openImageModal}
+        onClose={() => setOpenImageModal(false)}
+        maxWidth="md"
+      >
+        <DialogContent>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="Full Size"
+              style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImageModal(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Container>
