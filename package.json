@@ -2,7 +2,7 @@
   "name": "cbums",
   "version": "0.1.0",
   "private": true,
-  "description": "Updated for Vercel deployment with React 19.1.0",
+  "description": "Updated for Vercel deployment with React 18.3.1",
   "scripts": {
     "dev": "node scripts/check-directories.js && next dev",
     "build": "node scripts/check-directories.js && prisma generate && prisma migrate deploy && node prisma/seed.js && next build",
@@ -46,8 +46,8 @@
     "pdfkit": "^0.17.0",
     "prisma": "^6.6.0",
     "puppeteer": "^24.8.2",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "react-hot-toast": "^2.5.2",
     "react-icons": "^5.5.0",
     "recharts": "^2.15.3",
@@ -65,8 +65,8 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^20.17.30",
     "@types/nodemailer": "^6.4.17",
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.0",
+    "@types/react": "18.2.66",
+    "@types/react-dom": "18.2.22",
     "@types/uuid": "^10.0.0",
     "dotenv-cli": "^7.4.0",
     "eslint": "^9",
@@ -76,4 +76,4 @@
     "tailwindcss": "^4",
     "typescript": "^5.8.3"
   }
-}
+} 
