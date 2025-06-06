@@ -35,6 +35,7 @@ import IconButton from '@mui/material/IconButton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Container from '@mui/material/Container';
+import LockOpen from '@mui/icons-material/LockOpen';
 
 import { 
   LocationOn, 
@@ -1665,6 +1666,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     }
   }, [session, toast]);
 
+  // Handler to navigate to verify page
+  const handleStartVerification = () => {
+    router.push(`/dashboard/sessions/${sessionId}/verify`);
+  };
+
   // Render function
   if (loading) {
     return (
@@ -2203,6 +2209,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           <Button onClick={() => setOpenImageModal(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add Verification Button for Guards */}
+      {canVerify && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Lock />}
+            onClick={handleStartVerification}
+            size="large"
+          >
+            Start Trip Verification
+          </Button>
+        </Box>
+      )}
     </Container>
   );
 }
