@@ -35,7 +35,7 @@ import IconButton from '@mui/material/IconButton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Container from '@mui/material/Container';
-import { TabContext, TabList, TabPanel } from '@mui/lab';
+import { TabContext, TabList, TabPanel as MuiTabPanel } from '@mui/lab';
 
 import { 
   LocationOn, 
@@ -378,58 +378,57 @@ function GuardVerificationTabbedView({
           </Box>
           
           {/* Loading Details Tab */}
-          <TabPanel value="loadingDetails">
+          <MuiTabPanel value="loadingDetails">
             <Typography variant="h6" gutterBottom>
               Loading Details
             </Typography>
             <Grid container spacing={2}>
               {session.tripDetails?.transporterName && (
-                <Grid xs={12} md={6}>
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" fontWeight="bold">Transporter Name:</Typography>
                   <Typography>{session.tripDetails.transporterName}</Typography>
                 </Grid>
               )}
               {session.tripDetails?.materialName && (
-                <Grid xs={12} md={6}>
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" fontWeight="bold">Material Name:</Typography>
                   <Typography>{session.tripDetails.materialName}</Typography>
                 </Grid>
               )}
               {session.tripDetails?.loadingSite && (
-                <Grid xs={12} md={6}>
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" fontWeight="bold">Loading Site:</Typography>
                   <Typography>{session.tripDetails.loadingSite}</Typography>
                 </Grid>
               )}
               {session.tripDetails?.netMaterialWeight && (
-                <Grid xs={12} md={6}>
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" fontWeight="bold">Net Material Weight:</Typography>
                   <Typography>{session.tripDetails.netMaterialWeight} kg</Typography>
                 </Grid>
               )}
               {session.tripDetails?.grossWeight && (
-                <Grid xs={12} md={6}>
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" fontWeight="bold">Gross Weight:</Typography>
                   <Typography>{session.tripDetails.grossWeight} kg</Typography>
                 </Grid>
               )}
               {session.tripDetails?.tareWeight && (
-                <Grid xs={12} md={6}>
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" fontWeight="bold">Tare Weight:</Typography>
                   <Typography>{session.tripDetails.tareWeight} kg</Typography>
                 </Grid>
               )}
             </Grid>
-          </TabPanel>
+          </MuiTabPanel>
           
           {/* Session Info Tab */}
-          <TabPanel value="sessionInfo">
+          <MuiTabPanel value="sessionInfo">
             <Typography variant="h6" gutterBottom>
               Session Information
             </Typography>
             <Grid container spacing={2}>
               {session.tripDetails?.doNumber && (
-                <Grid xs={12} md={6}>
                 <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" fontWeight="bold">DO Number:</Typography>
                   <Typography>{session.tripDetails.doNumber}</Typography>
@@ -466,10 +465,10 @@ function GuardVerificationTabbedView({
                 </Grid>
               )}
             </Grid>
-          </TabPanel>
+          </MuiTabPanel>
           
           {/* Seal Tags Tab */}
-          <TabPanel value="sealTags">
+          <MuiTabPanel value="sealTags">
             <Box>
               <Typography variant="h6" gutterBottom>
                 Seal Tags Verification
@@ -631,10 +630,10 @@ function GuardVerificationTabbedView({
                 </TableContainer>
               </Box>
             </Box>
-          </TabPanel>
+          </MuiTabPanel>
           
           {/* Driver Details Tab */}
-          <TabPanel value="driverDetails">
+          <MuiTabPanel value="driverDetails">
             <Typography variant="h6" gutterBottom>
               Driver Details
             </Typography>
@@ -689,10 +688,10 @@ function GuardVerificationTabbedView({
                 </Grid>
               )}
             </Grid>
-          </TabPanel>
+          </MuiTabPanel>
           
           {/* Images Tab */}
-          <TabPanel value="images">
+          <MuiTabPanel value="images">
             <Typography variant="h6" gutterBottom>
               Vehicle & Document Images
             </Typography>
@@ -711,6 +710,7 @@ function GuardVerificationTabbedView({
                         width: '100%', 
                         height: '200px',
                         objectFit: 'cover',
+                        cursor: 'pointer',
                         borderRadius: '4px',
                         mb: 1
                       }}
@@ -737,6 +737,7 @@ function GuardVerificationTabbedView({
                         width: '100%', 
                         height: '200px',
                         objectFit: 'cover',
+                        cursor: 'pointer',
                         borderRadius: '4px',
                         mb: 1
                       }}
@@ -764,6 +765,7 @@ function GuardVerificationTabbedView({
                           width: '100%', 
                           height: '200px',
                           objectFit: 'cover',
+                          cursor: 'pointer',
                           borderRadius: '4px',
                           mb: 1
                         }}
@@ -785,7 +787,7 @@ function GuardVerificationTabbedView({
                 </Grid>
               )}
             </Grid>
-          </TabPanel>
+          </MuiTabPanel>
         </Paper>
       </TabContext>
       
@@ -2153,9 +2155,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             {(!session.images?.vehicleNumberPlatePicture && 
               !session.images?.gpsImeiPicture && 
               (!session.images?.vehicleImages || session.images.vehicleImages.length === 0)) && (
-              <Box sx={{ width: '100%', p: 2 }}>
+              <Grid item xs={12}>
                 <Alert severity="info">No images available</Alert>
-              </Box>
+              </Grid>
             )}
           </Box>
         ) : (
