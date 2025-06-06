@@ -1019,7 +1019,11 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     const verifyImage = (imageKey: string) => {
       setVerificationFields(prev => ({
         ...prev,
-        [imageKey]: { verified: true, timestamp: new Date().toISOString() }
+        [imageKey]: { 
+          verified: !prev[imageKey]?.verified, 
+          timestamp: new Date().toISOString(),
+          comment: imageComments[imageKey] || ''
+        }
       }));
     };
 
@@ -1029,6 +1033,17 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         ...prev,
         [imageKey]: comment
       }));
+      
+      // Update the verification field if already verified
+      if (verificationFields[imageKey]?.verified) {
+        setVerificationFields(prev => ({
+          ...prev,
+          [imageKey]: {
+            ...prev[imageKey],
+            comment
+          }
+        }));
+      }
     };
 
     // Check if all required images are verified
@@ -1047,173 +1062,154 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       setImagesVerified(allVerified);
     }, [session, verificationFields, setImagesVerified]);
 
+    // Define the image display data
+    const getImageItems = () => {
+      const items = [];
+      
+      // Vehicle Number Plate Image
+      if (session.images?.vehicleNumberPlatePicture) {
+        items.push({
+          key: 'vehicleNumberPlatePicture',
+          label: 'Vehicle Number Plate',
+          src: session.images.vehicleNumberPlatePicture
+        });
+      }
+      
+      // GPS IMEI Image
+      if (session.images?.gpsImeiPicture) {
+        items.push({
+          key: 'gpsImeiPicture',
+          label: 'GPS IMEI Picture',
+          src: session.images.gpsImeiPicture
+        });
+      }
+      
+      return items;
+    };
+
+    // Get all vehicle images
+    const vehicleImages = session.images?.vehicleImages || [];
+
     return (
       <Box>
         <Typography variant="h6" gutterBottom>
           Images Verification
         </Typography>
-        <Grid container spacing={2}>
-          {/* Vehicle Number Plate Image */}
-          {session.images?.vehicleNumberPlatePicture && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">Vehicle Number Plate:</Typography>
-                <Box sx={{ mt: 1, mb: 1 }}>
-                  <img 
-                    src={session.images.vehicleNumberPlatePicture} 
-                    alt="Vehicle Number Plate" 
-                    style={{ maxWidth: '100%', maxHeight: '200px', cursor: 'pointer' }}
-                    onClick={() => {
-                      setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                      setOpenImageModal(true);
-                    }}
+        
+        {/* Main images table */}
+        <Table sx={{ mb: 4 }}>
+          <TableHead>
+            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+              <TableCell width="20%">Image Type</TableCell>
+              <TableCell width="35%">Image</TableCell>
+              <TableCell width="15%" align="center">Verification</TableCell>
+              <TableCell width="30%">Comment</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {getImageItems().map(({ key, label, src }) => (
+              <TableRow key={key} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                <TableCell sx={{ fontWeight: 'medium' }}>{label}</TableCell>
+                <TableCell>
+                  <Box sx={{ maxWidth: '100%' }}>
+                    <img 
+                      src={src} 
+                      alt={label} 
+                      style={{ maxWidth: '100%', maxHeight: '150px', cursor: 'pointer' }}
+                      onClick={() => {
+                        setSelectedImage(src);
+                        setOpenImageModal(true);
+                      }}
+                    />
+                  </Box>
+                </TableCell>
+                <TableCell align="center">
+                  <FormControlLabel
+                    control={
+                      <Radio
+                        checked={!!verificationFields[key]?.verified}
+                        onChange={() => verifyImage(key)}
+                        color="success"
+                      />
+                    }
+                    label="Verified"
+                    sx={{ m: 0 }}
                   />
-                </Box>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={2}
-                  variant="outlined"
-                  placeholder="Add verification notes..."
-                  value={imageComments['vehicleNumberPlatePicture'] || ''}
-                  onChange={(e) => handleImageCommentChange('vehicleNumberPlatePicture', e.target.value)}
-                  sx={{ mb: 1 }}
-                />
-                {verificationFields['vehicleNumberPlatePicture']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    fullWidth
                     size="small"
+                    placeholder="Add verification"
+                    value={imageComments[key] || ''}
+                    onChange={(e) => handleImageCommentChange(key, e.target.value)}
                   />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyImage('vehicleNumberPlatePicture')}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {/* GPS IMEI Image */}
-          {session.images?.gpsImeiPicture && (
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">GPS IMEI Picture:</Typography>
-                <Box sx={{ mt: 1, mb: 1 }}>
-                  <img 
-                    src={session.images.gpsImeiPicture} 
-                    alt="GPS IMEI" 
-                    style={{ maxWidth: '100%', maxHeight: '200px', cursor: 'pointer' }}
-                    onClick={() => {
-                      setSelectedImage(session.images?.gpsImeiPicture || '');
-                      setOpenImageModal(true);
-                    }}
-                  />
-                </Box>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={2}
-                  variant="outlined"
-                  placeholder="Add verification notes..."
-                  value={imageComments['gpsImeiPicture'] || ''}
-                  onChange={(e) => handleImageCommentChange('gpsImeiPicture', e.target.value)}
-                  sx={{ mb: 1 }}
-                />
-                {verificationFields['gpsImeiPicture']?.verified ? (
-                  <Chip 
-                    icon={<CheckCircle fontSize="small" />}
-                    label="Verified" 
-                    color="success" 
-                    size="small"
-                  />
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => verifyImage('gpsImeiPicture')}
-                  >
-                    Verify
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-          )}
-          
-          {/* Vehicle Images Gallery */}
-          {session.images?.vehicleImages && session.images.vehicleImages.length > 0 && (
-            <Grid sx={{ gridColumn: { xs: 'span 12' } }}>
-              <Paper elevation={1} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  Vehicle Images:
-                </Typography>
-                <Grid container spacing={1}>
-                  {session.images.vehicleImages.map((imageUrl, index) => (
-                    <Grid sx={{ gridColumn: { xs: 'span 6', sm: 'span 4', md: 'span 3' } }} key={`vehicle-${index}`}>
-                      <Box 
-                        sx={{ 
-                          border: '1px solid #eee', 
-                          borderRadius: 1, 
-                          overflow: 'hidden',
-                          position: 'relative'
-                        }}
-                      >
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        
+        {/* Vehicle Images Gallery */}
+        {vehicleImages.length > 0 && (
+          <>
+            <Typography variant="h6" gutterBottom>
+              Vehicle Images Verification
+            </Typography>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+                  <TableCell width="20%">Image</TableCell>
+                  <TableCell width="35%">Preview</TableCell>
+                  <TableCell width="15%" align="center">Verification</TableCell>
+                  <TableCell width="30%">Comment</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {vehicleImages.map((imageUrl, index) => (
+                  <TableRow key={`vehicle-${index}`} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                    <TableCell sx={{ fontWeight: 'medium' }}>Vehicle Image {index + 1}</TableCell>
+                    <TableCell>
+                      <Box>
                         <img 
                           src={imageUrl} 
                           alt={`Vehicle ${index + 1}`} 
-                          style={{ 
-                            width: '100%', 
-                            height: '150px', 
-                            objectFit: 'cover',
-                            cursor: 'pointer'
-                          }}
+                          style={{ maxWidth: '100%', maxHeight: '150px', cursor: 'pointer' }}
                           onClick={() => {
                             setSelectedImage(imageUrl);
                             setOpenImageModal(true);
                           }}
                         />
-                        {verificationFields[`vehicleImage_${index}`]?.verified ? (
-                          <Chip 
-                            icon={<CheckCircle fontSize="small" />}
-                            label="Verified" 
-                            color="success" 
-                            size="small"
-                            sx={{ 
-                              position: 'absolute', 
-                              bottom: 4, 
-                              right: 4,
-                              fontSize: '0.7rem'
-                            }}
-                          />
-                        ) : (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={() => verifyImage(`vehicleImage_${index}`)}
-                            sx={{ 
-                              position: 'absolute', 
-                              bottom: 4, 
-                              right: 4,
-                              minWidth: 0,
-                              p: 0.5
-                            }}
-                          >
-                            <CheckCircle fontSize="small" />
-                          </Button>
-                        )}
                       </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Paper>
-            </Grid>
-          )}
-        </Grid>
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormControlLabel
+                        control={
+                          <Radio
+                            checked={!!verificationFields[`vehicleImage_${index}`]?.verified}
+                            onChange={() => verifyImage(`vehicleImage_${index}`)}
+                            color="success"
+                          />
+                        }
+                        label="Verified"
+                        sx={{ m: 0 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Add verification"
+                        value={imageComments[`vehicleImage_${index}`] || ''}
+                        onChange={(e) => handleImageCommentChange(`vehicleImage_${index}`, e.target.value)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
       </Box>
     );
   };
