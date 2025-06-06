@@ -110,3 +110,5 @@ These fields help with better organization and management of companies in the sy
 ## License
 
 [MIT](LICENSE)
+
+# Trigger Vercel redeploy

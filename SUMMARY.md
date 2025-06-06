@@ -76,3 +76,5 @@ npm run dev
 Default SuperAdmin Credentials:
 - Email: superadmin@cbums.com
 - Password: superadmin123 
+
+# Trigger Vercel redeploy 
