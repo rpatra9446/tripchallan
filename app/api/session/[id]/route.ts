@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { withAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { UserRole } from "@/prisma/enums";
+import { formatTimestampExact } from "@/lib/date-utils";
 
 interface ActivityLogDetails {
   tripDetails?: Record<string, unknown>;
@@ -14,6 +15,20 @@ interface ActivityLogDetails {
     status: string;
     timestamp: string;
     verifiedBy: string;
+  };
+}
+
+// Define types for SessionFieldTimestamps
+interface FieldTimestamp {
+  id: string;
+  sessionId: string;
+  fieldName: string;
+  timestamp: Date;
+  updatedById: string;
+  updatedBy: {
+    id: string;
+    name: string;
+    email: string;
   };
 }
 
@@ -102,6 +117,17 @@ async function handler(
           orderBy: {
             createdAt: "desc",
           },
+        },
+        fieldTimestamps: {
+          include: {
+            updatedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
+          }
         },
       },
     });
@@ -340,6 +366,57 @@ async function handler(
       activityLogs: filteredVerificationLogs
     };
 
+    // Process fieldTimestamps into a more accessible format
+    if (sessionData.fieldTimestamps && sessionData.fieldTimestamps.length > 0) {
+      // Create a structured format for field timestamps
+      const formattedTimestamps: Record<string, { 
+        timestamp: string,
+        formattedTimestamp: string,
+        updatedBy: { id: string, name: string }
+      }> = {};
+      
+      // Create organized categories for timestamps
+      const loadingDetailsTimestamps: Record<string, string> = {};
+      const imagesFormTimestamps: Record<string, string> = {};
+      
+      // Process each field timestamp
+      sessionData.fieldTimestamps.forEach((ft: FieldTimestamp) => {
+        formattedTimestamps[ft.fieldName] = {
+          timestamp: ft.timestamp.toISOString(),
+          formattedTimestamp: formatTimestampExact(ft.timestamp),
+          updatedBy: {
+            id: ft.updatedBy.id,
+            name: ft.updatedBy.name
+          }
+        };
+        
+        // Organize timestamps by category
+        if (ft.fieldName.startsWith('loadingDetails.')) {
+          // Extract the field name without the prefix
+          const fieldName = ft.fieldName.replace('loadingDetails.', '');
+          loadingDetailsTimestamps[fieldName] = ft.timestamp.toISOString();
+        } else if (ft.fieldName.startsWith('images.')) {
+          // Extract the field name without the prefix
+          const fieldName = ft.fieldName.replace('images.', '');
+          imagesFormTimestamps[fieldName] = ft.timestamp.toISOString();
+        }
+      });
+      
+      // Add to enhanced data
+      enhancedSessionData.formattedFieldTimestamps = formattedTimestamps;
+      
+      // Add organized timestamps to the response in the expected format
+      enhancedSessionData.timestamps = {
+        loadingDetails: loadingDetailsTimestamps,
+        imagesForm: imagesFormTimestamps
+      };
+      
+      console.log("[API DEBUG] Processed timestamps:", {
+        loadingDetailsFields: Object.keys(loadingDetailsTimestamps),
+        imagesFormFields: Object.keys(imagesFormTimestamps)
+      });
+    }
+
     // Debug logging to see the exact structure
     console.log("[API DEBUG] Session data structure:", {
       id: sessionData.id,
@@ -351,7 +428,8 @@ async function handler(
       tripDetailsReceiverPartyName: (tripDetails as any)?.receiverPartyName,
       tripDetailsCargoType: (tripDetails as any)?.cargoType,
       tripDetailsMaterialName: (tripDetails as any)?.materialName,
-      tripDetailsNumberOfPackages: (tripDetails as any)?.numberOfPackages
+      tripDetailsNumberOfPackages: (tripDetails as any)?.numberOfPackages,
+      fieldTimestampsCount: sessionData.fieldTimestamps?.length || 0
     });
 
     // Ensure source and destination values are properly set
