@@ -1111,8 +1111,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <TableHead>
                   <TableRow>
                     <TableCell>Field</TableCell>
-                    <TableCell>Entered At</TableCell>
                     <TableCell>Value</TableCell>
+                    <TableCell>Entered At</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1121,12 +1121,12 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     .map(([key, value]) => (
                       <TableRow key={key}>
                         <TableCell>{getFieldLabel(key)}</TableCell>
+                        <TableCell>{value || 'N/A'}</TableCell>
                         <TableCell>
                           {session.timestamps?.loadingDetails?.[key] 
                             ? formatTimestampExact(session.timestamps.loadingDetails[key])
                             : 'Jan 15, 2024 14:30:22'}
                         </TableCell>
-                        <TableCell>{value || 'N/A'}</TableCell>
                       </TableRow>
                     ))
                   }
