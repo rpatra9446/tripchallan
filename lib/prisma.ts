@@ -1,15 +1,29 @@
 // Simplify the approach to avoid TypeScript errors during build
-// @ts-ignore
 import { PrismaClient } from '@prisma/client';
-// Add Prisma Accelerate extension
-// @ts-ignore
-import { withAccelerate } from '@prisma/extension-accelerate';
 
 // This is important - it prevents Prisma from trying to connect during build time
-const globalForPrisma = global as unknown as { prisma: any };
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 // Check if we're running in production and if this is a build or serverless function
 const isBuilding = process.env.VERCEL_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build';
+
+// Create PrismaClient with error handling
+const prismaClientCreator = (): PrismaClient => {
+  try {
+    const client = new PrismaClient({
+      log: ['error', 'warn'],
+    });
+    return client;
+  } catch (error: any) {
+    console.error("Error initializing PrismaClient:", error.message);
+    
+    if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") {
+      return createMockPrismaClient();
+    }
+    
+    throw error;
+  }
+};
 
 // Create a mock client for Vercel deployment errors
 const createMockPrismaClient = () => {
@@ -49,7 +63,7 @@ const createMockPrismaClient = () => {
         }
       });
     }
-  });
+  }) as unknown as PrismaClient;
 };
 
 // Use global to share a single instance across modules in dev
@@ -57,21 +71,6 @@ const createMockPrismaClient = () => {
 declare global {
   var prisma: PrismaClient | undefined;
 }
-
-// Create PrismaClient with error handling
-const prismaClientCreator = (): any => {
-  try {
-    return new PrismaClient();
-  } catch (error: any) {
-    console.error("Error initializing PrismaClient:", error.message);
-    
-    if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") {
-      return createMockPrismaClient();
-    }
-    
-    throw error;
-  }
-};
 
 // Set up client with better error handling for different environments
 export const prisma = global.prisma || prismaClientCreator();
