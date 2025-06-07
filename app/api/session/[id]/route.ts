@@ -75,6 +75,20 @@ async function handler(
           }
         },
         sealTags: true,
+        guardSealTags: {
+          include: {
+            verifiedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            }
+          },
+          orderBy: {
+            createdAt: 'asc'
+          }
+        },
         comments: {
           include: {
             user: {
