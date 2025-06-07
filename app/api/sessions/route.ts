@@ -3,10 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { withAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { UserRole, EmployeeSubrole } from "@/prisma/enums";
+import { UserRole, EmployeeSubrole, SessionStatus, VehicleStatus } from "@/prisma/enums";
 import { Prisma } from "@prisma/client";
 import fs from 'fs';
 import path from 'path';
+import { ActivityAction } from "@/prisma/enums";
+import { uploadImageBuffer } from "@/lib/cloudinary";
+import { addActivityLog } from "@/lib/activity-logger";
+import { compressImage } from "@/lib/imageUtils";
 
 // Directory for storing uploaded files
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
