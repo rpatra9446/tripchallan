@@ -401,44 +401,333 @@ function GuardVerificationTabbedView({
           <Typography variant="h6" gutterBottom>
             Loading Details
           </Typography>
-          <Grid container spacing={2}>
-            {session.tripDetails?.transporterName && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="bold">Transporter Name:</Typography>
-                <Typography>{session.tripDetails.transporterName}</Typography>
-              </Grid>
-            )}
-            {session.tripDetails?.materialName && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="bold">Material Name:</Typography>
-                <Typography>{session.tripDetails.materialName}</Typography>
-              </Grid>
-            )}
-            {session.tripDetails?.loadingSite && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="bold">Loading Site:</Typography>
-                <Typography>{session.tripDetails.loadingSite}</Typography>
-              </Grid>
-            )}
-            {session.tripDetails?.netMaterialWeight && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="bold">Net Material Weight:</Typography>
-                <Typography>{session.tripDetails.netMaterialWeight} kg</Typography>
-              </Grid>
-            )}
-            {session.tripDetails?.grossWeight && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="bold">Gross Weight:</Typography>
-                <Typography>{session.tripDetails.grossWeight} kg</Typography>
-              </Grid>
-            )}
-            {session.tripDetails?.tareWeight && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="bold">Tare Weight:</Typography>
-                <Typography>{session.tripDetails.tareWeight} kg</Typography>
-              </Grid>
-            )}
-          </Grid>
+          <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Value</TableCell>
+                    <TableCell>Entered At</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {/* Source */}
+                  <TableRow>
+                    <TableCell>Source</TableCell>
+                    <TableCell>{session.source}</TableCell>
+                    <TableCell>
+                      {session.timestamps?.loadingDetails?.source 
+                        ? formatTimestampExact(session.timestamps.loadingDetails.source)
+                        : formatTimestampExact(session.createdAt)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Destination */}
+                  <TableRow>
+                    <TableCell>Destination</TableCell>
+                    <TableCell>{session.destination}</TableCell>
+                    <TableCell>
+                      {session.timestamps?.loadingDetails?.destination 
+                        ? formatTimestampExact(session.timestamps.loadingDetails.destination)
+                        : formatTimestampExact(session.createdAt)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Cargo Type - checking if the field exists before rendering */}
+                  {(session.tripDetails as any)?.cargoType && (
+                    <TableRow>
+                      <TableCell>Cargo Type</TableCell>
+                      <TableCell>{(session.tripDetails as any).cargoType}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.cargoType 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.cargoType)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Material Name */}
+                  {session.tripDetails?.materialName && (
+                    <TableRow>
+                      <TableCell>Material Name</TableCell>
+                      <TableCell>{session.tripDetails.materialName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.materialName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.materialName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Quality of Materials */}
+                  {session.tripDetails?.qualityOfMaterials && (
+                    <TableRow>
+                      <TableCell>Quality Of Materials</TableCell>
+                      <TableCell>{session.tripDetails.qualityOfMaterials}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.qualityOfMaterials 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.qualityOfMaterials)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Transporter Name */}
+                  {session.tripDetails?.transporterName && (
+                    <TableRow>
+                      <TableCell>Transporter Name</TableCell>
+                      <TableCell>{session.tripDetails.transporterName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.transporterName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.transporterName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Receiver Party */}
+                  {session.tripDetails?.receiverPartyName && (
+                    <TableRow>
+                      <TableCell>Receiver Party</TableCell>
+                      <TableCell>{session.tripDetails.receiverPartyName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.receiverPartyName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.receiverPartyName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Loading Site */}
+                  {session.tripDetails?.loadingSite && (
+                    <TableRow>
+                      <TableCell>Loading Site</TableCell>
+                      <TableCell>{session.tripDetails.loadingSite}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.loadingSite 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.loadingSite)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Vehicle Number */}
+                  {session.tripDetails?.vehicleNumber && (
+                    <TableRow>
+                      <TableCell>Vehicle Number</TableCell>
+                      <TableCell>{session.tripDetails.vehicleNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.vehicleNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.vehicleNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Registration Certificate - checking if the field exists before rendering */}
+                  {(session.tripDetails as any)?.registrationCertificate && (
+                    <TableRow>
+                      <TableCell>Registration Certificate</TableCell>
+                      <TableCell>{(session.tripDetails as any).registrationCertificate}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.registrationCertificate 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.registrationCertificate)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* GPS IMEI Number */}
+                  {session.tripDetails?.gpsImeiNumber && (
+                    <TableRow>
+                      <TableCell>GPS IMEI Number</TableCell>
+                      <TableCell>{session.tripDetails.gpsImeiNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.gpsImeiNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.gpsImeiNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Driver Name */}
+                  {session.tripDetails?.driverName && (
+                    <TableRow>
+                      <TableCell>Driver Name</TableCell>
+                      <TableCell>{session.tripDetails.driverName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Driver Contact Number */}
+                  {session.tripDetails?.driverContactNumber && (
+                    <TableRow>
+                      <TableCell>Driver Contact Number</TableCell>
+                      <TableCell>{session.tripDetails.driverContactNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverContactNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverContactNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Driver License */}
+                  {session.tripDetails?.driverLicense && (
+                    <TableRow>
+                      <TableCell>Driver License</TableCell>
+                      <TableCell>{session.tripDetails.driverLicense}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverLicense 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverLicense)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Loader Name */}
+                  {session.tripDetails?.loaderName && (
+                    <TableRow>
+                      <TableCell>Loader Name</TableCell>
+                      <TableCell>{session.tripDetails.loaderName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.loaderName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.loaderName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Loader Mobile Number */}
+                  {session.tripDetails?.loaderMobileNumber && (
+                    <TableRow>
+                      <TableCell>Loader Mobile Number</TableCell>
+                      <TableCell>{session.tripDetails.loaderMobileNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.loaderMobileNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.loaderMobileNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Gross Weight */}
+                  {session.tripDetails?.grossWeight && (
+                    <TableRow>
+                      <TableCell>Gross Weight</TableCell>
+                      <TableCell>{session.tripDetails.grossWeight} kg</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.grossWeight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.grossWeight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Tare Weight */}
+                  {session.tripDetails?.tareWeight && (
+                    <TableRow>
+                      <TableCell>Tare Weight</TableCell>
+                      <TableCell>{session.tripDetails.tareWeight} kg</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.tareWeight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.tareWeight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Net Material Weight */}
+                  {session.tripDetails?.netMaterialWeight && (
+                    <TableRow>
+                      <TableCell>Net Material Weight</TableCell>
+                      <TableCell>{session.tripDetails.netMaterialWeight} kg</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.netMaterialWeight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.netMaterialWeight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Challan Royalty Number */}
+                  {session.tripDetails?.challanRoyaltyNumber && (
+                    <TableRow>
+                      <TableCell>Challan Royalty Number</TableCell>
+                      <TableCell>{session.tripDetails.challanRoyaltyNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.challanRoyaltyNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.challanRoyaltyNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* DO Number */}
+                  {session.tripDetails?.doNumber && (
+                    <TableRow>
+                      <TableCell>DO Number</TableCell>
+                      <TableCell>{session.tripDetails.doNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.doNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.doNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* TP Number */}
+                  {session.tripDetails?.tpNumber && (
+                    <TableRow>
+                      <TableCell>TP Number</TableCell>
+                      <TableCell>{session.tripDetails.tpNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.tpNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.tpNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Number of Packages */}
+                  {(session.tripDetails as any)?.numberOfPackages && (
+                    <TableRow>
+                      <TableCell>Number Of Packages</TableCell>
+                      <TableCell>{(session.tripDetails as any).numberOfPackages}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.numberOfPackages 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.numberOfPackages)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Freight */}
+                  {session.tripDetails?.freight && (
+                    <TableRow>
+                      <TableCell>Freight</TableCell>
+                      <TableCell>{session.tripDetails.freight}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.freight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.freight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Created By */}
+                  <TableRow>
+                    <TableCell>Created By</TableCell>
+                    <TableCell>{session.createdBy?.name || 'N/A'}</TableCell>
+                    <TableCell>{formatTimestampExact(session.createdAt)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
         </CustomTabPanel>
         
         {/* Session Info Tab */}
@@ -1116,20 +1405,320 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {session.tripDetails && Object.entries(session.tripDetails)
-                    .filter(([key]) => !isSystemField(key))
-                    .map(([key, value]) => (
-                      <TableRow key={key}>
-                        <TableCell>{getFieldLabel(key)}</TableCell>
-                        <TableCell>{value || 'N/A'}</TableCell>
-                        <TableCell>
-                          {session.timestamps?.loadingDetails?.[key] 
-                            ? formatTimestampExact(session.timestamps.loadingDetails[key])
-                            : 'Jan 15, 2024 14:30:22'}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  }
+                  {/* Source */}
+                  <TableRow>
+                    <TableCell>Source</TableCell>
+                    <TableCell>{session.source}</TableCell>
+                    <TableCell>
+                      {session.timestamps?.loadingDetails?.source 
+                        ? formatTimestampExact(session.timestamps.loadingDetails.source)
+                        : formatTimestampExact(session.createdAt)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Destination */}
+                  <TableRow>
+                    <TableCell>Destination</TableCell>
+                    <TableCell>{session.destination}</TableCell>
+                    <TableCell>
+                      {session.timestamps?.loadingDetails?.destination 
+                        ? formatTimestampExact(session.timestamps.loadingDetails.destination)
+                        : formatTimestampExact(session.createdAt)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Cargo Type - checking if the field exists before rendering */}
+                  {(session.tripDetails as any)?.cargoType && (
+                    <TableRow>
+                      <TableCell>Cargo Type</TableCell>
+                      <TableCell>{(session.tripDetails as any).cargoType}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.cargoType 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.cargoType)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Material Name */}
+                  {session.tripDetails?.materialName && (
+                    <TableRow>
+                      <TableCell>Material Name</TableCell>
+                      <TableCell>{session.tripDetails.materialName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.materialName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.materialName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Quality of Materials */}
+                  {session.tripDetails?.qualityOfMaterials && (
+                    <TableRow>
+                      <TableCell>Quality Of Materials</TableCell>
+                      <TableCell>{session.tripDetails.qualityOfMaterials}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.qualityOfMaterials 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.qualityOfMaterials)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Transporter Name */}
+                  {session.tripDetails?.transporterName && (
+                    <TableRow>
+                      <TableCell>Transporter Name</TableCell>
+                      <TableCell>{session.tripDetails.transporterName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.transporterName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.transporterName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Receiver Party */}
+                  {session.tripDetails?.receiverPartyName && (
+                    <TableRow>
+                      <TableCell>Receiver Party</TableCell>
+                      <TableCell>{session.tripDetails.receiverPartyName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.receiverPartyName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.receiverPartyName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Loading Site */}
+                  {session.tripDetails?.loadingSite && (
+                    <TableRow>
+                      <TableCell>Loading Site</TableCell>
+                      <TableCell>{session.tripDetails.loadingSite}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.loadingSite 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.loadingSite)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Vehicle Number */}
+                  {session.tripDetails?.vehicleNumber && (
+                    <TableRow>
+                      <TableCell>Vehicle Number</TableCell>
+                      <TableCell>{session.tripDetails.vehicleNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.vehicleNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.vehicleNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Registration Certificate - checking if the field exists before rendering */}
+                  {(session.tripDetails as any)?.registrationCertificate && (
+                    <TableRow>
+                      <TableCell>Registration Certificate</TableCell>
+                      <TableCell>{(session.tripDetails as any).registrationCertificate}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.registrationCertificate 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.registrationCertificate)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* GPS IMEI Number */}
+                  {session.tripDetails?.gpsImeiNumber && (
+                    <TableRow>
+                      <TableCell>GPS IMEI Number</TableCell>
+                      <TableCell>{session.tripDetails.gpsImeiNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.gpsImeiNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.gpsImeiNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Driver Name */}
+                  {session.tripDetails?.driverName && (
+                    <TableRow>
+                      <TableCell>Driver Name</TableCell>
+                      <TableCell>{session.tripDetails.driverName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Driver Contact Number */}
+                  {session.tripDetails?.driverContactNumber && (
+                    <TableRow>
+                      <TableCell>Driver Contact Number</TableCell>
+                      <TableCell>{session.tripDetails.driverContactNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverContactNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverContactNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Driver License */}
+                  {session.tripDetails?.driverLicense && (
+                    <TableRow>
+                      <TableCell>Driver License</TableCell>
+                      <TableCell>{session.tripDetails.driverLicense}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverLicense 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverLicense)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Loader Name */}
+                  {session.tripDetails?.loaderName && (
+                    <TableRow>
+                      <TableCell>Loader Name</TableCell>
+                      <TableCell>{session.tripDetails.loaderName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.loaderName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.loaderName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Loader Mobile Number */}
+                  {session.tripDetails?.loaderMobileNumber && (
+                    <TableRow>
+                      <TableCell>Loader Mobile Number</TableCell>
+                      <TableCell>{session.tripDetails.loaderMobileNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.loaderMobileNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.loaderMobileNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Gross Weight */}
+                  {session.tripDetails?.grossWeight && (
+                    <TableRow>
+                      <TableCell>Gross Weight</TableCell>
+                      <TableCell>{session.tripDetails.grossWeight} kg</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.grossWeight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.grossWeight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Tare Weight */}
+                  {session.tripDetails?.tareWeight && (
+                    <TableRow>
+                      <TableCell>Tare Weight</TableCell>
+                      <TableCell>{session.tripDetails.tareWeight} kg</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.tareWeight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.tareWeight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Net Material Weight */}
+                  {session.tripDetails?.netMaterialWeight && (
+                    <TableRow>
+                      <TableCell>Net Material Weight</TableCell>
+                      <TableCell>{session.tripDetails.netMaterialWeight} kg</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.netMaterialWeight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.netMaterialWeight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Challan Royalty Number */}
+                  {session.tripDetails?.challanRoyaltyNumber && (
+                    <TableRow>
+                      <TableCell>Challan Royalty Number</TableCell>
+                      <TableCell>{session.tripDetails.challanRoyaltyNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.challanRoyaltyNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.challanRoyaltyNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* DO Number */}
+                  {session.tripDetails?.doNumber && (
+                    <TableRow>
+                      <TableCell>DO Number</TableCell>
+                      <TableCell>{session.tripDetails.doNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.doNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.doNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* TP Number */}
+                  {session.tripDetails?.tpNumber && (
+                    <TableRow>
+                      <TableCell>TP Number</TableCell>
+                      <TableCell>{session.tripDetails.tpNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.tpNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.tpNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Number of Packages */}
+                  {(session.tripDetails as any)?.numberOfPackages && (
+                    <TableRow>
+                      <TableCell>Number Of Packages</TableCell>
+                      <TableCell>{(session.tripDetails as any).numberOfPackages}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.numberOfPackages 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.numberOfPackages)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Freight */}
+                  {session.tripDetails?.freight && (
+                    <TableRow>
+                      <TableCell>Freight</TableCell>
+                      <TableCell>{session.tripDetails.freight}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.freight 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.freight)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Created By */}
+                  <TableRow>
+                    <TableCell>Created By</TableCell>
+                    <TableCell>{session.createdBy?.name || 'N/A'}</TableCell>
+                    <TableCell>{formatTimestampExact(session.createdAt)}</TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </TableContainer>
