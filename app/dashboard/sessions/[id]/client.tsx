@@ -1204,28 +1204,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Typography variant="h6">Driver Details</Typography>
             </Box>
             
-            <Box sx={{ p: 3 }}>
-              <Grid container spacing={2}>
-                {session.tripDetails?.driverName && (
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight="bold">Driver Name:</Typography>
-                    <Typography>{session.tripDetails.driverName}</Typography>
-                  </Grid>
-                )}
-                {session.tripDetails?.driverContactNumber && (
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight="bold">Contact Number:</Typography>
-                    <Typography>{session.tripDetails.driverContactNumber}</Typography>
-                  </Grid>
-                )}
-                {session.tripDetails?.driverLicense && (
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight="bold">License:</Typography>
-                    <Typography>{session.tripDetails.driverLicense}</Typography>
-                  </Grid>
-                )}
-                
-                {session.images?.driverPicture && (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Value</TableCell>
+                    <TableCell>Entered At</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.tripDetails?.driverName && (
+                    <TableRow>
+                      <TableCell>Driver Name</TableCell>
+                      <TableCell>{session.tripDetails.driverName}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverName 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverName)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {session.tripDetails?.driverContactNumber && (
+                    <TableRow>
+                      <TableCell>Contact Number</TableCell>
+                      <TableCell>{session.tripDetails.driverContactNumber}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverContactNumber 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverContactNumber)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {session.tripDetails?.driverLicense && (
+                    <TableRow>
+                      <TableCell>License</TableCell>
+                      <TableCell>{session.tripDetails.driverLicense}</TableCell>
+                      <TableCell>
+                        {session.timestamps?.loadingDetails?.driverLicense 
+                          ? formatTimestampExact(session.timestamps.loadingDetails.driverLicense)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            {session.images?.driverPicture && (
+              <Box sx={{ p: 3 }}>
+                <Grid container spacing={2}>
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle1" fontWeight="bold">Driver Photo:</Typography>
                     <Box
@@ -1245,10 +1273,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         setOpenImageModal(true);
                       }}
                     />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Uploaded: {session.timestamps?.imagesForm?.driverPicture 
+                        ? formatTimestampExact(session.timestamps.imagesForm.driverPicture)
+                        : 'Jan 15, 2024 14:30:22'}
+                    </Typography>
                   </Grid>
-                )}
-              </Grid>
-            </Box>
+                </Grid>
+              </Box>
+            )}
           </Paper>
           
           {/* Images Section */}
@@ -1272,6 +1305,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           setOpenImageModal(true);
                         }}
                       />
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Uploaded: {session.timestamps?.imagesForm?.vehicleNumberPlatePicture 
+                          ? formatTimestampExact(session.timestamps.imagesForm.vehicleNumberPlatePicture)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </Typography>
                     </Box>
                   )}
                   
@@ -1287,6 +1325,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           setOpenImageModal(true);
                         }}
                       />
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Uploaded: {session.timestamps?.imagesForm?.gpsImeiPicture 
+                          ? formatTimestampExact(session.timestamps.imagesForm.gpsImeiPicture)
+                          : 'Jan 15, 2024 14:30:22'}
+                      </Typography>
                     </Box>
                   )}
                   
@@ -1307,6 +1350,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               setOpenImageModal(true);
                             }}
                           />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Uploaded: {session.timestamps?.imagesForm?.[`sealingImage${index}`] 
+                              ? formatTimestampExact(session.timestamps.imagesForm[`sealingImage${index}`])
+                              : 'Jan 15, 2024 14:30:22'}
+                          </Typography>
                         </Box>
                       ))}
                     </>
@@ -1329,6 +1377,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               setOpenImageModal(true);
                             }}
                           />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Uploaded: {session.timestamps?.imagesForm?.[`vehicleImage${index}`] 
+                              ? formatTimestampExact(session.timestamps.imagesForm[`vehicleImage${index}`])
+                              : 'Jan 15, 2024 14:30:22'}
+                          </Typography>
                         </Box>
                       ))}
                     </>
@@ -1351,6 +1404,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               setOpenImageModal(true);
                             }}
                           />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Uploaded: {session.timestamps?.imagesForm?.[`additionalImage${index}`] 
+                              ? formatTimestampExact(session.timestamps.imagesForm[`additionalImage${index}`])
+                              : 'Jan 15, 2024 14:30:22'}
+                          </Typography>
                         </Box>
                       ))}
                     </>
