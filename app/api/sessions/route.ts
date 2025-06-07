@@ -1028,10 +1028,13 @@ export const POST = withAuth(
                       status: 'BUSY',
                       vehicleType: 'TRUCK', // Default value
                       companyId: employee.companyId || "",
-                      createdById: userId as string
+                      createdById: userId as string,
+                      // Get the registration certificate from the session data
+                      // which was added earlier from formData
+                      registrationCertificate: (sessionData as any).registrationCertificate || null
                     }
                   });
-                  console.log(`Created new vehicle record for ${sessionData.vehicleNumber}`);
+                  console.log(`Created new vehicle record for ${sessionData.vehicleNumber} with RC: ${(sessionData as any).registrationCertificate || 'N/A'}`);
                 }
               } catch (vehicleError) {
                 // Log but don't fail the transaction if vehicle creation fails
