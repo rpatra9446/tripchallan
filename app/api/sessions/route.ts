@@ -3,14 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { withAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { UserRole, EmployeeSubrole, SessionStatus, VehicleStatus } from "@/prisma/enums";
+import { UserRole, EmployeeSubrole } from "@/prisma/enums";
 import { Prisma } from "@prisma/client";
 import fs from 'fs';
 import path from 'path';
-import { ActivityAction } from "@/prisma/enums";
-import { uploadImageBuffer } from "@/lib/cloudinary";
-import { addActivityLog } from "@/lib/activity-logger";
-import { compressImage } from "@/lib/imageUtils";
 
 // Directory for storing uploaded files
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
@@ -1003,6 +999,43 @@ export const POST = withAuth(
                 console.log(`[API RECOVERY] Created fallback seal: ${seal.id}, barcode: ${seal.barcode}`);
               } catch (sealError) {
                 console.error("[API ERROR] Failed to create fallback seal:", sealError);
+              }
+            }
+            
+            // Auto-create or update vehicle record if a vehicle number is provided
+            if (sessionData.vehicleNumber) {
+              try {
+                console.log(`Creating or updating vehicle record for: ${sessionData.vehicleNumber}`);
+                
+                // Check if the vehicle already exists
+                const existingVehicle = await tx.vehicle.findUnique({
+                  where: { numberPlate: sessionData.vehicleNumber }
+                });
+                
+                if (existingVehicle) {
+                  // If vehicle exists, update its status to BUSY as per documentation
+                  console.log(`Vehicle ${sessionData.vehicleNumber} exists - updating status to BUSY`);
+                  await tx.vehicle.update({
+                    where: { id: existingVehicle.id },
+                    data: { status: 'BUSY' }
+                  });
+                } else {
+                  // If vehicle doesn't exist, create a new record with BUSY status
+                  console.log(`Vehicle ${sessionData.vehicleNumber} does not exist - creating new record`);
+                  await tx.vehicle.create({
+                    data: {
+                      numberPlate: sessionData.vehicleNumber,
+                      status: 'BUSY',
+                      vehicleType: 'TRUCK', // Default value
+                      companyId: employee.companyId || "",
+                      createdById: userId as string
+                    }
+                  });
+                  console.log(`Created new vehicle record for ${sessionData.vehicleNumber}`);
+                }
+              } catch (vehicleError) {
+                // Log but don't fail the transaction if vehicle creation fails
+                console.error(`Error creating/updating vehicle record for ${sessionData.vehicleNumber}:`, vehicleError);
               }
             }
             
