@@ -131,6 +131,55 @@ interface ActivityLogDetails {
   };
 }
 
+// Parse and process timestamps from form data
+function parseTimestamps(formData: FormData): Record<string, string> {
+  let allTimestamps: Record<string, string> = {};
+  
+  // Get timestamps from different form sections
+  const loadingDetailsTimestamps = formData.get('loadingDetailsTimestamps');
+  const driverDetailsTimestamps = formData.get('driverDetailsTimestamps');
+  const imagesFormTimestamps = formData.get('imagesFormTimestamps');
+  const sealTagTimestamps = formData.get('sealTagTimestamps');
+  
+  try {
+    if (loadingDetailsTimestamps) {
+      const parsed = JSON.parse(loadingDetailsTimestamps.toString());
+      allTimestamps = { ...allTimestamps, ...parsed };
+    }
+  } catch (e) {
+    console.error("Error parsing loadingDetailsTimestamps:", e);
+  }
+  
+  try {
+    if (driverDetailsTimestamps) {
+      const parsed = JSON.parse(driverDetailsTimestamps.toString());
+      allTimestamps = { ...allTimestamps, ...parsed };
+    }
+  } catch (e) {
+    console.error("Error parsing driverDetailsTimestamps:", e);
+  }
+  
+  try {
+    if (imagesFormTimestamps) {
+      const parsed = JSON.parse(imagesFormTimestamps.toString());
+      allTimestamps = { ...allTimestamps, ...parsed };
+    }
+  } catch (e) {
+    console.error("Error parsing imagesFormTimestamps:", e);
+  }
+  
+  try {
+    if (sealTagTimestamps) {
+      const parsed = JSON.parse(sealTagTimestamps.toString());
+      allTimestamps = { ...allTimestamps, ...parsed };
+    }
+  } catch (e) {
+    console.error("Error parsing sealTagTimestamps:", e);
+  }
+  
+  return allTimestamps;
+}
+
 async function handler(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -613,9 +662,22 @@ export const POST = withAuth(
         numberOfPackages: formData.get('numberOfPackages') as string,
       };
 
-      // Get timestamps data
-      const loadingDetailsTimestamps = formData.get('loadingDetailsTimestamps');
-      const imagesFormTimestamps = formData.get('imagesFormTimestamps');
+      // Extract and parse timestamps from form data
+      const allTimestamps = parseTimestamps(formData);
+      console.log("Parsed timestamps for fields:", Object.keys(allTimestamps).length);
+
+      // Extract registrationCertificate and driverLicense to fix the N/A issue
+      const registrationCertificate = formData.get('registrationCertificate')?.toString() || null;
+      const driverLicense = formData.get('driverLicense')?.toString() || null;
+      
+      // Add these fields to sessionData (using type assertion to avoid TypeScript errors)
+      if (registrationCertificate) {
+        (sessionData as any).registrationCertificate = registrationCertificate;
+      }
+      
+      if (driverLicense) {
+        (sessionData as any).driverLicense = driverLicense;
+      }
 
       // Extract seal tag data
       const sealTagIdsJson = formData.get('sealTagIds') as string;
@@ -942,6 +1004,36 @@ export const POST = withAuth(
             
             console.log(`Using ${sealTagIds.length} seal tags from operator.`);
 
+            // Store field timestamps
+            if (Object.keys(allTimestamps).length > 0) {
+              console.log("Storing field timestamps");
+              
+              // Create timestamp records for each field
+              const timestampRecords = Object.entries(allTimestamps).map(([fieldName, timestamp]) => {
+                // Skip seal tag timestamps which are handled separately
+                if (fieldName.startsWith('sealTag')) {
+                  return null;
+                }
+                
+                return {
+                  sessionId: newSession.id,
+                  fieldName,
+                  timestamp: new Date(timestamp),
+                  updatedById: userId as string
+                };
+              }).filter(record => record !== null);
+              
+              if (timestampRecords.length > 0) {
+                await tx.sessionFieldTimestamps.createMany({
+                  data: timestampRecords as any[]
+                }).catch((error: Error) => {
+                  console.error("Error creating field timestamps:", error);
+                  // Non-critical, don't throw error to avoid failing the transaction
+                });
+                console.log(`Created ${timestampRecords.length} field timestamp records`);
+              }
+            }
+
             console.log("Creating coin transaction record");
             // Create coin transaction record - coin is spent, not transferred
             await tx.coinTransaction.create({
@@ -982,8 +1074,9 @@ export const POST = withAuth(
                       (_, i) => `/api/images/${newSession.id}/additional/${i}`),
                   },
                   timestamps: {
-                    loadingDetails: loadingDetailsTimestamps ? JSON.parse(loadingDetailsTimestamps as string) : {},
-                    imagesForm: imagesFormTimestamps ? JSON.parse(imagesFormTimestamps as string) : {},
+                    loadingDetails: allTimestamps.loadingDetails ? JSON.stringify(allTimestamps.loadingDetails) : null,
+                    driverDetails: allTimestamps.driverDetails ? JSON.stringify(allTimestamps.driverDetails) : null,
+                    imagesForm: allTimestamps.imagesForm ? JSON.stringify(allTimestamps.imagesForm) : null,
                   },
                   qrCodes: {
                     primaryBarcode: sealTagIds.length > 0 ? sealTagIds[0] : "",

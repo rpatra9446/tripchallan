@@ -228,8 +228,7 @@ model Vehicle {
   model                   String?
   manufacturer            String?
   yearOfMake              Int?
-  status                  VehicleStatus @default(ACTIVE)
-  vehicleType             VehicleType   @default(TRUCK)
+  status                  VehicleStatus @default(ACTIVE)`n  vehicleType             VehicleType   @default(TRUCK)
   companyId               String
   createdById             String
   createdAt               DateTime      @default(now())
