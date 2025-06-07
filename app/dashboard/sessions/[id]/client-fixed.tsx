@@ -47,12 +47,14 @@ import {
   Edit,
   Person,
   Phone,
-  Business
+  Business,
+  ContactPage
 } from "@mui/icons-material";
 import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
+import { formatTimestampExact } from "@/lib/date-utils";
 
 // Types
 type SealType = {
@@ -66,6 +68,27 @@ type SealType = {
     name: string;
     email: string;
   } | null;
+};
+
+type FieldTimestampType = {
+  id: string;
+  fieldName: string;
+  timestamp: string;
+  updatedById: string;
+  updatedBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+};
+
+type FormattedTimestampType = {
+  timestamp: string;
+  formattedTimestamp: string;
+  updatedBy: {
+    id: string;
+    name: string;
+  };
 };
 
 type SessionType = {
@@ -105,6 +128,7 @@ type SessionType = {
     loadingSite?: string;
     receiverPartyName?: string;
     driverLicense?: string;
+    registrationCertificate?: string;
   };
   images?: {
     gpsImeiPicture?: string;
@@ -129,6 +153,8 @@ type SessionType = {
       verification?: {
         fieldVerifications?: Record<string, any>;
         allMatch?: boolean;
+        completedBy?: string;
+        completedAt?: string;
       };
     };
   }[];
@@ -141,6 +167,8 @@ type SessionType = {
     createdAt: string;
     scannedByName: string;
   }[];
+  fieldTimestamps?: FieldTimestampType[];
+  formattedFieldTimestamps?: Record<string, FormattedTimestampType>;
 };
 
 export default function SessionDetailClient({ sessionId }: { sessionId: string }) {
@@ -545,7 +573,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           </TableCell>
                           <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
                           <TableCell>
-                            {tag.createdAt ? new Date(tag.createdAt).toLocaleString() : 'Unknown'}
+                            {tag.createdAt ? formatTimestampExact(tag.createdAt) : 'Unknown'}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -772,95 +800,64 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             <Typography variant="h6" gutterBottom>Loading Details</Typography>
             <Divider sx={{ mb: 2 }} />
             
-            <Grid container spacing={2}>
-              {session.tripDetails && (
-                <>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Transporter Name:</Typography>
-                    <Typography variant="body1">{session.tripDetails.transporterName || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Material Name:</Typography>
-                    <Typography variant="body1">{session.tripDetails.materialName || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">GPS IMEI Number:</Typography>
-                    <Typography variant="body1">{session.tripDetails.gpsImeiNumber || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Loader Name:</Typography>
-                    <Typography variant="body1">{session.tripDetails.loaderName || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Loader Mobile Number:</Typography>
-                    <Typography variant="body1">{session.tripDetails.loaderMobileNumber || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Loading Site:</Typography>
-                    <Typography variant="body1">{session.tripDetails.loadingSite || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Challan/Royalty Number:</Typography>
-                    <Typography variant="body1">{session.tripDetails.challanRoyaltyNumber || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">DO Number:</Typography>
-                    <Typography variant="body1">{session.tripDetails.doNumber || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">TP Number:</Typography>
-                    <Typography variant="body1">{session.tripDetails.tpNumber || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Freight:</Typography>
-                    <Typography variant="body1">{session.tripDetails.freight || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Quality of Materials:</Typography>
-                    <Typography variant="body1">{session.tripDetails.qualityOfMaterials || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Gross Weight:</Typography>
-                    <Typography variant="body1">{session.tripDetails.grossWeight || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Tare Weight:</Typography>
-                    <Typography variant="body1">{session.tripDetails.tareWeight || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Net Material Weight:</Typography>
-                    <Typography variant="body1">{session.tripDetails.netMaterialWeight || 'N/A'}</Typography>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Receiver Party Name:</Typography>
-                    <Typography variant="body1">{session.tripDetails.receiverPartyName || 'N/A'}</Typography>
-                  </Grid>
-                </>
-              )}
-              {!session?.tripDetails && (
-                <Grid item xs={12}>
-                  <Alert severity="info">No loading details available</Alert>
-                </Grid>
-              )}
-            </Grid>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Entered At</TableCell>
+                    <TableCell>Value</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session?.tripDetails && Object.entries(session.tripDetails).map(([key, value]) => {
+                    // Skip system fields
+                    if (key === 'id' || key === 'createdAt' || key === 'updatedAt') {
+                      return null;
+                    }
+                    
+                    // Find timestamp for this field if available
+                    const fieldTimestamp = session?.fieldTimestamps?.find(
+                      (ft) => ft.fieldName === key
+                    );
+                    
+                    // Check for formatted timestamps (new API response format)
+                    const formattedTimestamp = session?.formattedFieldTimestamps?.[key];
+                    
+                    // Fallback to legacy timestamps if formatted timestamps are not available
+                    const legacyTimestamp = session?.timestamps?.loadingDetails?.[key] || 
+                                           session?.timestamps?.imagesForm?.[key];
+                    
+                    return (
+                      <TableRow key={key}>
+                        <TableCell>{getFieldLabel(key)}</TableCell>
+                        <TableCell>
+                          {formattedTimestamp 
+                            ? formattedTimestamp.formattedTimestamp
+                            : fieldTimestamp 
+                              ? formatTimestampExact(fieldTimestamp.timestamp)
+                              : legacyTimestamp 
+                                ? formatTimestampExact(legacyTimestamp)
+                                : 'N/A'}
+                        </TableCell>
+                        <TableCell>{value || 'N/A'}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {!session?.tripDetails && (
+                    <TableRow>
+                      <TableCell colSpan={3}>
+                        <Alert severity="info">No loading details available</Alert>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
 
           {/* Seal Tags - For completed sessions or non-guard users */}
-          {session.sealTags && session.sealTags.length > 0 && (
+          {session?.sealTags && session.sealTags.length > 0 && (
             <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Seal Tags
@@ -939,7 +936,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               Driver Details
             </Typography>
             
-            {session.tripDetails ? (
+            {session?.tripDetails ? (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
                   <Typography variant="subtitle1">
@@ -949,39 +946,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 
                 <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
                   <Typography variant="subtitle1">
-                    <Phone fontSize="small" /> Contact Number: {session.tripDetails.driverContactNumber || 'N/A'}
+                    <Phone fontSize="small" /> Contact: {session.tripDetails.driverContactNumber || 'N/A'}
                   </Typography>
                 </Box>
                 
                 <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
                   <Typography variant="subtitle1">
-                    <VerifiedUser fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+                    <ContactPage fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
                   </Typography>
                 </Box>
                 
-                {session.images && session.images.driverPicture && (
-                  <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
-                    <Typography variant="subtitle2" gutterBottom>Driver Photo:</Typography>
-                    <img 
-                      src={session.images.driverPicture}
-                      alt="Driver"
-                      style={{ 
-                        width: '100px', 
-                        height: '100px', 
-                        objectFit: 'cover', 
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        p: 1
-                      }}
-                      onClick={() => {
-                        setSelectedImage(session.images?.driverPicture || '');
-                        setOpenImageModal(true);
-                      }}
-                    />
-                  </Box>
-                )}
+                <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <ContactPage fontSize="small" /> Registration Certificate: {session.tripDetails.registrationCertificate || 'N/A'}
+                  </Typography>
+                </Box>
               </Box>
             ) : (
               <Alert severity="info">No driver details available</Alert>
@@ -989,7 +968,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Paper>
 
           {/* Images Section - For completed sessions or non-guard users */}
-          {session.images && Object.keys(session.images).some(key => {
+          {session?.images && Object.keys(session.images).some(key => {
             const value = session.images && session.images[key as keyof typeof session.images];
             return !!value;
           }) && (

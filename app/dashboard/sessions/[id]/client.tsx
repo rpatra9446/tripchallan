@@ -341,7 +341,7 @@ function GuardVerificationTabbedView({
               <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
               <Box>
                 <Typography variant="body2" color="text.secondary">Created At</Typography>
-                <Typography variant="body1">{new Date(session.createdAt).toLocaleString()}</Typography>
+                                  <Typography variant="body1">{formatTimestampExact(session.createdAt)}</Typography>
               </Box>
             </Box>
           </Grid>
@@ -1188,7 +1188,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             'N/A'
                           )}
                         </TableCell>
-                        <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                        <TableCell>{formatTimestampExact(tag.createdAt)}</TableCell>
                         <TableCell>{tag.scannedByName || session.createdBy?.name || 'N/A'}</TableCell>
                       </TableRow>
                     ))}
