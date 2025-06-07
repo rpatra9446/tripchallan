@@ -321,7 +321,10 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
       });
       
       if (!response.ok) {
-        throw new Error("Failed to update session");
+        // Try to get detailed error information
+        const errorData = await response.json().catch(() => null);
+        console.error("Server response error:", errorData);
+        throw new Error(errorData?.error || "Failed to update session");
       }
       
       // Navigate back to session details page

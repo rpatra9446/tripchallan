@@ -73,6 +73,15 @@ export async function PUT(
     // Process image updates if any
     const imageUpdates = data.images || {};
     
+    // Debug the incoming data
+    console.log("Updating session with data:", {
+      sessionId,
+      source: data.source,
+      destination: data.destination,
+      tripDetailsFields: data.tripDetails ? Object.keys(data.tripDetails) : [],
+      imageFields: Object.keys(imageUpdates)
+    });
+    
     // Update seal information if provided and not already verified
     let sealUpdates: any = undefined;
     if (data.seal && data.seal.barcode) {
@@ -110,37 +119,41 @@ export async function PUT(
         
         // Update individual tripDetails fields if provided
         ...(data.tripDetails && {
-          transporterName: data.tripDetails.transporterName,
-          materialName: data.tripDetails.materialName,
-          vehicleNumber: data.tripDetails.vehicleNumber,
-          gpsImeiNumber: data.tripDetails.gpsImeiNumber,
-          driverName: data.tripDetails.driverName,
-          driverContactNumber: data.tripDetails.driverContactNumber,
-          loaderName: data.tripDetails.loaderName,
-          challanRoyaltyNumber: data.tripDetails.challanRoyaltyNumber,
-          doNumber: data.tripDetails.doNumber,
-          freight: data.tripDetails.freight ? Number(data.tripDetails.freight) : null,
-          qualityOfMaterials: data.tripDetails.qualityOfMaterials,
-          tpNumber: data.tripDetails.tpNumber,
-          grossWeight: data.tripDetails.grossWeight ? Number(data.tripDetails.grossWeight) : null,
-          tareWeight: data.tripDetails.tareWeight ? Number(data.tripDetails.tareWeight) : null,
-          netMaterialWeight: data.tripDetails.netMaterialWeight ? Number(data.tripDetails.netMaterialWeight) : null,
-          loaderMobileNumber: data.tripDetails.loaderMobileNumber,
-          loadingSite: data.tripDetails.loadingSite,
-          receiverPartyName: data.tripDetails.receiverPartyName,
-          cargoType: data.tripDetails.cargoType,
-          numberOfPackages: data.tripDetails.numberOfPackages,
-          registrationCertificate: data.tripDetails.registrationCertificate,
-          driverLicense: data.tripDetails.driverLicense
+          // Handle each field individually with proper null/undefined checking
+          ...(data.tripDetails.transporterName !== undefined && { transporterName: data.tripDetails.transporterName }),
+          ...(data.tripDetails.materialName !== undefined && { materialName: data.tripDetails.materialName }),
+          ...(data.tripDetails.vehicleNumber !== undefined && { vehicleNumber: data.tripDetails.vehicleNumber }),
+          ...(data.tripDetails.gpsImeiNumber !== undefined && { gpsImeiNumber: data.tripDetails.gpsImeiNumber }),
+          ...(data.tripDetails.driverName !== undefined && { driverName: data.tripDetails.driverName }),
+          ...(data.tripDetails.driverContactNumber !== undefined && { driverContactNumber: data.tripDetails.driverContactNumber }),
+          ...(data.tripDetails.loaderName !== undefined && { loaderName: data.tripDetails.loaderName }),
+          ...(data.tripDetails.challanRoyaltyNumber !== undefined && { challanRoyaltyNumber: data.tripDetails.challanRoyaltyNumber }),
+          ...(data.tripDetails.doNumber !== undefined && { doNumber: data.tripDetails.doNumber }),
+          ...(data.tripDetails.freight !== undefined && { freight: data.tripDetails.freight ? Number(data.tripDetails.freight) : null }),
+          ...(data.tripDetails.qualityOfMaterials !== undefined && { qualityOfMaterials: data.tripDetails.qualityOfMaterials }),
+          ...(data.tripDetails.tpNumber !== undefined && { tpNumber: data.tripDetails.tpNumber }),
+          ...(data.tripDetails.grossWeight !== undefined && { grossWeight: data.tripDetails.grossWeight ? Number(data.tripDetails.grossWeight) : null }),
+          ...(data.tripDetails.tareWeight !== undefined && { tareWeight: data.tripDetails.tareWeight ? Number(data.tripDetails.tareWeight) : null }),
+          ...(data.tripDetails.netMaterialWeight !== undefined && { netMaterialWeight: data.tripDetails.netMaterialWeight ? Number(data.tripDetails.netMaterialWeight) : null }),
+          ...(data.tripDetails.loaderMobileNumber !== undefined && { loaderMobileNumber: data.tripDetails.loaderMobileNumber }),
+          ...(data.tripDetails.loadingSite !== undefined && { loadingSite: data.tripDetails.loadingSite }),
+          ...(data.tripDetails.receiverPartyName !== undefined && { receiverPartyName: data.tripDetails.receiverPartyName }),
+          ...(data.tripDetails.cargoType !== undefined && { cargoType: data.tripDetails.cargoType }),
+          ...(data.tripDetails.numberOfPackages !== undefined && { numberOfPackages: data.tripDetails.numberOfPackages }),
+          ...(data.tripDetails.registrationCertificate !== undefined && { registrationCertificate: data.tripDetails.registrationCertificate }),
+          ...(data.tripDetails.driverLicense !== undefined && { driverLicense: data.tripDetails.driverLicense })
         }),
         
-        // Update individual image fields
-        ...(imageUpdates.gpsImeiPicture !== undefined && { gpsImeiPicture: imageUpdates.gpsImeiPicture }),
-        ...(imageUpdates.vehicleNumberPlatePicture !== undefined && { vehicleNumberPlatePicture: imageUpdates.vehicleNumberPlatePicture }),
-        ...(imageUpdates.driverPicture !== undefined && { driverPicture: imageUpdates.driverPicture }),
-        ...(imageUpdates.sealingImages && { sealingImages: imageUpdates.sealingImages }),
-        ...(imageUpdates.vehicleImages && { vehicleImages: imageUpdates.vehicleImages }),
-        ...(imageUpdates.additionalImages && { additionalImages: imageUpdates.additionalImages }),
+        // Process images only if they exist in the input data
+        ...(data.images && {
+          // Handle each image field separately with proper null/undefined checking
+          ...(imageUpdates.gpsImeiPicture !== undefined && { gpsImeiPicture: imageUpdates.gpsImeiPicture }),
+          ...(imageUpdates.vehicleNumberPlatePicture !== undefined && { vehicleNumberPlatePicture: imageUpdates.vehicleNumberPlatePicture }),
+          ...(imageUpdates.driverPicture !== undefined && { driverPicture: imageUpdates.driverPicture }),
+          ...(imageUpdates.sealingImages !== undefined && { sealingImages: imageUpdates.sealingImages || [] }),
+          ...(imageUpdates.vehicleImages !== undefined && { vehicleImages: imageUpdates.vehicleImages || [] }),
+          ...(imageUpdates.additionalImages !== undefined && { additionalImages: imageUpdates.additionalImages || [] })
+        }),
         
         // Update seal if needed
         ...sealUpdates,
@@ -235,9 +248,14 @@ export async function PUT(
     return NextResponse.json(updatedSession);
   } catch (error: any) {
     console.error("Error updating session:", error);
+    console.error("Error details:", error.stack);
     
+    // Return more detailed error information
     return NextResponse.json(
-      { error: `Failed to update session: ${error.message}` },
+      { 
+        error: `Failed to update session: ${error.message}`,
+        details: error.stack
+      },
       { status: 500 }
     );
   }
