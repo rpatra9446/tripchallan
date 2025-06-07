@@ -18,7 +18,7 @@ import {
   Input
 } from '@mui/material';
 import { Close, CloudUpload } from '@mui/icons-material';
-import { VehicleStatus } from '@/prisma/enums';
+import { VehicleStatus, VehicleType } from '@/prisma/enums';
 
 interface VehicleFormProps {
   open: boolean;
@@ -35,6 +35,7 @@ export interface VehicleFormData {
   manufacturer?: string;
   yearOfMake?: string;
   status?: VehicleStatus;
+  vehicleType?: VehicleType;
   registrationCertificate?: string;
   registrationCertificateDoc?: File | null;
 }
@@ -52,6 +53,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
     manufacturer: '',
     yearOfMake: '',
     status: VehicleStatus.ACTIVE,
+    vehicleType: VehicleType.TRUCK,
     registrationCertificate: '',
     registrationCertificateDoc: null
   });
@@ -69,6 +71,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
         manufacturer: initialData.manufacturer || '',
         yearOfMake: initialData.yearOfMake || '',
         status: initialData.status || VehicleStatus.ACTIVE,
+        vehicleType: initialData.vehicleType || VehicleType.TRUCK,
         registrationCertificate: initialData.registrationCertificate || '',
         registrationCertificateDoc: initialData.registrationCertificateDoc || null
       });
@@ -80,6 +83,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
         manufacturer: '',
         yearOfMake: '',
         status: VehicleStatus.ACTIVE,
+        vehicleType: VehicleType.TRUCK,
         registrationCertificate: '',
         registrationCertificateDoc: null
       });
@@ -89,7 +93,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
     setErrors({});
   }, [initialData, open]);
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }> | SelectChangeEvent<VehicleStatus>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }> | SelectChangeEvent<VehicleStatus | VehicleType>) => {
     const name = e.target.name;
     const value = e.target.value;
     
@@ -285,6 +289,25 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
             )}
           </Box>
           
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="vehicle-type-label">Vehicle Type</InputLabel>
+            <Select
+              labelId="vehicle-type-label"
+              name="vehicleType"
+              value={formData.vehicleType || ''}
+              label="Vehicle Type"
+              onChange={handleChange as (event: SelectChangeEvent<VehicleType>, child: React.ReactNode) => void}
+              disabled={isSubmitting}
+            >
+              <MenuItem value={VehicleType.TRUCK}>Truck</MenuItem>
+              <MenuItem value={VehicleType.TRAILER}>Trailer</MenuItem>
+              <MenuItem value={VehicleType.CONTAINER}>Container</MenuItem>
+              <MenuItem value={VehicleType.TANKER}>Tanker</MenuItem>
+              <MenuItem value={VehicleType.OTHER}>Other</MenuItem>
+            </Select>
+            <FormHelperText>Type of vehicle</FormHelperText>
+          </FormControl>
+          
           {isEditing && (
             <FormControl fullWidth margin="normal">
               <InputLabel id="status-label">Status</InputLabel>
@@ -297,8 +320,8 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
                 disabled={isSubmitting}
               >
                 <MenuItem value={VehicleStatus.ACTIVE}>Active</MenuItem>
+                <MenuItem value={VehicleStatus.BUSY}>Busy</MenuItem>
                 <MenuItem value={VehicleStatus.INACTIVE}>Inactive</MenuItem>
-                <MenuItem value={VehicleStatus.MAINTENANCE}>Maintenance</MenuItem>
               </Select>
               <FormHelperText>Current operational status of the vehicle</FormHelperText>
               {formData.status === VehicleStatus.INACTIVE && (

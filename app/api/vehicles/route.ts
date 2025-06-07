@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { VehicleStatus } from "@/prisma/enums";
+import { VehicleStatus, VehicleType } from "@/prisma/enums";
 
 // GET /api/vehicles - Retrieve vehicles for the company
 export async function GET(request: NextRequest) {
@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
         model: data.model || null,
         manufacturer: data.manufacturer || null,
         yearOfMake: data.yearOfMake ? parseInt(data.yearOfMake) : null,
+        vehicleType: data.vehicleType || 'TRUCK',
         registrationCertificate: data.registrationCertificate || null,
         status: VehicleStatus.ACTIVE,
         company: { connect: { id: session.user.companyId } },

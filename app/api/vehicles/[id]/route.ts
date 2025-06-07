@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { VehicleStatus } from "@/prisma/enums";
+import { VehicleStatus, VehicleType } from "@/prisma/enums";
 
 // GET /api/vehicles/[id] - Retrieve a specific vehicle
 export async function GET(
@@ -112,6 +112,7 @@ export async function PATCH(
     if (data.model !== undefined) updateData.model = data.model;
     if (data.manufacturer !== undefined) updateData.manufacturer = data.manufacturer;
     if (data.yearOfMake !== undefined) updateData.yearOfMake = data.yearOfMake ? parseInt(data.yearOfMake) : null;
+    if (data.vehicleType !== undefined) updateData.vehicleType = data.vehicleType;
     if (data.status && Object.values(VehicleStatus).includes(data.status as VehicleStatus)) {
       updateData.status = data.status;
     }

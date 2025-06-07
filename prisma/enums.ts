@@ -46,6 +46,21 @@ export enum ActivityAction {
 
 export enum VehicleStatus {
   ACTIVE = "ACTIVE",
-  INACTIVE = "INACTIVE",
-  MAINTENANCE = "MAINTENANCE"
+  BUSY = "BUSY",
+  INACTIVE = "INACTIVE"
+}
+
+export enum VehicleType {
+  TRUCK = "TRUCK",
+  TRAILER = "TRAILER",
+  CONTAINER = "CONTAINER",
+  TANKER = "TANKER",
+  OTHER = "OTHER"
+}
+
+export enum CommentUrgency {
+  NA = "NA",
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH"
 } 
