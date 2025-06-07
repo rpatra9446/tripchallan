@@ -1,7 +1,7 @@
 "use server";
 
 import { Suspense } from "react";
-import SessionDetailClient from "./client-fixed";
+import SessionDetailClient from "./client";
 
 export default async function SessionDetailPage({ 
   params 
