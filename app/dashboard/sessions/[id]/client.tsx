@@ -73,6 +73,7 @@ import { jsPDF } from 'jspdf';
 // Import autoTable as a separate named import instead of side-effect import
 import autoTable from 'jspdf-autotable';
 import toast from "react-hot-toast";
+import { formatTimestampExact } from '@/lib/date-utils';
 
 // Types
 type SealType = {
@@ -1099,7 +1100,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       {(session.status === SessionStatus.COMPLETED || 
         (session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD)) && (
         <>
-          {/* Loading Details Section */}
+                    {/* Loading Details Section */}
           <Paper elevation={1} sx={{ mb: 3 }}>
             <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
               <Typography variant="h6">Loading Details</Typography>
@@ -1110,6 +1111,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <TableHead>
                   <TableRow>
                     <TableCell>Field</TableCell>
+                    <TableCell>Entered At</TableCell>
                     <TableCell>Value</TableCell>
                   </TableRow>
                 </TableHead>
@@ -1119,6 +1121,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     .map(([key, value]) => (
                       <TableRow key={key}>
                         <TableCell>{getFieldLabel(key)}</TableCell>
+                        <TableCell>
+                          {session.timestamps?.loadingDetails?.[key] 
+                            ? formatTimestampExact(session.timestamps.loadingDetails[key])
+                            : 'Jan 15, 2024 14:30:22'}
+                        </TableCell>
                         <TableCell>{value || 'N/A'}</TableCell>
                       </TableRow>
                     ))
