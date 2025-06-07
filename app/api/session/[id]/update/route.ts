@@ -180,9 +180,53 @@ export async function PUT(
     // Add timestamp entries for updated fields
     if (data.tripDetails) {
       const timestamp = new Date();
-      const timestampPromises = Object.keys(data.tripDetails).map(fieldName => {
+      
+      // Get the existing session data to compare with
+      const existingSessionData = {
+        transporterName: existingSession.transporterName || '',
+        materialName: existingSession.materialName || '',
+        vehicleNumber: existingSession.vehicleNumber || '',
+        gpsImeiNumber: existingSession.gpsImeiNumber || '',
+        driverName: existingSession.driverName || '',
+        driverContactNumber: existingSession.driverContactNumber || '',
+        loaderName: existingSession.loaderName || '',
+        challanRoyaltyNumber: existingSession.challanRoyaltyNumber || '',
+        doNumber: existingSession.doNumber || '',
+        freight: existingSession.freight || 0,
+        qualityOfMaterials: existingSession.qualityOfMaterials || '',
+        tpNumber: existingSession.tpNumber || '',
+        grossWeight: existingSession.grossWeight || 0,
+        tareWeight: existingSession.tareWeight || 0,
+        netMaterialWeight: existingSession.netMaterialWeight || 0,
+        loaderMobileNumber: existingSession.loaderMobileNumber || '',
+        loadingSite: existingSession.loadingSite || '',
+        receiverPartyName: existingSession.receiverPartyName || '',
+        cargoType: existingSession.cargoType || '',
+        numberOfPackages: existingSession.numberOfPackages || '',
+        registrationCertificate: existingSession.registrationCertificate || '',
+        driverLicense: existingSession.driverLicense || ''
+      };
+      
+      // Only update timestamps for fields that have actually changed
+      const changedFields = Object.keys(data.tripDetails).filter(fieldName => {
+        const oldValue = existingSessionData[fieldName as keyof typeof existingSessionData];
+        const newValue = data.tripDetails[fieldName];
+        
+        // Compare stringified values to handle different types
+        return String(oldValue) !== String(newValue);
+      });
+      
+      console.log("Changed fields:", changedFields);
+      
+      if (changedFields.length === 0) {
+        console.log("No fields have changed, skipping timestamp updates");
+      }
+      
+      const timestampPromises = changedFields.map(fieldName => {
         // Convert the field name to match the expected format for loading details
         const timestampFieldName = `loadingDetails.${fieldName}`;
+        
+        console.log(`Updating timestamp for field: ${fieldName}`);
         
         return prisma.sessionFieldTimestamps.upsert({
           where: {
@@ -204,16 +248,69 @@ export async function PUT(
         });
       });
       
-      await Promise.all(timestampPromises);
+      if (timestampPromises.length > 0) {
+        await Promise.all(timestampPromises);
+      }
     }
     
     // Add timestamp entries for updated image fields - these are still tracked even though
     // images aren't direct fields on the Session model
     if (data.images) {
       const timestamp = new Date();
-      const imageTimestampPromises = Object.keys(data.images).map(fieldName => {
+      
+      // Get all existing activity logs to find current image values
+      const activityLogs = await prisma.activityLog.findMany({
+        where: {
+          targetResourceId: sessionId,
+          targetResourceType: 'SESSION',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      
+      // Find the most recent log with image data
+      const imageLog = activityLogs.find((log: any) => 
+        log.details && 
+        typeof log.details === 'object' && 
+        ((log.details as any).images || (log.details as any).imageBase64Data)
+      );
+      
+      // Extract existing images
+      const existingImages: Record<string, any> = {};
+      
+      if (imageLog?.details) {
+        const details = imageLog.details as any;
+        
+        if (details.images) {
+          Object.keys(details.images).forEach(key => {
+            existingImages[key] = details.images[key];
+          });
+        }
+      }
+      
+      // Only update timestamps for images that have actually changed
+      const changedImageFields = Object.keys(data.images).filter(fieldName => {
+        // For arrays, check if the length has changed
+        if (Array.isArray(data.images[fieldName]) && Array.isArray(existingImages[fieldName])) {
+          return data.images[fieldName].length !== existingImages[fieldName].length;
+        }
+        
+        // For single values, check if the value has changed
+        return data.images[fieldName] !== existingImages[fieldName];
+      });
+      
+      console.log("Changed image fields:", changedImageFields);
+      
+      if (changedImageFields.length === 0) {
+        console.log("No image fields have changed, skipping timestamp updates");
+      }
+      
+      const imageTimestampPromises = changedImageFields.map(fieldName => {
         // Convert the field name to match the expected format for images
         const timestampFieldName = `images.${fieldName}`;
+        
+        console.log(`Updating timestamp for image field: ${fieldName}`);
         
         return prisma.sessionFieldTimestamps.upsert({
           where: {
@@ -235,7 +332,9 @@ export async function PUT(
         });
       });
       
-      await Promise.all(imageTimestampPromises);
+      if (imageTimestampPromises.length > 0) {
+        await Promise.all(imageTimestampPromises);
+      }
     }
     
     return NextResponse.json(updatedSession);
