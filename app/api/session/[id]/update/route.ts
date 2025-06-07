@@ -144,16 +144,8 @@ export async function PUT(
           ...(data.tripDetails.driverLicense !== undefined && { driverLicense: data.tripDetails.driverLicense })
         }),
         
-        // Process images only if they exist in the input data
-        ...(data.images && {
-          // Handle each image field separately with proper null/undefined checking
-          ...(imageUpdates.gpsImeiPicture !== undefined && { gpsImeiPicture: imageUpdates.gpsImeiPicture }),
-          ...(imageUpdates.vehicleNumberPlatePicture !== undefined && { vehicleNumberPlatePicture: imageUpdates.vehicleNumberPlatePicture }),
-          ...(imageUpdates.driverPicture !== undefined && { driverPicture: imageUpdates.driverPicture }),
-          ...(imageUpdates.sealingImages !== undefined && { sealingImages: imageUpdates.sealingImages || [] }),
-          ...(imageUpdates.vehicleImages !== undefined && { vehicleImages: imageUpdates.vehicleImages || [] }),
-          ...(imageUpdates.additionalImages !== undefined && { additionalImages: imageUpdates.additionalImages || [] })
-        }),
+        // We don't directly update image fields in the Session model
+        // They are stored in activity logs and presented as URLs
         
         // Update seal if needed
         ...sealUpdates,
@@ -167,7 +159,7 @@ export async function PUT(
       },
     });
     
-    // Log activity
+    // Log activity - store images in the activity log since they're not direct fields
     await addActivityLog({
       action: ActivityAction.UPDATE,
       userId: userId,
@@ -179,9 +171,10 @@ export async function PUT(
           source: data.source,
           destination: data.destination,
           ...(data.tripDetails && { tripDetails: data.tripDetails }),
-          ...(data.images && { images: data.images }),
           ...(data.seal && { seal: data.seal })
         },
+        // Store images separately to match the expected format
+        ...(data.images && { images: data.images }),
       },
     });
     
@@ -215,7 +208,8 @@ export async function PUT(
       await Promise.all(timestampPromises);
     }
     
-    // Add timestamp entries for updated image fields
+    // Add timestamp entries for updated image fields - these are still tracked even though
+    // images aren't direct fields on the Session model
     if (data.images) {
       const timestamp = new Date();
       const imageTimestampPromises = Object.keys(data.images).map(fieldName => {
