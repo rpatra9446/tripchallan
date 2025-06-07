@@ -195,71 +195,387 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     !session.seal.verified,
     [isGuard, session]
   );
+  
+  // Helper functions for verification display
+  function getFieldLabel(field: string): string {
+    const map: Record<string, string> = {
+      driverName: "Driver Name",
+      vehicleNumber: "Vehicle Number",
+      transporterName: "Transporter Name",
+      materialName: "Material Name",
+      receiverPartyName: "Receiver Party",
+      gpsImeiNumber: "GPS IMEI Number"
+    };
+    return map[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+  }
+
+  function getMethodDisplay(method?: string) {
+    if (!method) return "Unknown";
+    return method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned';
+  }
+
+  function getMethodColor(method?: string): "primary" | "secondary" | "default" {
+    if (!method) return "default";
+    return method.toLowerCase().includes('manual') ? 'secondary' : 'primary';
+  }
 
   // Define placeholder functions for the fixed client version
-  const renderVerificationResults = () => null;
-  const startVerification = () => {
-    if (session && sessionId) {
-      router.push(`/dashboard/sessions/${sessionId}/verify`);
+  const renderVerificationResults = () => {
+    if (!session || session.status !== SessionStatus.COMPLETED) {
+      return null;
     }
-  };
-  const closeConfirmDialog = () => {
-    setConfirmDialogOpen(false);
-  };
 
-  // Confirmation dialog for guard users
-  const confirmVerification = () => {
-    setConfirmDialogOpen(false);
-    router.push(`/dashboard/sessions/${sessionId}/verify`);
-  };
+    // Find verification data from activity logs
+    const verificationLog = session.activityLogs?.find(log => 
+      log.details?.verification?.fieldVerifications || 
+      log.details?.verification?.completedBy
+    );
 
-  // Report download handlers
-  const handleDownloadReport = async (format: string) => {
-    if (!sessionId) return;
+    if (!verificationLog) {
+      return null;
+    }
+
+    const verificationDetails = verificationLog.details?.verification || {};
+    const fieldVerifications = verificationDetails.fieldVerifications || {};
+    const completedBy = verificationDetails.hasOwnProperty('completedBy') ? 
+      (verificationDetails as any).completedBy : {};
+    const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
+      (verificationDetails as any).completedAt : '';
+
+    // Calculate verification statistics
+    const totalFields = Object.keys(fieldVerifications).length;
+    const verifiedFields = Object.values(fieldVerifications as Record<string, any>)
+      .filter((field: any) => field.isVerified).length;
+    const matchPercentage = totalFields > 0 ? Math.round((verifiedFields / totalFields) * 100) : 0;
+
+    // Group verification fields by category
+    const loadingDetailsFields: Record<string, any> = {};
+    const driverDetailsFields: Record<string, any> = {};
     
-    try {
-      setReportLoading(format);
-      let endpoint = "";
-      
-      switch (format) {
-        case "pdf":
-          endpoint = `/api/reports/sessions/${sessionId}/pdf/simple`;
-          break;
-        case "excel":
-          endpoint = `/api/reports/sessions/${sessionId}/excel`;
-          break;
-        default:
-          throw new Error("Unsupported report format");
+    // Categorize fields
+    Object.entries(fieldVerifications as Record<string, any>).forEach(([key, value]: [string, any]) => {
+      const driverFields = ['driverName', 'driverContactNumber', 'driverLicense'];
+      if (driverFields.includes(key)) {
+        driverDetailsFields[key] = value;
+      } else {
+        loadingDetailsFields[key] = value;
       }
-      
-      // Get the report as a blob
-      const response = await fetch(endpoint);
-      
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || `Failed to download ${format} report`);
-      }
-      
-      // Convert response to blob
-      const blob = await response.blob();
-      
-      // Create a link element to trigger the download
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `session-${sessionId}.${format === "excel" ? "xlsx" : "pdf"}`;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Clean up
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error(`Error downloading ${format} report:`, err);
-      alert(`Failed to download ${format} report: ${err instanceof Error ? err.message : "Unknown error"}`);
-    } finally {
-      setReportLoading(null);
-    }
+    });
+
+    // Get seal tag verification data
+    const sealTagStats = verificationDetails.hasOwnProperty('sealTags') ? 
+      (verificationDetails as any).sealTags : {
+      total: 0,
+      verified: 0,
+      missing: 0,
+      broken: 0,
+      tampered: 0
+    };
+
+    return (
+      <>
+        {/* Overall Verification Summary */}
+        <Paper elevation={1} sx={{ mb: 3 }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)', bgcolor: 'primary.main', color: 'white' }}>
+            <Typography variant="h6">Verification Summary</Typography>
+          </Box>
+          
+          <Box sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Verification Status</Typography>
+                <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <CheckCircle color="success" sx={{ mr: 1 }} />
+                  {matchPercentage >= 90 ? "VERIFIED" : matchPercentage >= 70 ? "PARTIALLY VERIFIED" : "VERIFICATION ISSUES"}
+                </Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Match Rate</Typography>
+                <Typography variant="h5">{matchPercentage}%</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {verifiedFields} of {totalFields} fields
+                </Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Verified By</Typography>
+                <Typography variant="h5">{completedBy.name || 'Unknown'}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {completedAt ? new Date(completedAt).toLocaleString() : 'Unknown time'}
+                </Typography>
+              </Paper>
+            </Box>
+          </Box>
+        </Paper>
+
+        {/* Loading Details Verification Results */}
+        <Paper elevation={1} sx={{ mb: 3 }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+            <Typography variant="h6">Loading Details Verification</Typography>
+          </Box>
+          
+          <Box sx={{ p: 3 }}>
+            {/* Summary Statistics */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Total Fields</Typography>
+                <Typography variant="h5">{Object.keys(loadingDetailsFields).length}</Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Verified Fields</Typography>
+                <Typography variant="h5">
+                  {Object.values(loadingDetailsFields).filter((field: any) => field.isVerified).length}
+                </Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Match Rate</Typography>
+                <Typography variant="h5">
+                  {Object.keys(loadingDetailsFields).length > 0 
+                    ? Math.round(
+                        (Object.values(loadingDetailsFields).filter((field: any) => 
+                          field.isVerified && field.operatorValue === field.guardValue
+                        ).length / Object.keys(loadingDetailsFields).length) * 100
+                      )
+                    : 0}%
+                </Typography>
+              </Paper>
+            </Box>
+            
+            {/* Detailed Field Verification Table */}
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Operator Value</TableCell>
+                    <TableCell>Guard Verified Value</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Comment</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Object.entries(loadingDetailsFields).map(([field, data]: [string, any]) => (
+                    <TableRow key={field}>
+                      <TableCell>{getFieldLabel(field)}</TableCell>
+                      <TableCell>{data.operatorValue || 'N/A'}</TableCell>
+                      <TableCell>{data.guardValue || 'N/A'}</TableCell>
+                      <TableCell>
+                        {data.isVerified ? (
+                          data.operatorValue === data.guardValue ? (
+                            <Chip 
+                              icon={<CheckCircle />}
+                              label="MATCH" 
+                              color="success" 
+                              size="small"
+                            />
+                          ) : (
+                            <Chip 
+                              icon={<Warning />}
+                              label="MISMATCH" 
+                              color="warning" 
+                              size="small"
+                            />
+                          )
+                        ) : (
+                          <Chip 
+                            label="NOT VERIFIED" 
+                            color="default" 
+                            size="small"
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>{data.comment || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </Paper>
+
+        {/* Driver Details Verification Results */}
+        <Paper elevation={1} sx={{ mb: 3 }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+            <Typography variant="h6">Driver Details Verification</Typography>
+          </Box>
+          
+          <Box sx={{ p: 3 }}>
+            {/* Summary Statistics */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Total Fields</Typography>
+                <Typography variant="h5">{Object.keys(driverDetailsFields).length}</Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Verified Fields</Typography>
+                <Typography variant="h5">
+                  {Object.values(driverDetailsFields).filter((field: any) => field.isVerified).length}
+                </Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Match Rate</Typography>
+                <Typography variant="h5">
+                  {Object.keys(driverDetailsFields).length > 0 
+                    ? Math.round(
+                        (Object.values(driverDetailsFields).filter((field: any) => 
+                          field.isVerified && field.operatorValue === field.guardValue
+                        ).length / Object.keys(driverDetailsFields).length) * 100
+                      )
+                    : 0}%
+                </Typography>
+              </Paper>
+            </Box>
+            
+            {/* Detailed Field Verification Table */}
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Operator Value</TableCell>
+                    <TableCell>Guard Verified Value</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Comment</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Object.entries(driverDetailsFields).map(([field, data]: [string, any]) => (
+                    <TableRow key={field}>
+                      <TableCell>{getFieldLabel(field)}</TableCell>
+                      <TableCell>{data.operatorValue || 'N/A'}</TableCell>
+                      <TableCell>{data.guardValue || 'N/A'}</TableCell>
+                      <TableCell>
+                        {data.isVerified ? (
+                          data.operatorValue === data.guardValue ? (
+                            <Chip 
+                              icon={<CheckCircle />}
+                              label="MATCH" 
+                              color="success" 
+                              size="small"
+                            />
+                          ) : (
+                            <Chip 
+                              icon={<Warning />}
+                              label="MISMATCH" 
+                              color="warning" 
+                              size="small"
+                            />
+                          )
+                        ) : (
+                          <Chip 
+                            label="NOT VERIFIED" 
+                            color="default" 
+                            size="small"
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>{data.comment || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </Paper>
+
+        {/* Seal Tag Verification Results */}
+        <Paper elevation={1} sx={{ mb: 3 }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+            <Typography variant="h6">Seal Tag Verification</Typography>
+          </Box>
+          
+          <Box sx={{ p: 3 }}>
+            {/* Summary Statistics */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Total Seal Tags</Typography>
+                <Typography variant="h5">{sealTagStats.total || 0}</Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">Verified</Typography>
+                <Typography variant="h5">{sealTagStats.verified || 0}</Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1, bgcolor: sealTagStats.missing > 0 ? 'error.light' : undefined}}>
+                <Typography variant="subtitle2" color="text.secondary">Missing</Typography>
+                <Typography variant="h5">{sealTagStats.missing || 0}</Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1, bgcolor: sealTagStats.broken > 0 ? 'error.light' : undefined}}>
+                <Typography variant="subtitle2" color="text.secondary">Broken</Typography>
+                <Typography variant="h5">{sealTagStats.broken || 0}</Typography>
+              </Paper>
+              
+              <Paper elevation={2} sx={{ p: 2, minWidth: 150, flex: 1, bgcolor: sealTagStats.tampered > 0 ? 'error.light' : undefined}}>
+                <Typography variant="subtitle2" color="text.secondary">Tampered</Typography>
+                <Typography variant="h5">{sealTagStats.tampered || 0}</Typography>
+              </Paper>
+            </Box>
+            
+            {/* Seal Tags Table - Guard and Operator */}
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom>Operator Seal Tags</Typography>
+              {session.sealTags && session.sealTags.length > 0 ? (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Barcode</TableCell>
+                        <TableCell>Method</TableCell>
+                        <TableCell>Scanned By</TableCell>
+                        <TableCell>Timestamp</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {session.sealTags.map(tag => (
+                        <TableRow key={tag.id}>
+                          <TableCell>{tag.barcode}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={getMethodDisplay(tag.method)} 
+                              color={getMethodColor(tag.method)} 
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
+                          <TableCell>
+                            {tag.createdAt ? new Date(tag.createdAt).toLocaleString() : 'Unknown'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Typography variant="body2" color="text.secondary">No operator seal tags found</Typography>
+              )}
+            </Box>
+          </Box>
+        </Paper>
+
+        {/* Image Verification Results */}
+        <Paper elevation={1} sx={{ mb: 3 }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+            <Typography variant="h6">Image Verification</Typography>
+          </Box>
+          
+          <Box sx={{ p: 3 }}>
+            {/* Image verification content */}
+            <Typography variant="body1">
+              All images associated with this session were reviewed during verification.
+            </Typography>
+            
+            {/* You can add more detailed image verification results here if needed */}
+          </Box>
+        </Paper>
+      </>
+    );
   };
 
   // Define fetchSessionDetails function
@@ -316,160 +632,23 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   // Other functions and useEffect hooks
 
   // Modified Verification Box for Guards
-  if (canVerify) {
+  if (loading) {
     return (
       <Container maxWidth="md">
-        <Box mb={3}>
-          <Button
-            component={Link}
-            href="/dashboard/sessions"
-            startIcon={<ArrowBack />}
-          >
-            Back to Sessions
-          </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
         </Box>
+      </Container>
+    );
+  }
 
-        {/* Session Details View */}
-        {!verificationFormOpen && (
-          <>
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              {/* Trip Details Section */}
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                borderBottom: '1px solid rgba(0,0,0,0.1)',
-                pb: 2,
-                mb: 2
-              }}>
-                <Typography variant="h5" component="h1">Trip Details</Typography>
-                <Chip 
-                  label={session?.status === "IN_PROGRESS" ? "IN PROGRESS" : session?.status} 
-                  color={
-                    session?.status === "IN_PROGRESS" ? "primary" : 
-                    session?.status === "COMPLETED" ? "success" : 
-                    session?.status === "CANCELLED" ? "error" : 
-                    "default"
-                  }
-                />
-              </Box>
-
-              <Typography variant="h6" gutterBottom>Basic Information</Typography>
-              
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-                {/* Left Column: Source, Destination, Created At */}
-                <Box sx={{ flex: 1 }}>
-                  {/* Source */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Source:</Typography>
-                      <Typography variant="body1">{session?.source || 'N/A'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Destination */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Destination:</Typography>
-                      <Typography variant="body1">{session?.destination || 'N/A'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Created Timestamp */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Created:</Typography>
-                      <Typography variant="body1">
-                        {session?.createdAt ? new Date(session.createdAt).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: 'numeric',
-                          hour12: true
-                        }) : 'N/A'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-
-                {/* Right Column: Vehicle Number, Company, Created By */}
-                <Box sx={{ flex: 1 }}>
-                  {/* Vehicle Number */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
-                      <Typography variant="body1">{session?.tripDetails?.vehicleNumber || 'N/A'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Company */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Company:</Typography>
-                      <Typography variant="body1">{session?.company?.name || 'N/A'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Operator Created */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Operator Created:</Typography>
-                      <Typography variant="body1">{session?.createdBy?.name || 'N/A'}</Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              </Box>
-            </Paper>
-
-            {/* Comment section */}
-            <CommentSection sessionId={sessionId} />
-
-            {/* Verification Results */}
-            {renderVerificationResults()}
-          </>
-        )}
-
-        {/* Verification Form */}
-        {verificationFormOpen && (
-          <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-            {/* Verification form content */}
-          </Paper>
-        )}
-
-        {/* Verification Button */}
-        {!verificationFormOpen && (
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              startIcon={<Lock />}
-              onClick={startVerification}
-            >
-              Start Trip Verification
-            </Button>
-          </Box>
-        )}
-
-        {/* Confirmation Dialog */}
-        <Dialog open={confirmDialogOpen} onClose={closeConfirmDialog}>
-          {/* Dialog content */}
-        </Dialog>
-
-        {/* Success Notification */}
-        {verificationSuccess && (
-          <Alert severity="success" sx={{ mt: 3 }}>
-            <AlertTitle>Success!</AlertTitle>
-            Trip successfully verified.
-          </Alert>
-        )}
+  if (error) {
+    return (
+      <Container maxWidth="md">
+        <Alert severity="error" sx={{ my: 2 }}>
+          <AlertTitle>Error</AlertTitle>
+          {error}
+        </Alert>
       </Container>
     );
   }
@@ -488,121 +667,107 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Button>
       </Box>
 
-      {/* Loading indicator while session data is being fetched */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
+      {/* Session Details - Basic Information - Visible to all users */}
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        {/* Trip Details Section */}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          borderBottom: '1px solid rgba(0,0,0,0.1)',
+          pb: 2,
+          mb: 2
+        }}>
+          <Typography variant="h5" component="h1">Trip Details</Typography>
+          <Chip 
+            label={session?.status === "IN_PROGRESS" ? "IN PROGRESS" : session?.status} 
+            color={
+              session?.status === "IN_PROGRESS" ? "primary" : 
+              session?.status === "COMPLETED" ? "success" : 
+              session?.status === "CANCELLED" ? "error" : 
+              "default"
+            }
+          />
         </Box>
-      ) : error ? (
-        <Alert severity="error" sx={{ my: 2 }}>
-          <AlertTitle>Error</AlertTitle>
-          {error}
-        </Alert>
-      ) : !session ? (
-        <Alert severity="warning" sx={{ my: 2 }}>
-          <AlertTitle>Session Not Found</AlertTitle>
-          The requested session could not be found.
-        </Alert>
-      ) : (
-        <>
-          {/* Trip Details Section */}
-          <Paper elevation={1} sx={{ mb: 3, overflow: 'hidden' }}>
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              p: 2,
-              borderBottom: '1px solid rgba(0,0,0,0.1)' 
-            }}>
-              <Typography variant="h5" component="h1">Trip Details</Typography>
-              <Chip 
-                label={session.status === "IN_PROGRESS" ? "IN PROGRESS" : session.status} 
-                color={
-                  session.status === "IN_PROGRESS" ? "primary" : 
-                  session.status === "COMPLETED" ? "success" : 
-                  session.status === "CANCELLED" ? "error" : 
-                  "default"
-                }
-              />
-            </Box>
 
-            <Box sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Basic Information</Typography>
-              
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-                {/* Left Column: Source, Destination, Created At */}
-                <Box sx={{ flex: 1 }}>
-                  {/* Source */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Source:</Typography>
-                      <Typography variant="body1">{session.source || 'SourceData'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Destination */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Destination:</Typography>
-                      <Typography variant="body1">{session.destination || 'DestinationData'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Created Timestamp */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Created:</Typography>
-                      <Typography variant="body1">
-                        {new Date(session.createdAt).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: 'numeric',
-                          hour12: true
-                        })}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-
-                {/* Right Column: Vehicle Number, Company, Created By */}
-                <Box sx={{ flex: 1 }}>
-                  {/* Vehicle Number */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
-                      <Typography variant="body1">{session.tripDetails?.vehicleNumber || 'MH02AB1234'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Company */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Company:</Typography>
-                      <Typography variant="body1">{session.company?.name || 'N/A'}</Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Operator Created */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                    <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Operator Created:</Typography>
-                      <Typography variant="body1">{session.createdBy?.name || 'N/A'}</Typography>
-                    </Box>
-                  </Box>
-                </Box>
+        <Typography variant="h6" gutterBottom>Basic Information</Typography>
+        
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+          {/* Left Column: Source, Destination, Created At */}
+          <Box sx={{ flex: 1 }}>
+            {/* Source */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+              <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Source:</Typography>
+                <Typography variant="body1">{session?.source || 'N/A'}</Typography>
               </Box>
             </Box>
-          </Paper>
 
-          {/* Loading Details Section - Added as per requirements */}
+            {/* Destination */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+              <LocationOn color="primary" sx={{ mr: 1, mt: 0.5 }} />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Destination:</Typography>
+                <Typography variant="body1">{session?.destination || 'N/A'}</Typography>
+              </Box>
+            </Box>
+
+            {/* Created Timestamp */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+              <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Created:</Typography>
+                <Typography variant="body1">
+                  {session?.createdAt ? new Date(session.createdAt).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric',
+                    hour12: true
+                  }) : 'N/A'}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Right Column: Vehicle Number, Company, Created By */}
+          <Box sx={{ flex: 1 }}>
+            {/* Vehicle Number */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+              <DirectionsCar color="primary" sx={{ mr: 1, mt: 0.5 }} />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Vehicle Number:</Typography>
+                <Typography variant="body1">{session?.tripDetails?.vehicleNumber || 'N/A'}</Typography>
+              </Box>
+            </Box>
+
+            {/* Company */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+              <Business color="primary" sx={{ mr: 1, mt: 0.5 }} />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Company:</Typography>
+                <Typography variant="body1">{session?.company?.name || 'N/A'}</Typography>
+              </Box>
+            </Box>
+
+            {/* Operator Created */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+              <Person color="primary" sx={{ mr: 1, mt: 0.5 }} />
+              <Box>
+                <Typography variant="body2" color="text.secondary">Operator Created:</Typography>
+                <Typography variant="body1">{session?.createdBy?.name || 'N/A'}</Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Show loading details section for completed sessions or non-guard users */}
+      {(session?.status === SessionStatus.COMPLETED || !isGuard) && (
+        <>
+          {/* Loading Details */}
           <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>Loading Details</Typography>
             <Divider sx={{ mb: 2 }} />
@@ -686,15 +851,15 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </Grid>
                 </>
               )}
+              {!session?.tripDetails && (
+                <Grid item xs={12}>
+                  <Alert severity="info">No loading details available</Alert>
+                </Grid>
+              )}
             </Grid>
-            {!session.tripDetails && (
-              <Alert severity="info">No loading details available</Alert>
-            )}
           </Paper>
 
-          <CommentSection sessionId={sessionId} />
-
-          {/* Operator Seal Tag Table Section */}
+          {/* Seal Tags - For completed sessions or non-guard users */}
           {session.sealTags && session.sealTags.length > 0 && (
             <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -714,57 +879,52 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {session.sealTags.map((sealTag, index) => (
-                      <TableRow key={sealTag.id}>
+                    {session.sealTags.map((tag, index) => (
+                      <TableRow key={tag.id}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell>{sealTag.barcode}</TableCell>
+                        <TableCell>{tag.barcode}</TableCell>
                         <TableCell>
                           <Chip 
-                            label={sealTag.method ? 
-                              (sealTag.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned') 
-                              : 'Unknown'
-                            } 
-                            color={sealTag.method ? 
-                              (sealTag.method.toLowerCase().includes('manual') ? 'secondary' : 'primary') 
-                              : 'default'
-                            }
+                            label={getMethodDisplay(tag.method)} 
+                            color={getMethodColor(tag.method)}
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
-                          {sealTag.imageUrl || sealTag.imageData ? (
-                            <Box 
-                              component="img" 
-                              src={sealTag.imageUrl || sealTag.imageData}
-                              alt="Seal Tag"
-                              sx={{ 
-                                maxWidth: '80px', 
-                                maxHeight: '80px',
-                                cursor: 'pointer',
-                                border: '1px solid #ddd',
+                          {tag.imageUrl || tag.imageData ? (
+                            <Box
+                              component="img"
+                              src={tag.imageUrl || tag.imageData}
+                              alt={`Seal tag ${tag.barcode}`}
+                              sx={{
+                                height: '40px',
+                                width: '40px',
+                                objectFit: 'cover',
                                 borderRadius: '4px',
-                                p: 0.5
+                                cursor: 'pointer'
                               }}
                               onClick={() => {
-                                setSelectedImage(sealTag.imageUrl || sealTag.imageData || '');
+                                setSelectedImage(tag.imageUrl || tag.imageData || '');
                                 setOpenImageModal(true);
                               }}
                             />
                           ) : (
-                            <Typography variant="body2" color="text.secondary">No image</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              No image
+                            </Typography>
                           )}
                         </TableCell>
                         <TableCell>
-                          {sealTag.createdAt ? new Date(sealTag.createdAt).toLocaleString('en-US', {
+                          {new Date(tag.createdAt).toLocaleString('en-US', {
                             year: 'numeric',
                             month: 'numeric',
                             day: 'numeric',
                             hour: 'numeric',
                             minute: 'numeric',
                             hour12: true
-                          }) : 'N/A'}
+                          })}
                         </TableCell>
-                        <TableCell>{sealTag.scannedByName || 'N/A'}</TableCell>
+                        <TableCell>{tag.scannedByName}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -773,293 +933,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Paper>
           )}
 
-          {/* Guard Seal Tags Section - Display after operator seal tags */}
-          {session.guardSealTags && session.guardSealTags.length > 0 && (
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Guard Seal Tags
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>No.</TableCell>
-                      <TableCell>Seal Tag ID</TableCell>
-                      <TableCell>Method</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Image</TableCell>
-                      <TableCell>Verified At</TableCell>
-                      <TableCell>Verified By</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {session.guardSealTags.map((sealTag, index) => (
-                      <TableRow key={sealTag.id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>{sealTag.barcode}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={sealTag.method ? 
-                              (sealTag.method.toLowerCase().includes('manual') ? 'Manually Entered' : 'Digitally Scanned') 
-                              : 'Unknown'
-                            } 
-                            color={sealTag.method ? 
-                              (sealTag.method.toLowerCase().includes('manual') ? 'secondary' : 'primary') 
-                              : 'default'
-                            }
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={sealTag.status || 'VERIFIED'} 
-                            color={
-                              sealTag.status === 'VERIFIED' ? 'success' :
-                              sealTag.status === 'BROKEN' || sealTag.status === 'TAMPERED' ? 'error' :
-                              sealTag.status === 'MISSING' ? 'warning' : 'default'
-                            }
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {sealTag.imageUrl || sealTag.imageData ? (
-                            <Box 
-                              component="img" 
-                              src={sealTag.imageUrl || sealTag.imageData}
-                              alt="Seal Tag"
-                              sx={{ 
-                                maxWidth: '80px', 
-                                maxHeight: '80px',
-                                cursor: 'pointer',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px',
-                                p: 0.5
-                              }}
-                              onClick={() => {
-                                setSelectedImage(sealTag.imageUrl || sealTag.imageData || '');
-                                setOpenImageModal(true);
-                              }}
-                            />
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">No image</Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {sealTag.createdAt ? new Date(sealTag.createdAt).toLocaleString('en-US', {
-                            year: 'numeric',
-                            month: 'numeric',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: 'numeric',
-                            hour12: true
-                          }) : 'N/A'}
-                        </TableCell>
-                        <TableCell>{sealTag.verifiedBy?.name || 'N/A'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          )}
-          
-          {/* Seal Verification Results Section */}
-          {session.status === SessionStatus.COMPLETED && session.sealTags && session.guardSealTags && (
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Verification Results
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              
-              {/* Seal tag comparison stats */}
-              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-                <Paper 
-                  elevation={0} 
-                  sx={{ 
-                    p: 2, 
-                    flex: '1 0 200px', 
-                    bgcolor: 'success.light', 
-                    color: 'success.contrastText',
-                    borderRadius: 2
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom>Operator Seal Tags</Typography>
-                  <Typography variant="h4">{session.sealTags.length}</Typography>
-                </Paper>
-                
-                <Paper 
-                  elevation={0} 
-                  sx={{ 
-                    p: 2, 
-                    flex: '1 0 200px', 
-                    bgcolor: 'info.light',
-                    color: 'info.contrastText',
-                    borderRadius: 2
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom>Guard Verified Tags</Typography>
-                  <Typography variant="h4">{session.guardSealTags.length}</Typography>
-                </Paper>
-                
-                {/* Calculate matched tags */}
-                {(() => {
-                  const operatorBarcodes = session.sealTags.map(tag => tag.barcode);
-                  const guardBarcodes = session.guardSealTags.map(tag => tag.barcode);
-                  const matched = operatorBarcodes.filter(barcode => 
-                    guardBarcodes.includes(barcode)
-                  ).length;
-                  
-                  const matchPercentage = operatorBarcodes.length > 0 
-                    ? Math.round((matched / operatorBarcodes.length) * 100) 
-                    : 0;
-                  
-                  return (
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: 2, 
-                        flex: '1 0 200px', 
-                        bgcolor: matched === operatorBarcodes.length ? 'success.light' : 'warning.light',
-                        color: matched === operatorBarcodes.length ? 'success.contrastText' : 'warning.contrastText',
-                        borderRadius: 2
-                      }}
-                    >
-                      <Typography variant="subtitle2" gutterBottom>Match Rate</Typography>
-                      <Typography variant="h4">{matchPercentage}%</Typography>
-                      <Typography variant="body2">{matched} of {operatorBarcodes.length} tags matched</Typography>
-                    </Paper>
-                  );
-                })()}
-              </Box>
-              
-              {/* Seal tag comparison table */}
-              <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Seal Tag ID</TableCell>
-                      <TableCell>Operator Scan</TableCell>
-                      <TableCell>Guard Verification</TableCell>
-                      <TableCell>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {session.sealTags.map(operatorTag => {
-                      const guardTag = session.guardSealTags?.find(
-                        gt => gt.barcode === operatorTag.barcode
-                      );
-                      const isMatched = !!guardTag;
-                      
-                      return (
-                        <TableRow 
-                          key={operatorTag.barcode}
-                          sx={{ 
-                            bgcolor: isMatched ? 'rgba(46, 125, 50, 0.08)' : 'rgba(211, 47, 47, 0.08)'
-                          }}
-                        >
-                          <TableCell>{operatorTag.barcode}</TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              Method: {operatorTag.method.toLowerCase().includes('manual') 
-                                ? 'Manually Entered' 
-                                : 'Digitally Scanned'}
-                            </Typography>
-                            <Typography variant="caption" display="block">
-                              {new Date(operatorTag.createdAt).toLocaleString()}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            {guardTag ? (
-                              <>
-                                <Typography variant="body2">
-                                  Method: {guardTag.method.toLowerCase().includes('manual') 
-                                    ? 'Manually Entered' 
-                                    : 'Digitally Scanned'}
-                                </Typography>
-                                <Typography variant="caption" display="block">
-                                  {new Date(guardTag.createdAt).toLocaleString()}
-                                </Typography>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="error">
-                                Not verified
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={isMatched ? 'Matched' : 'Not Verified'}
-                              color={isMatched ? 'success' : 'error'}
-                              size="small"
-                            />
-                            {guardTag?.status && guardTag.status !== 'VERIFIED' && (
-                              <Chip
-                                label={guardTag.status}
-                                color="warning"
-                                size="small"
-                                sx={{ ml: 1 }}
-                              />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    
-                    {/* Show extra guard-scanned tags that don't match operator tags */}
-                    {session.guardSealTags?.filter(
-                      guardTag => !session.sealTags?.some(opTag => opTag.barcode === guardTag.barcode)
-                    ).map(extraGuardTag => (
-                      <TableRow 
-                        key={`extra-${extraGuardTag.barcode}`}
-                        sx={{ bgcolor: 'rgba(255, 152, 0, 0.08)' }}
-                      >
-                        <TableCell>{extraGuardTag.barcode}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="error">
-                            Not in operator seals
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            Method: {extraGuardTag.method.toLowerCase().includes('manual') 
-                              ? 'Manually Entered' 
-                              : 'Digitally Scanned'}
-                          </Typography>
-                          <Typography variant="caption" display="block">
-                            {new Date(extraGuardTag.createdAt).toLocaleString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label="Extra Tag"
-                            color="warning"
-                            size="small"
-                          />
-                          {extraGuardTag.status && (
-                            <Chip
-                              label={extraGuardTag.status}
-                              color={
-                                extraGuardTag.status === 'VERIFIED' ? 'success' :
-                                extraGuardTag.status === 'BROKEN' || extraGuardTag.status === 'TAMPERED' ? 'error' : 
-                                'warning'
-                              }
-                              size="small"
-                              sx={{ ml: 1 }}
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          )}
-
-          {/* Driver Details Section */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
+          {/* Driver Details - For completed sessions or non-guard users */}
+          <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
               Driver Details
             </Typography>
             
@@ -1083,18 +959,17 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </Typography>
                 </Box>
                 
-                {session.images?.driverPicture && (
-                  <Box sx={{ width: '100%', p: 1 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <Person fontSize="small" /> Driver Photo
-                    </Typography>
-                    <Box 
-                      component="img" 
+                {session.images && session.images.driverPicture && (
+                  <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom>Driver Photo:</Typography>
+                    <img 
                       src={session.images.driverPicture}
-                      alt="Driver Photo"
-                      sx={{ 
-                        maxWidth: '200px', 
-                        maxHeight: '200px',
+                      alt="Driver"
+                      style={{ 
+                        width: '100px', 
+                        height: '100px', 
+                        objectFit: 'cover', 
+                        borderRadius: '4px',
                         cursor: 'pointer',
                         border: '1px solid #ddd',
                         borderRadius: '4px',
@@ -1113,7 +988,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             )}
           </Paper>
 
-          {/* Images Section - Comes before Reports section */}
+          {/* Images Section - For completed sessions or non-guard users */}
           {session.images && Object.keys(session.images).some(key => {
             const value = session.images && session.images[key as keyof typeof session.images];
             return !!value;
@@ -1211,91 +1086,95 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </Box>
             </Paper>
           )}
-          
-          {/* Report Download Section - Only shown to authorized users */}
-          {canAccessReports && (
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Reports
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<PictureAsPdf />}
-                  onClick={() => handleDownloadReport("pdf")}
-                  disabled={reportLoading !== null}
-                  size="small"
-                  sx={{ color: 'error.main', borderColor: 'error.main', '&:hover': { borderColor: 'error.dark' } }}
-                >
-                  {reportLoading === "pdf" ? "Downloading..." : "Download PDF"}
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<TableChart />}
-                  onClick={() => handleDownloadReport("excel")}
-                  disabled={reportLoading !== null}
-                  size="small"
-                  sx={{ color: 'success.main', borderColor: 'success.main', '&:hover': { borderColor: 'success.dark' } }}
-                >
-                  {reportLoading === "excel" ? "Downloading..." : "Download Excel"}
-                </Button>
-              </Box>
-            </Paper>
-          )}
-
-          {/* Verification Results */}
-          {renderVerificationResults()}
         </>
       )}
 
-      {/* Start Trip Verification Button - Only for Guards */}
+      {/* Comment section - visible to all */}
+      <CommentSection sessionId={sessionId} />
+
+      {/* Verification Results - only for completed sessions */}
+      {session?.status === SessionStatus.COMPLETED && renderVerificationResults()}
+
+      {/* Verification Button - only visible for Guards with in-progress sessions */}
       {isGuard && session?.status === SessionStatus.IN_PROGRESS && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
           <Button
             variant="contained"
             color="primary"
             size="large"
             startIcon={<Lock />}
             onClick={startVerification}
-            sx={{ px: 4, py: 1.5, borderRadius: '4px', fontWeight: 'bold' }}
           >
             Start Trip Verification
           </Button>
         </Box>
       )}
 
-      {/* Dialog only needed for Guard confirmation */}
-      <Dialog
-        open={confirmDialogOpen}
-        onClose={closeConfirmDialog}
-      >
-        <DialogTitle>Start Verification</DialogTitle>
+      {/* Confirmation Dialog - Only shown when verification button is clicked */}
+      <Dialog open={confirmDialogOpen} onClose={closeConfirmDialog}>
+        <DialogTitle>Confirm Trip Verification</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to start the verification process for this trip?
+            You are about to start the verification process for this trip. This action cannot be undone.
+            Please make sure you have all the necessary information to complete the verification.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeConfirmDialog}>Cancel</Button>
-          <Button onClick={confirmVerification} color="primary" autoFocus>
-            Confirm
+          <Button onClick={closeConfirmDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={confirmVerification} color="primary" variant="contained">
+            Start Verification
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Image Modal for viewing full-size images */}
+      {/* Report Actions - only visible for non-GUARD users with appropriate permissions */}
+      {canAccessReports && session?.status === SessionStatus.COMPLETED && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
+          <Button
+            variant="outlined"
+            startIcon={<PictureAsPdf />}
+            onClick={() => handleDownloadReport("pdf")}
+            disabled={reportLoading !== null}
+            size="small"
+            sx={{ color: 'error.main', borderColor: 'error.main', '&:hover': { borderColor: 'error.dark' } }}
+          >
+            {reportLoading === "pdf" ? "Downloading..." : "Download PDF"}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<TableChart />}
+            onClick={() => handleDownloadReport("excel")}
+            disabled={reportLoading !== null}
+            size="small"
+            sx={{ color: 'success.main', borderColor: 'success.main', '&:hover': { borderColor: 'success.dark' } }}
+          >
+            {reportLoading === "excel" ? "Downloading..." : "Download Excel"}
+          </Button>
+        </Box>
+      )}
+
+      {/* Success Notification */}
+      {verificationSuccess && (
+        <Alert severity="success" sx={{ mt: 3 }}>
+          <AlertTitle>Success!</AlertTitle>
+          Trip successfully verified.
+        </Alert>
+      )}
+
+      {/* Image Modal */}
       <Dialog
         open={openImageModal}
         onClose={() => setOpenImageModal(false)}
-        maxWidth="md"
+        maxWidth="lg"
       >
         <DialogContent>
           {selectedImage && (
             <img
               src={selectedImage}
-              alt="Full Size"
-              style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+              alt="Enlarged view"
+              style={{ maxWidth: '100%', maxHeight: '80vh' }}
             />
           )}
         </DialogContent>
