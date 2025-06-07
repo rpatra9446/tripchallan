@@ -150,8 +150,7 @@ export async function PUT(
         // Update seal if needed
         ...sealUpdates,
         
-        // Record update timestamp
-        updatedAt: new Date(),
+        // Note: There is no updatedAt field in the Session model according to the Prisma schema
       },
       include: {
         company: true,
