@@ -62,7 +62,9 @@ import {
   Assessment,
   Scale,
   Comment as CommentIcon,
-  Business
+  Business,
+  CardMembership,
+  CameraAlt
 } from "@mui/icons-material";
 import Link from "next/link";
 import { UserRole, EmployeeSubrole, SessionStatus } from "@/prisma/enums";
@@ -849,6 +851,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [submittingComment, setSubmittingComment] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
+  const [openImageModal, setOpenImageModal] = useState(false);
   
   // Load session data on mount
   useEffect(() => {
@@ -1091,105 +1095,400 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Box>
       </Paper>
 
+      {/* Loading Details Section */}
+      {(session.status === SessionStatus.COMPLETED || 
+        (session.status === SessionStatus.ACTIVE && authSession?.user?.subrole !== EmployeeSubrole.GUARD)) && (
+        <>
+          {/* Loading Details Section */}
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6">Loading Details</Typography>
+            </Box>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Value</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.tripDetails && Object.entries(session.tripDetails)
+                    .filter(([key]) => !isSystemField(key))
+                    .map(([key, value]) => (
+                      <TableRow key={key}>
+                        <TableCell>{getFieldLabel(key)}</TableCell>
+                        <TableCell>{value || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))
+                  }
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+          
+          {/* Seal Tags Section */}
+          {session.sealTags && session.sealTags.length > 0 && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Seal Tags</Typography>
+              </Box>
+              
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>No.</TableCell>
+                      <TableCell>Seal Tag ID</TableCell>
+                      <TableCell>Method</TableCell>
+                      <TableCell>Image</TableCell>
+                      <TableCell>Created At</TableCell>
+                      <TableCell>Created By</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {session.sealTags.map((tag, index) => (
+                      <TableRow key={tag.id || index}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{tag.barcode}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={getMethodDisplay(tag.method)} 
+                            color={getMethodColor(tag.method)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {tag.imageData ? (
+                            <Box
+                              component="img"
+                              src={tag.imageData}
+                              alt={`Seal ${tag.barcode}`}
+                              sx={{ 
+                                width: 50, 
+                                height: 50, 
+                                borderRadius: 1,
+                                cursor: 'pointer',
+                                objectFit: 'cover'
+                              }}
+                              onClick={() => {
+                                setSelectedImage(tag.imageData || '');
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          ) : (
+                            'N/A'
+                          )}
+                        </TableCell>
+                        <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                        <TableCell>{tag.scannedByName || session.createdBy?.name || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
+          
+          {/* Guard Seal Tags Section - Only for COMPLETED sessions */}
+          {session.status === SessionStatus.COMPLETED && session.guardSealTags && session.guardSealTags.length > 0 && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Guard Seal Tags</Typography>
+              </Box>
+              
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>No.</TableCell>
+                      <TableCell>Seal Tag ID</TableCell>
+                      <TableCell>Method</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Image</TableCell>
+                      <TableCell>Verified At</TableCell>
+                      <TableCell>Verified By</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {session.guardSealTags.map((tag, index) => (
+                      <TableRow key={tag.id || index}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{tag.barcode}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={getMethodDisplay(tag.method)} 
+                            color={getMethodColor(tag.method)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={tag.status || "VERIFIED"}
+                            color={getStatusColor(tag.status || "VERIFIED")}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {tag.imageData ? (
+                            <Box
+                              component="img"
+                              src={tag.imageData}
+                              alt={`Seal ${tag.barcode}`}
+                              sx={{ 
+                                width: 50, 
+                                height: 50, 
+                                borderRadius: 1,
+                                cursor: 'pointer',
+                                objectFit: 'cover'
+                              }}
+                              onClick={() => {
+                                setSelectedImage(tag.imageData || '');
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          ) : (
+                            'N/A'
+                          )}
+                        </TableCell>
+                        <TableCell>{new Date(tag.createdAt).toLocaleString()}</TableCell>
+                        <TableCell>{tag.verifiedBy?.name || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
+          
+          {/* Verification Results - Only for COMPLETED sessions */}
+          {session.status === SessionStatus.COMPLETED && session.guardSealTags && session.guardSealTags.length > 0 && session.sealTags && session.sealTags.length > 0 && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Verification Results</Typography>
+              </Box>
+              
+              <Box sx={{ p: 3 }}>
+                {/* Summary Stats */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+                  <Paper elevation={2} sx={{ p: 2, minWidth: 200 }}>
+                    <Typography variant="subtitle2" color="text.secondary">Operator Seal Tags</Typography>
+                    <Typography variant="h4">{session.sealTags.length}</Typography>
+                  </Paper>
+                  
+                  <Paper elevation={2} sx={{ p: 2, minWidth: 200 }}>
+                    <Typography variant="subtitle2" color="text.secondary">Guard Verified Tags</Typography>
+                    <Typography variant="h4">{session.guardSealTags.length}</Typography>
+                  </Paper>
+                  
+                  <Paper elevation={2} sx={{ p: 2, minWidth: 200 }}>
+                    <Typography variant="subtitle2" color="text.secondary">Match Rate</Typography>
+                    <Typography variant="h4">
+                      {Math.round((
+                        session.sealTags.filter(st => 
+                          session.guardSealTags?.some(gt => gt.barcode === st.barcode)
+                        ).length / session.sealTags.length
+                      ) * 100)}%
+                    </Typography>
+                  </Paper>
+                </Box>
+                
+                {/* Detailed Comparison */}
+                <Typography variant="subtitle1" gutterBottom>Detailed Comparison</Typography>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Seal Tag ID</TableCell>
+                        <TableCell>Operator Method</TableCell>
+                        <TableCell>Guard Method</TableCell>
+                        <TableCell>Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {/* Get all unique seal IDs from both operator and guard */}
+                      {Array.from(new Set([
+                        ...session.sealTags.map(st => st.barcode),
+                        ...session.guardSealTags.map(gt => gt.barcode)
+                      ])).map(barcode => {
+                        const operatorSeal = session.sealTags?.find(st => st.barcode === barcode);
+                        const guardSeal = session.guardSealTags?.find(gt => gt.barcode === barcode);
+                        const isMatched = operatorSeal && guardSeal;
+                        
+                        return (
+                          <TableRow 
+                            key={barcode}
+                            sx={{ 
+                              backgroundColor: isMatched 
+                                ? 'rgba(46, 125, 50, 0.08)' 
+                                : 'rgba(211, 47, 47, 0.08)'
+                            }}
+                          >
+                            <TableCell>{barcode}</TableCell>
+                            <TableCell>
+                              {operatorSeal ? (
+                                <Chip
+                                  label={getMethodDisplay(operatorSeal.method)}
+                                  color={getMethodColor(operatorSeal.method)}
+                                  size="small"
+                                />
+                              ) : (
+                                <Chip label="Missing" color="error" size="small" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {guardSeal ? (
+                                <Chip
+                                  label={getMethodDisplay(guardSeal.method)}
+                                  color={getMethodColor(guardSeal.method)}
+                                  size="small"
+                                />
+                              ) : (
+                                <Chip label="Not Verified" color="error" size="small" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={isMatched ? "Matched" : "Mismatch"}
+                                color={isMatched ? "success" : "error"}
+                                size="small"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            </Paper>
+          )}
+          
+          {/* Driver Details Section */}
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6">Driver Details</Typography>
+            </Box>
+            
+            <Box sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {/* Driver Name */}
+                <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Person fontSize="small" /> Driver Name: {session.tripDetails?.driverName || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                {/* Contact Number */}
+                <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Phone fontSize="small" /> Contact Number: {session.tripDetails?.driverContactNumber || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                {/* License */}
+                <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <CardMembership fontSize="small" /> License: {session.tripDetails?.driverLicense || 'N/A'}
+                  </Typography>
+                </Box>
+              </Box>
+              
+              {/* Driver Photo */}
+              {session.images?.driverPicture && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    <CameraAlt fontSize="small" /> Driver Photo
+                  </Typography>
+                  <Box
+                    component="img"
+                    src={session.images.driverPicture}
+                    alt="Driver"
+                    sx={{ 
+                      maxWidth: '100%', 
+                      maxHeight: '300px',
+                      borderRadius: 1,
+                      border: '1px solid #eee'
+                    }}
+                    onClick={() => {
+                      setSelectedImage(session.images?.driverPicture || '');
+                      setOpenImageModal(true);
+                    }}
+                  />
+                </Box>
+              )}
+            </Box>
+          </Paper>
+        </>
+      )}
+
       {/* Comments Section */}
       <Paper elevation={1} sx={{ mb: 3 }}>
-        <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center' }}>
-          <CommentIcon sx={{ mr: 1 }} />
+        <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
           <Typography variant="h6">Comments</Typography>
         </Box>
         <Box sx={{ p: 2 }}>
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ mr: 1 }}>Urgency:</Typography>
-              <TextField
-                select
-                size="small"
-                value={commentUrgency}
-                onChange={(e) => setCommentUrgency(e.target.value)}
-                sx={{ minWidth: 120 }}
-                SelectProps={{
-                  native: true,
-                }}
-              >
-                <option value="NA">--NA--</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-              </TextField>
-            </Box>
-            
-            <Button 
-              variant="contained" 
-              disabled={!comment.trim() || submittingComment}
-              onClick={handleSubmitComment}
-              sx={{ borderRadius: '4px', px: 3 }}
-            >
-              {submittingComment ? 'Sending...' : 'Send'}
-            </Button>
-          </Box>
-          
-          {loadingComments ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : comments.length > 0 ? (
-            <List>
-              {comments.map((comment) => (
-                <ListItem key={comment.id} sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                  <ListItemText
-                    primary={comment.content}
-                    secondary={`${comment.createdBy?.name || 'Unknown'} - ${new Date(comment.createdAt).toLocaleString()}`}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          ) : (
-            <Box sx={{ textAlign: 'center', p: 2, mt: 2 }}>
-              <Typography variant="body2" color="text.secondary">No comments yet</Typography>
-            </Box>
-          )}
+          <CommentSection sessionId={sessionId} />
         </Box>
       </Paper>
 
-      {/* Start Trip Verification Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-              <Button
-        variant="contained"
-        color="primary"
-        startIcon={<LockOpen />}
-        onClick={handleStartVerification}
-        sx={{ px: 4, py: 1.5, borderRadius: '4px', fontWeight: 'bold' }}
-      >
-        Start Trip Verification
-      </Button>
-      </Box>
+      {/* Start Trip Verification Button - Only for Guards and only for ACTIVE sessions */}
+      {session.status === SessionStatus.ACTIVE && authSession?.user?.subrole === EmployeeSubrole.GUARD && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Lock />}
+            onClick={handleStartVerification}
+          >
+            Start Trip Verification
+          </Button>
+        </Box>
+      )}
 
-      {/* Confirmation Dialog */}
+      {/* Confirmation Dialog - Only show for non-guards */}
       <Dialog
         open={confirmStartVerification}
         onClose={() => setConfirmStartVerification(false)}
       >
-        <DialogTitle>Start Verification</DialogTitle>
+        <DialogTitle>Confirm Verification</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to start the verification process for this trip?
+            Are you authorized to verify this trip? Only Guards should perform verification.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmStartVerification(false)}>Cancel</Button>
-          <Button onClick={confirmVerification} color="primary" autoFocus>
-            Confirm
+          <Button onClick={confirmVerification} color="primary">
+            Yes, Proceed
           </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Image Modal */}
+      <Dialog
+        open={openImageModal}
+        onClose={() => setOpenImageModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogContent>
+          {selectedImage && (
+            <Box
+              component="img"
+              src={selectedImage}
+              alt="Full size"
+              sx={{ 
+                width: '100%',
+                maxHeight: '80vh',
+                objectFit: 'contain'
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImageModal(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
