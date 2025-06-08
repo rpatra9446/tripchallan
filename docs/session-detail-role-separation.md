@@ -139,6 +139,38 @@ All users should see comprehensive details:
 - ✅ Comment Section
 - ❌ NO verification button
 
+#### Loading Details Field Order
+
+The loading details should be displayed in the following order for both completed and in-progress sessions:
+
+1. Source
+2. Destination
+3. Cargo Type
+4. Material Name
+5. Quality of Materials
+6. Transporter Name
+7. Receiver Party
+8. Loading Site
+9. Vehicle Number
+10. Registration Certificate
+11. GPS IMEI Number
+12. Driver Name
+13. Driver Contact Number
+14. Driver License
+15. Loader Name
+16. Loader Mobile Number
+17. Gross Weight
+18. Tare Weight
+19. Net Material Weight
+20. Challan Royalty Number
+21. DO Number
+22. TP Number
+23. Number of Packages
+24. Freight
+25. Created By Id
+
+All fields should be displayed in this order, even if some values are empty.
+
 ### 3. API Protection Enhancements
 
 All endpoints that modify session status should verify user roles:

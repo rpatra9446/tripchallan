@@ -212,12 +212,31 @@ function CustomTabPanel(props: CustomTabPanelProps) {
 // Utility functions
 function getFieldLabel(field: string): string {
   const map: Record<string, string> = {
-    driverName: "Driver Name",
-    vehicleNumber: "Vehicle Number",
-    transporterName: "Transporter Name",
-    materialName: "Material Name",
-    receiverPartyName: "Receiver Party",
-    gpsImeiNumber: "GPS IMEI Number"
+    source: 'Source',
+    destination: 'Destination',
+    cargoType: 'Cargo Type',
+    materialName: 'Material Name',
+    qualityOfMaterials: 'Quality of Materials',
+    transporterName: 'Transporter Name',
+    receiverPartyName: 'Receiver Party',
+    loadingSite: 'Loading Site',
+    vehicleNumber: 'Vehicle Number',
+    registrationCertificate: 'Registration Certificate',
+    gpsImeiNumber: 'GPS IMEI Number',
+    driverName: 'Driver Name',
+    driverContactNumber: 'Driver Contact Number',
+    driverLicense: 'Driver License',
+    loaderName: 'Loader Name',
+    loaderMobileNumber: 'Loader Mobile Number',
+    grossWeight: 'Gross Weight',
+    tareWeight: 'Tare Weight',
+    netMaterialWeight: 'Net Material Weight',
+    challanRoyaltyNumber: 'Challan Royalty Number',
+    doNumber: 'DO Number',
+    tpNumber: 'TP Number',
+    numberOfPackages: 'Number of Packages',
+    freight: 'Freight',
+    createdById: 'Created By Id'
   };
   return map[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
 }
@@ -1222,18 +1241,43 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 </TableRow>
               </TableHead>
               <TableBody>
-                {/* Display trip details dynamically */}
-                {session.tripDetails && Object.entries(session.tripDetails).map(([key, value]) => {
-                  // Skip empty values
-                  if (value === undefined || value === null || value === '') {
-                    return null;
-                  }
+                {/* Display trip details in specified order */}
+                {[
+                  'source',
+                  'destination',
+                  'cargoType',
+                  'materialName',
+                  'qualityOfMaterials',
+                  'transporterName',
+                  'receiverPartyName',
+                  'loadingSite',
+                  'vehicleNumber',
+                  'registrationCertificate',
+                  'gpsImeiNumber',
+                  'driverName',
+                  'driverContactNumber',
+                  'driverLicense',
+                  'loaderName',
+                  'loaderMobileNumber',
+                  'grossWeight',
+                  'tareWeight',
+                  'netMaterialWeight',
+                  'challanRoyaltyNumber',
+                  'doNumber',
+                  'tpNumber',
+                  'numberOfPackages',
+                  'freight',
+                  'createdById'
+                ].map(key => {
+                  const value = session.tripDetails?.[key as keyof typeof session.tripDetails];
                   
                   return (
                     <TableRow key={key}>
                       <TableCell>{getFieldLabel(key)}</TableCell>
                       <TableCell>
-                        {typeof value === 'object' ? JSON.stringify(value) : value.toString()}
+                        {value !== undefined && value !== null && value !== '' 
+                          ? (typeof value === 'object' ? JSON.stringify(value) : value.toString())
+                          : 'N/A'}
                       </TableCell>
                       <TableCell>
                         {session.timestamps?.loadingDetails?.[key] ? 
@@ -1757,18 +1801,43 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {/* Display trip details dynamically */}
-                    {Object.entries(session.tripDetails).map(([key, value]) => {
-                      // Skip empty values
-                      if (value === undefined || value === null || value === '') {
-                        return null;
-                      }
+                    {/* Display trip details in specified order */}
+                    {[
+                      'source',
+                      'destination',
+                      'cargoType',
+                      'materialName',
+                      'qualityOfMaterials',
+                      'transporterName',
+                      'receiverPartyName',
+                      'loadingSite',
+                      'vehicleNumber',
+                      'registrationCertificate',
+                      'gpsImeiNumber',
+                      'driverName',
+                      'driverContactNumber',
+                      'driverLicense',
+                      'loaderName',
+                      'loaderMobileNumber',
+                      'grossWeight',
+                      'tareWeight',
+                      'netMaterialWeight',
+                      'challanRoyaltyNumber',
+                      'doNumber',
+                      'tpNumber',
+                      'numberOfPackages',
+                      'freight',
+                      'createdById'
+                    ].map(key => {
+                      const value = session.tripDetails?.[key as keyof typeof session.tripDetails];
                       
                       return (
                         <TableRow key={key}>
                           <TableCell>{getFieldLabel(key)}</TableCell>
                           <TableCell>
-                            {typeof value === 'object' ? JSON.stringify(value) : value.toString()}
+                            {value !== undefined && value !== null && value !== '' 
+                              ? (typeof value === 'object' ? JSON.stringify(value) : value.toString())
+                              : 'N/A'}
                           </TableCell>
                           <TableCell>
                             {session.timestamps?.loadingDetails?.[key] ? 
