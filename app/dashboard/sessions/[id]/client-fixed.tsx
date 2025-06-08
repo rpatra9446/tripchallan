@@ -55,6 +55,7 @@ import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
 import { formatTimestampExact, getSessionFieldTimestamp } from "@/lib/date-utils";
+import toast from "react-hot-toast";
 
 // Types
 type SealType = {
@@ -671,6 +672,69 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     } catch (error) {
       console.error("Error formatting date:", error);
       return 'N/A';
+    }
+  };
+
+  // Start verification process
+  const startVerification = () => {
+    setConfirmDialogOpen(true);
+  };
+
+  // Close confirmation dialog
+  const closeConfirmDialog = () => {
+    setConfirmDialogOpen(false);
+  };
+
+  // Confirm verification action and navigate to verification page
+  const confirmVerification = () => {
+    closeConfirmDialog();
+    if (sessionId) {
+      router.push(`/dashboard/sessions/${sessionId}/verify`);
+    }
+  };
+
+  // Handle downloading reports
+  const handleDownloadReport = async (reportType: string) => {
+    if (!session) return;
+    
+    setReportLoading(reportType);
+    
+    try {
+      // Generate PDF report
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(16);
+      doc.text(`Session ${reportType.toUpperCase()} Report`, 14, 15);
+      
+      // Add session basics
+      doc.setFontSize(12);
+      doc.text(`Session ID: ${session.id}`, 14, 25);
+      doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`, 14, 30);
+      doc.text(`Status: ${session.status}`, 14, 35);
+      doc.text(`Source: ${session.source}`, 14, 40);
+      doc.text(`Destination: ${session.destination}`, 14, 45);
+      
+      // Add trip details if available
+      if (session.tripDetails) {
+        doc.text('Trip Details:', 14, 55);
+        
+        let y = 60;
+        Object.entries(session.tripDetails).forEach(([key, value]) => {
+          if (value) {
+            doc.text(`${getFieldLabel(key)}: ${value}`, 20, y);
+            y += 5;
+          }
+        });
+      }
+      
+      // Save the PDF
+      doc.save(`session-${session.id}-${reportType}-report.pdf`);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast.error("Failed to generate report");
+    } finally {
+      setReportLoading(null);
     }
   };
 
