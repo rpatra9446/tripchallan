@@ -659,33 +659,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
   // Function to get and format timestamp for a specific field
   const getFieldTimestamp = (key: string) => {
-    // Find timestamp for this field if available
-    const fieldTimestamp = session?.fieldTimestamps?.find(
-      ft => ft.fieldName === key || ft.fieldName === `loadingDetails.${key}` || ft.fieldName === `driverDetails.${key}`
-    );
-    
-    // Check for formatted timestamps (new API response format)
-    const formattedTimestamp = session?.formattedFieldTimestamps?.[key] || 
-                              session?.formattedFieldTimestamps?.[`loadingDetails.${key}`] ||
-                              session?.formattedFieldTimestamps?.[`driverDetails.${key}`];
-    
-    // Fallback to legacy timestamps if formatted timestamps are not available
-    const legacyTimestamp = 
-      (session?.timestamps?.loadingDetails && session.timestamps.loadingDetails[key]) ||
-      (session?.timestamps?.imagesForm && session.timestamps.imagesForm[key]);
-    
-    // Return the timestamp with the highest priority: formatted > fieldTimestamp > legacyTimestamp > current time
-    return (
-      formattedTimestamp
-        ? formattedTimestamp.formattedTimestamp
-        : fieldTimestamp
-          ? formatTimestampExact(fieldTimestamp.timestamp)
-          : legacyTimestamp
-            ? formatTimestampExact(legacyTimestamp)
-            : session?.createdAt 
-              ? formatTimestampExact(session.createdAt)
-              : formatTimestampExact(new Date())
-    );
+    // Use the imported getSessionFieldTimestamp function instead
+    return getSessionFieldTimestamp(session, key);
   };
 
   // Format a date string for display
