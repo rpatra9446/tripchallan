@@ -36,6 +36,10 @@ export function getSessionFieldTimestamp(session: any, key: string): string {
   if (!session) return 'N/A';
   
   try {
+    // For image fields that start with 'images.', extract the actual field name for legacy lookup
+    const isImageField = key.startsWith('images.');
+    const imageFieldName = isImageField ? key.replace('images.', '') : null;
+    
     // Find timestamp for this field if available
     const fieldTimestamp = session.fieldTimestamps?.find(
       (ft: any) => ft.fieldName === key || 
@@ -51,8 +55,12 @@ export function getSessionFieldTimestamp(session: any, key: string): string {
     
     // Fallback to legacy timestamps if formatted timestamps are not available
     let legacyTimestamp;
-    if (session.timestamps?.loadingDetails && 
-        session.timestamps.loadingDetails[key]) {
+    
+    // Check if it's an image field for specific handling
+    if (isImageField && imageFieldName && session.timestamps?.imagesForm) {
+      legacyTimestamp = session.timestamps.imagesForm[imageFieldName];
+    } else if (session.timestamps?.loadingDetails && 
+              session.timestamps.loadingDetails[key]) {
       legacyTimestamp = session.timestamps.loadingDetails[key];
     } else if (session.timestamps?.imagesForm && 
               session.timestamps.imagesForm[key]) {

@@ -1000,6 +1000,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       alt="Driver" 
                       style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
                     />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Uploaded: {getSessionFieldTimestamp(session, 'images.driverPicture')}
+                    </Typography>
                   </Box>
                 )}
                 {session.images && session.images.vehicleNumberPlatePicture && (
@@ -1010,6 +1013,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       alt="Vehicle Number Plate" 
                       style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
                     />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Uploaded: {getSessionFieldTimestamp(session, 'images.vehicleNumberPlatePicture')}
+                    </Typography>
                   </Box>
                 )}
                 {session.images && session.images.gpsImeiPicture && (
@@ -1020,6 +1026,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       alt="GPS IMEI" 
                       style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
                     />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Uploaded: {getSessionFieldTimestamp(session, 'images.gpsImeiPicture')}
+                    </Typography>
                   </Box>
                 )}
                 
@@ -1036,6 +1045,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           alt={`Sealing ${index + 1}`} 
                           style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
                         />
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Uploaded: {getSessionFieldTimestamp(session, `images.sealingImage${index}`)}
+                        </Typography>
                       </Box>
                     ))}
                   </>
@@ -1054,6 +1066,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           alt={`Vehicle ${index + 1}`} 
                           style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
                         />
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Uploaded: {getSessionFieldTimestamp(session, `images.vehicleImage${index}`)}
+                        </Typography>
                       </Box>
                     ))}
                   </>
@@ -1072,6 +1087,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           alt={`Additional ${index + 1}`} 
                           style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
                         />
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Uploaded: {getSessionFieldTimestamp(session, `images.additionalImage${index}`)}
+                        </Typography>
                       </Box>
                     ))}
                   </>
