@@ -25,6 +25,59 @@ export function formatTimestampExact(date: Date | string): string {
 }
 
 /**
+ * Gets and formats the timestamp for a field in a session
+ * Uses the highest priority source: formattedFieldTimestamps > fieldTimestamps > legacy timestamps > session creation time
+ * 
+ * @param session The session object containing timestamp information
+ * @param key The field name to get the timestamp for
+ * @returns Formatted timestamp string
+ */
+export function getSessionFieldTimestamp(session: any, key: string): string {
+  if (!session) return 'N/A';
+  
+  try {
+    // Find timestamp for this field if available
+    const fieldTimestamp = session.fieldTimestamps?.find(
+      (ft: any) => ft.fieldName === key || 
+                  ft.fieldName === `loadingDetails.${key}` || 
+                  ft.fieldName === `driverDetails.${key}`
+    );
+    
+    // Check for formatted timestamps (new API response format)
+    const formattedTimestamp = 
+      session.formattedFieldTimestamps?.[key] || 
+      session.formattedFieldTimestamps?.[`loadingDetails.${key}`] ||
+      session.formattedFieldTimestamps?.[`driverDetails.${key}`];
+    
+    // Fallback to legacy timestamps if formatted timestamps are not available
+    let legacyTimestamp;
+    if (session.timestamps?.loadingDetails && 
+        session.timestamps.loadingDetails[key]) {
+      legacyTimestamp = session.timestamps.loadingDetails[key];
+    } else if (session.timestamps?.imagesForm && 
+              session.timestamps.imagesForm[key]) {
+      legacyTimestamp = session.timestamps.imagesForm[key];
+    }
+    
+    // Return the timestamp with the highest priority: formatted > fieldTimestamp > legacyTimestamp > session creation time
+    if (formattedTimestamp) {
+      return formattedTimestamp.formattedTimestamp;
+    } else if (fieldTimestamp) {
+      return formatTimestampExact(fieldTimestamp.timestamp);
+    } else if (legacyTimestamp) {
+      return formatTimestampExact(legacyTimestamp);
+    } else if (session.createdAt) {
+      return formatTimestampExact(session.createdAt);
+    } else {
+      return formatTimestampExact(new Date());
+    }
+  } catch (error) {
+    console.error('Error getting field timestamp:', error, { key });
+    return formatTimestampExact(new Date());
+  }
+}
+
+/**
  * Parses a timestamp from various formats
  * @param timestamp The timestamp string to parse
  * @returns A Date object representing the timestamp

@@ -54,7 +54,7 @@ import Link from "next/link";
 import { SessionStatus, EmployeeSubrole } from "@/prisma/enums";
 import CommentSection from "@/app/components/sessions/CommentSection";
 import { jsPDF } from 'jspdf';
-import { formatTimestampExact } from "@/lib/date-utils";
+import { formatTimestampExact, getSessionFieldTimestamp } from "@/lib/date-utils";
 
 // Types
 type SealType = {
@@ -573,7 +573,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           </TableCell>
                           <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
                           <TableCell>
-                            {tag.createdAt ? formatTimestampExact(tag.createdAt) : 'Unknown'}
+                            {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -656,6 +656,48 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       console.log("User role set:", authSession.user.role, "Subrole:", authSession.user.subrole);
     }
   }, [authSession]);
+
+  // Function to get and format timestamp for a specific field
+  const getFieldTimestamp = (key: string) => {
+    // Find timestamp for this field if available
+    const fieldTimestamp = session?.fieldTimestamps?.find(
+      ft => ft.fieldName === key || ft.fieldName === `loadingDetails.${key}` || ft.fieldName === `driverDetails.${key}`
+    );
+    
+    // Check for formatted timestamps (new API response format)
+    const formattedTimestamp = session?.formattedFieldTimestamps?.[key] || 
+                              session?.formattedFieldTimestamps?.[`loadingDetails.${key}`] ||
+                              session?.formattedFieldTimestamps?.[`driverDetails.${key}`];
+    
+    // Fallback to legacy timestamps if formatted timestamps are not available
+    const legacyTimestamp = 
+      (session?.timestamps?.loadingDetails && session.timestamps.loadingDetails[key]) ||
+      (session?.timestamps?.imagesForm && session.timestamps.imagesForm[key]);
+    
+    // Return the timestamp with the highest priority: formatted > fieldTimestamp > legacyTimestamp > current time
+    return (
+      formattedTimestamp
+        ? formattedTimestamp.formattedTimestamp
+        : fieldTimestamp
+          ? formatTimestampExact(fieldTimestamp.timestamp)
+          : legacyTimestamp
+            ? formatTimestampExact(legacyTimestamp)
+            : session?.createdAt 
+              ? formatTimestampExact(session.createdAt)
+              : formatTimestampExact(new Date())
+    );
+  };
+
+  // Format a date string for display
+  const formatDateDisplay = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return formatTimestampExact(new Date(dateString));
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return 'N/A';
+    }
+  };
 
   // Other functions and useEffect hooks
 
@@ -810,35 +852,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {session?.tripDetails && Object.entries(session.tripDetails).map(([key, value]) => {
-                    // Skip system fields
-                    if (key === 'id' || key === 'createdAt' || key === 'updatedAt') {
-                      return null;
-                    }
-                    
-                    // Find timestamp for this field if available
-                    const fieldTimestamp = session?.fieldTimestamps?.find(
-                      (ft) => ft.fieldName === key
-                    );
-                    
-                    // Check for formatted timestamps (new API response format)
-                    const formattedTimestamp = session?.formattedFieldTimestamps?.[key];
-                    
-                    // Fallback to legacy timestamps if formatted timestamps are not available
-                    const legacyTimestamp = session?.timestamps?.loadingDetails?.[key] || 
-                                           session?.timestamps?.imagesForm?.[key];
+                  {Object.entries(session?.tripDetails || {}).map(([key, value]) => {
+                    if (key === 'source' || key === 'destination') return null;
                     
                     return (
                       <TableRow key={key}>
                         <TableCell>{getFieldLabel(key)}</TableCell>
                         <TableCell>
-                          {formattedTimestamp 
-                            ? formattedTimestamp.formattedTimestamp
-                            : fieldTimestamp 
-                              ? formatTimestampExact(fieldTimestamp.timestamp)
-                              : legacyTimestamp 
-                                ? formatTimestampExact(legacyTimestamp)
-                                : 'N/A'}
+                          {getSessionFieldTimestamp(session, key)}
                         </TableCell>
                         <TableCell>{value || 'N/A'}</TableCell>
                       </TableRow>
@@ -912,14 +933,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           )}
                         </TableCell>
                         <TableCell>
-                          {new Date(tag.createdAt).toLocaleString('en-US', {
-                            year: 'numeric',
-                            month: 'numeric',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: 'numeric',
-                            hour12: true
-                          })}
+                          {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
                         </TableCell>
                         <TableCell>{tag.scannedByName}</TableCell>
                       </TableRow>

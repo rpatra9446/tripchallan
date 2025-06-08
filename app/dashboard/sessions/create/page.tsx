@@ -536,15 +536,28 @@ export default function CreateSessionPage() {
   };
 
   const handleLoadingDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setLoadingDetails(prev => ({
-      ...prev,
-      [name]: value,
-      timestamps: {
-        ...prev.timestamps,
-        [name]: new Date().toISOString()
-      }
-    }));
+    const { name, value, type } = e.target;
+    
+    setLoadingDetails(prev => {
+      // Get the current value for comparison (to see if it actually changed)
+      const currentValue = prev[name as keyof LoadingDetailsForm];
+      const newValue = type === 'number' ? (value ? parseFloat(value) : 0) : value;
+      
+      // Only update timestamp if the value actually changed
+      const shouldUpdateTimestamp = currentValue !== newValue;
+      
+      const updatedState = {
+        ...prev,
+        [name]: newValue,
+        timestamps: {
+          ...prev.timestamps,
+          // Only update timestamp if value changed
+          ...(shouldUpdateTimestamp ? { [name]: new Date().toISOString() } : {})
+        }
+      };
+      
+      return updatedState;
+    });
     
     // Clear validation error when field is modified
     if (validationErrors[name]) {
@@ -558,14 +571,26 @@ export default function CreateSessionPage() {
 
   const handleDriverDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setDriverDetails(prev => ({
-            ...prev,
-      [name]: value,
-      timestamps: {
-        ...prev.timestamps,
-        [name]: new Date().toISOString()
-      }
-    }));
+    
+    setDriverDetails(prev => {
+      // Get the current value for comparison
+      const currentValue = prev[name as keyof DriverDetailsForm];
+      
+      // Only update timestamp if the value actually changed
+      const shouldUpdateTimestamp = currentValue !== value;
+      
+      const updatedState = {
+        ...prev,
+        [name]: value,
+        timestamps: {
+          ...prev.timestamps,
+          // Only update timestamp if value changed
+          ...(shouldUpdateTimestamp ? { [name]: new Date().toISOString() } : {})
+        }
+      };
+      
+      return updatedState;
+    });
     
     // Clear validation error when field is modified
     if (validationErrors[name]) {
