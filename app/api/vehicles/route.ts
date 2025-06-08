@@ -51,7 +51,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ vehicles });
     } catch (dbError) {
       console.error("Database error fetching vehicles:", dbError);
-      return NextResponse.json({ error: "Database error: Failed to fetch vehicles", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 });
+      
+      // Check for schema-related errors
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      if (errorMessage.includes("does not exist in the current database")) {
+        // Handle schema mismatch specifically
+        console.error("Schema mismatch detected. Database schema needs migration.");
+        return NextResponse.json({ 
+          error: "Database schema error", 
+          details: "The database schema needs to be updated. Please run 'npx prisma migrate dev'.",
+          message: errorMessage
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        error: "Database error: Failed to fetch vehicles", 
+        details: errorMessage 
+      }, { status: 500 });
     }
   } catch (error) {
     console.error("Error fetching vehicles:", error);
@@ -119,7 +135,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ vehicle }, { status: 201 });
     } catch (dbError) {
       console.error("Database error creating vehicle:", dbError);
-      return NextResponse.json({ error: "Database error: Failed to create vehicle", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 });
+      
+      // Check for schema-related errors
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      if (errorMessage.includes("does not exist in the current database")) {
+        // Handle schema mismatch specifically
+        console.error("Schema mismatch detected. Database schema needs migration.");
+        return NextResponse.json({ 
+          error: "Database schema error", 
+          details: "The database schema needs to be updated. Please run 'npx prisma migrate dev'.",
+          message: errorMessage
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        error: "Database error: Failed to create vehicle", 
+        details: errorMessage 
+      }, { status: 500 });
     }
   } catch (error) {
     console.error("Error creating vehicle:", error);

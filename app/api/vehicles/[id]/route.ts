@@ -47,7 +47,23 @@ export async function GET(
       return NextResponse.json({ vehicle });
     } catch (dbError) {
       console.error("Database error fetching vehicle:", dbError);
-      return NextResponse.json({ error: "Database error: Failed to fetch vehicle", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 });
+      
+      // Check for schema-related errors
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      if (errorMessage.includes("does not exist in the current database")) {
+        // Handle schema mismatch specifically
+        console.error("Schema mismatch detected. Database schema needs migration.");
+        return NextResponse.json({ 
+          error: "Database schema error", 
+          details: "The database schema needs to be updated. Please run 'npx prisma migrate dev'.",
+          message: errorMessage
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        error: "Database error: Failed to fetch vehicle", 
+        details: errorMessage 
+      }, { status: 500 });
     }
   } catch (error) {
     console.error("Error fetching vehicle:", error);
@@ -132,7 +148,23 @@ export async function PATCH(
       return NextResponse.json({ vehicle: updatedVehicle });
     } catch (dbError) {
       console.error("Database error updating vehicle:", dbError);
-      return NextResponse.json({ error: "Database error: Failed to update vehicle", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 });
+      
+      // Check for schema-related errors
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      if (errorMessage.includes("does not exist in the current database")) {
+        // Handle schema mismatch specifically
+        console.error("Schema mismatch detected. Database schema needs migration.");
+        return NextResponse.json({ 
+          error: "Database schema error", 
+          details: "The database schema needs to be updated. Please run 'npx prisma migrate dev'.",
+          message: errorMessage
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        error: "Database error: Failed to update vehicle", 
+        details: errorMessage 
+      }, { status: 500 });
     }
   } catch (error) {
     console.error("Error updating vehicle:", error);
@@ -213,7 +245,23 @@ export async function DELETE(
       }
     } catch (dbError) {
       console.error("Database error processing vehicle delete/deactivate:", dbError);
-      return NextResponse.json({ error: "Database error: Failed to process vehicle deletion request", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 });
+      
+      // Check for schema-related errors
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      if (errorMessage.includes("does not exist in the current database")) {
+        // Handle schema mismatch specifically
+        console.error("Schema mismatch detected. Database schema needs migration.");
+        return NextResponse.json({ 
+          error: "Database schema error", 
+          details: "The database schema needs to be updated. Please run 'npx prisma migrate dev'.",
+          message: errorMessage
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        error: "Database error: Failed to process vehicle deletion request", 
+        details: errorMessage 
+      }, { status: 500 });
     }
   } catch (error) {
     console.error("Error handling vehicle delete/deactivate:", error);
