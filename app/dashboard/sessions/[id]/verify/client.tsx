@@ -680,51 +680,69 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
           Loading Details Verification
         </Typography>
         
-        <Table>
-          <TableHead>
-            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
-              <TableCell width="25%">Field Name</TableCell>
-              <TableCell width="25%">Field Value</TableCell>
-              <TableCell width="15%" align="center">Verification</TableCell>
-              <TableCell width="35%">Comment</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {fieldDisplayData.map(({ field, label }) => {
-              const value = session.tripDetails?.[field as keyof typeof session.tripDetails];
-              if (value === undefined || value === null) return null;
-              
-              return (
-                <TableRow key={field} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
-                  <TableCell sx={{ fontWeight: 'medium' }}>{label}</TableCell>
-                  <TableCell>{field === 'freight' ? `₹${value}` : value.toString()}</TableCell>
-                  <TableCell align="center">
-                    <FormControlLabel
-                      control={
-                        <Radio
-                          checked={!!verificationFields[field]?.verified}
-                          onChange={() => verifyField(field)}
-                          color="success"
-                        />
-                      }
-                      label="Verified"
-                      sx={{ m: 0 }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="Add verification"
-                      value={fieldComments[field] || ''}
-                      onChange={(e) => handleCommentChange(field, e.target.value)}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            }).filter(Boolean)}
-          </TableBody>
-        </Table>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+                <TableCell>Field Name</TableCell>
+                <TableCell>Field Value</TableCell>
+                <TableCell align="center">Verification</TableCell>
+                <TableCell>Comment</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {fieldDisplayData.map(({ field, label }) => {
+                const value = session.tripDetails?.[field as keyof typeof session.tripDetails];
+                if (value === undefined || value === null) return null;
+                
+                return (
+                  <TableRow key={field} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                    <TableCell sx={{ 
+                      fontWeight: 'medium',
+                      whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                      minWidth: { xs: '100px', sm: '120px' }
+                    }}>
+                      {label}
+                    </TableCell>
+                    <TableCell sx={{ 
+                      whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                      minWidth: { xs: '80px', sm: '100px' }
+                    }}>
+                      {field === 'freight' ? `₹${value}` : value.toString()}
+                    </TableCell>
+                    <TableCell align="center" sx={{ 
+                      minWidth: { xs: '80px', sm: '110px' }
+                    }}>
+                      <FormControlLabel
+                        control={
+                          <Radio
+                            checked={!!verificationFields[field]?.verified}
+                            onChange={() => verifyField(field)}
+                            color="success"
+                            size="small"
+                          />
+                        }
+                        label={<Typography variant="body2">Verified</Typography>}
+                        sx={{ m: 0 }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{
+                      minWidth: { xs: '120px', sm: '160px' }
+                    }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Add verification"
+                        value={fieldComments[field] || ''}
+                        onChange={(e) => handleCommentChange(field, e.target.value)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              }).filter(Boolean)}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Box>
     );
   };
@@ -807,93 +825,157 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
           Driver Details Verification
         </Typography>
         
-        <Table>
-          <TableHead>
-            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
-              <TableCell width="25%">Field Name</TableCell>
-              <TableCell width="25%">Field Value</TableCell>
-              <TableCell width="15%" align="center">Verification</TableCell>
-              <TableCell width="35%">Comment</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {fieldDisplayData.map(({ field, label }) => {
-              const value = session.tripDetails?.[field as keyof typeof session.tripDetails];
-              if (value === undefined || value === null) return null;
-              
-              return (
-                <TableRow key={field} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
-                  <TableCell sx={{ fontWeight: 'medium' }}>{label}</TableCell>
-                  <TableCell>{value.toString()}</TableCell>
-                  <TableCell align="center">
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+                <TableCell>Field Name</TableCell>
+                <TableCell>Field Value</TableCell>
+                <TableCell align="center">Verification</TableCell>
+                <TableCell>Comment</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {/* Driver Name */}
+              {session.tripDetails?.driverName && (
+                <TableRow sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                  <TableCell sx={{ 
+                    fontWeight: 'medium',
+                    whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                    minWidth: { xs: '100px', sm: '120px' }
+                  }}>
+                    Driver Name
+                  </TableCell>
+                  <TableCell sx={{ 
+                    whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                    minWidth: { xs: '80px', sm: '100px' }
+                  }}>
+                    {session.tripDetails.driverName}
+                  </TableCell>
+                  <TableCell align="center" sx={{ 
+                    minWidth: { xs: '80px', sm: '110px' }
+                  }}>
                     <FormControlLabel
                       control={
                         <Radio
-                          checked={!!verificationFields[field]?.verified}
-                          onChange={() => verifyField(field)}
+                          checked={!!verificationFields['driverName']?.verified}
+                          onChange={() => verifyField('driverName')}
                           color="success"
+                          size="small"
                         />
                       }
-                      label="Verified"
+                      label={<Typography variant="body2">Verified</Typography>}
                       sx={{ m: 0 }}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{
+                    minWidth: { xs: '120px', sm: '160px' }
+                  }}>
                     <TextField
                       fullWidth
                       size="small"
                       placeholder="Add verification"
-                      value={fieldComments[field] || ''}
-                      onChange={(e) => handleCommentChange(field, e.target.value)}
+                      value={fieldComments['driverName'] || ''}
+                      onChange={(e) => handleCommentChange('driverName', e.target.value)}
                     />
                   </TableCell>
                 </TableRow>
-              );
-            }).filter(Boolean)}
-            
-            {/* Driver image if available */}
-            {session.images?.driverPicture && (
-              <TableRow sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
-                <TableCell sx={{ fontWeight: 'medium' }}>Driver Picture</TableCell>
-                <TableCell>
-                  <Box sx={{ mt: 1, mb: 1 }}>
-                    <img 
-                      src={session.images.driverPicture} 
-                      alt="Driver" 
-                      style={{ maxWidth: '100%', maxHeight: '120px', cursor: 'pointer' }}
-                      onClick={() => {
-                        setSelectedImage(session.images?.driverPicture || '');
-                        setOpenImageModal(true);
-                      }}
+              )}
+              
+              {/* Driver Contact Number */}
+              {session.tripDetails?.driverContactNumber && (
+                <TableRow>
+                  <TableCell sx={{ 
+                    fontWeight: 'medium',
+                    whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                    minWidth: { xs: '100px', sm: '120px' }
+                  }}>
+                    Driver Contact Number
+                  </TableCell>
+                  <TableCell sx={{ 
+                    whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                    minWidth: { xs: '80px', sm: '100px' }
+                  }}>
+                    {session.tripDetails.driverContactNumber}
+                  </TableCell>
+                  <TableCell align="center" sx={{ 
+                    minWidth: { xs: '80px', sm: '110px' }
+                  }}>
+                    <FormControlLabel
+                      control={
+                        <Radio
+                          checked={!!verificationFields['driverContactNumber']?.verified}
+                          onChange={() => verifyField('driverContactNumber')}
+                          color="success"
+                          size="small"
+                        />
+                      }
+                      label={<Typography variant="body2">Verified</Typography>}
+                      sx={{ m: 0 }}
                     />
-                  </Box>
-                </TableCell>
-                <TableCell align="center">
-                  <FormControlLabel
-                    control={
-                      <Radio
-                        checked={!!verificationFields['driverPicture']?.verified}
-                        onChange={() => verifyField('driverPicture')}
-                        color="success"
-                      />
-                    }
-                    label="Verified"
-                    sx={{ m: 0 }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Add verification"
-                    value={fieldComments['driverPicture'] || ''}
-                    onChange={(e) => handleCommentChange('driverPicture', e.target.value)}
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                  </TableCell>
+                  <TableCell sx={{
+                    minWidth: { xs: '120px', sm: '160px' }
+                  }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Add verification"
+                      value={fieldComments['driverContactNumber'] || ''}
+                      onChange={(e) => handleCommentChange('driverContactNumber', e.target.value)}
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+              
+              {/* Driver License */}
+              {session.tripDetails?.driverLicense && (
+                <TableRow sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+                  <TableCell sx={{ 
+                    fontWeight: 'medium',
+                    whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                    minWidth: { xs: '100px', sm: '120px' }
+                  }}>
+                    Driver License
+                  </TableCell>
+                  <TableCell sx={{ 
+                    whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                    minWidth: { xs: '80px', sm: '100px' }
+                  }}>
+                    {session.tripDetails.driverLicense}
+                  </TableCell>
+                  <TableCell align="center" sx={{ 
+                    minWidth: { xs: '80px', sm: '110px' }
+                  }}>
+                    <FormControlLabel
+                      control={
+                        <Radio
+                          checked={!!verificationFields['driverLicense']?.verified}
+                          onChange={() => verifyField('driverLicense')}
+                          color="success"
+                          size="small"
+                        />
+                      }
+                      label={<Typography variant="body2">Verified</Typography>}
+                      sx={{ m: 0 }}
+                    />
+                  </TableCell>
+                  <TableCell sx={{
+                    minWidth: { xs: '120px', sm: '160px' }
+                  }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Add verification"
+                      value={fieldComments['driverLicense'] || ''}
+                      onChange={(e) => handleCommentChange('driverLicense', e.target.value)}
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Box>
     );
   };
@@ -1042,8 +1124,21 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     </Button>
                   </InputAdornment>
                 ),
+                autoComplete: "off",
+                autoFocus: false,
               }}
               sx={{ mb: 2 }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (scanInput && sealTagImage) {
+                    handleScanComplete(scanInput, 'manual', sealTagImage);
+                    setSealTagImage(null);
+                  } else if (!sealTagImage) {
+                    setError("Please attach an image of the seal tag");
+                  }
+                }
+              }}
             />
             
             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -1051,8 +1146,15 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 variant="outlined"
                 component="label"
                 startIcon={<PhotoCamera />}
+                sx={{ 
+                  bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
+                  borderColor: sealTagImage ? 'success.main' : 'inherit',
+                  '&:hover': {
+                    bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                  }
+                }}
               >
-                Take Photo
+                {sealTagImage ? 'Image Captured' : 'Take Photo'}
                 <input
                   type="file"
                   hidden
@@ -1063,6 +1165,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       const file = e.target.files[0];
                       setSealTagImage(file);
                       setError("");
+                      e.target.value = '';
                     }
                   }}
                 />
@@ -1071,6 +1174,13 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 variant="outlined"
                 component="label"
                 startIcon={<CloudUpload />}
+                sx={{ 
+                  bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
+                  borderColor: sealTagImage ? 'success.main' : 'inherit',
+                  '&:hover': {
+                    bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                  }
+                }}
               >
                 Upload
                 <input
@@ -1082,6 +1192,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       const file = e.target.files[0];
                       setSealTagImage(file);
                       setError("");
+                      e.target.value = '';
                     }
                   }}
                 />
@@ -1118,15 +1229,15 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         </Box>
         
         {/* Seal Tags Table */}
-        <TableContainer component={Paper} sx={{ mb: 3 }}>
-          <Table aria-label="seal tags table">
+        <TableContainer component={Paper} sx={{ mb: 3, overflowX: 'auto' }}>
+          <Table aria-label="seal tags table" size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Seal Tag ID</TableCell>
-                <TableCell>Guard Method</TableCell>
-                <TableCell>Operator Method</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Action</TableCell>
+                <TableCell sx={{ minWidth: { xs: '120px', sm: '150px' } }}>Seal Tag ID</TableCell>
+                <TableCell sx={{ minWidth: { xs: '100px', sm: '120px' } }}>Guard Method</TableCell>
+                <TableCell sx={{ minWidth: { xs: '100px', sm: '120px' } }}>Operator Method</TableCell>
+                <TableCell sx={{ minWidth: '80px' }}>Status</TableCell>
+                <TableCell align="center" sx={{ minWidth: '80px' }}>Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -1153,141 +1264,94 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       </TableCell>
                       <TableCell>
                         {operatorSeal ? (
-                          operatorSeal.method || 
-                          (guardSeal?.operatorMethod || "Digitally Scanned")
+                          operatorSeal.method
                         ) : (
-                          "Unknown"
+                          <Chip size="small" label="Not Applied" color="warning" />
                         )}
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          size="small"
-                          color={isMatched ? "success" : "error"}
-                          label={isMatched ? "Matched" : "No Match"}
-                        />
+                        {isMatched ? (
+                          <Chip size="small" label="Matched" color="success" />
+                        ) : (
+                          <Chip size="small" label="Unmatched" color="error" />
+                        )}
                       </TableCell>
                       <TableCell align="center">
-                        <IconButton size="small" onClick={() => toggleSealDetails(sealId)}>
-                          {expandedSealId === sealId ? <ExpandLess /> : <ExpandMore />}
-                        </IconButton>
-                        {guardSeal && !operatorSeal && (
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                          {guardSeal && (
+                            <IconButton 
+                              size="small" 
+                              color="error" 
+                              onClick={() => deleteGuardSeal(sealId)}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          )}
                           <IconButton 
                             size="small" 
-                            color="error" 
-                            onClick={() => deleteGuardSeal(sealId)}
-                            sx={{ ml: 1 }}
+                            onClick={() => toggleSealDetails(sealId)}
                           >
-                            <Delete />
+                            {expandedSealId === sealId ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
                           </IconButton>
-                        )}
+                        </Box>
                       </TableCell>
                     </TableRow>
                     
+                    {/* Expanded details row */}
                     {expandedSealId === sealId && (
                       <TableRow>
-                        <TableCell colSpan={5}>
-                          <Box sx={{ py: 2, px: 3, bgcolor: 'background.paper', borderRadius: 1 }}>
-                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-                              {/* Left column - information */}
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="subtitle2">Seal ID: {sealId}</Typography>
-                                
-                                {/* Guard Information */}
-                                <Box sx={{ mt: 2, mb: 2 }}>
-                                  <Typography variant="subtitle2" color="primary">Guard Information:</Typography>
-                                  {guardSeal ? (
-                                    <>
-                                      <Typography variant="body2">
-                                        Method: {guardSeal.method}
-                                      </Typography>
-                                      <Typography variant="body2">
-                                        Timestamp: {new Date(guardSeal.timestamp).toLocaleString()}
-                                      </Typography>
-                                    </>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      Not scanned by guard
-                                    </Typography>
-                                  )}
-                                </Box>
-                                
-                                {/* Operator Information */}
-                                <Box sx={{ mt: 2 }}>
-                                  <Typography variant="subtitle2" color="primary">Operator Information:</Typography>
-                                  {operatorSeal ? (
-                                    <>
-                                      <Typography variant="body2">
-                                        Method: {operatorSeal.method || (guardSeal?.operatorMethod || "Digitally Scanned")}
-                                      </Typography>
-                                      <Typography variant="body2">
-                                        Timestamp: {operatorSeal.timestamp ? new Date(operatorSeal.timestamp).toLocaleString() : "Unknown"}
-                                      </Typography>
-                                    </>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      No operator information
-                                    </Typography>
-                                  )}
-                                </Box>
-                                
-                                {/* Status */}
-                                <Box sx={{ mt: 2 }}>
-                                  <Typography variant="subtitle2">Status:</Typography>
-                                  <Chip
-                                    size="small"
-                                    color={isMatched ? "success" : "error"}
-                                    label={isMatched ? "Matched" : "No Match"}
-                                    sx={{ mt: 0.5 }}
-                                  />
-                                </Box>
-                              </Box>
+                        <TableCell colSpan={5} sx={{ p: 0 }}>
+                          <Collapse in={expandedSealId === sealId} timeout="auto" unmountOnExit>
+                            <Box sx={{ p: 2, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
+                              <Typography variant="subtitle2" gutterBottom>Seal Tag Details</Typography>
                               
-                              {/* Right column - images */}
-                              <Box sx={{ flex: 1 }}>
-                                {/* Guard Image */}
-                                {guardSeal?.image && (
-                                  <Box sx={{ mb: 2 }}>
-                                    <Typography variant="subtitle2">Guard Scan Image:</Typography>
-                                    <Box
-                                      component="img"
-                                      src={guardSeal.image}
-                                      alt={`Seal ${sealId} image`}
-                                      sx={{
-                                        maxWidth: '100%',
-                                        maxHeight: '150px',
-                                        objectFit: 'contain',
-                                        mt: 1,
-                                        border: '1px solid #ccc',
-                                        borderRadius: 1
-                                      }}
-                                    />
-                                  </Box>
-                                )}
+                              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                                {/* Guard details */}
+                                <Box sx={{ flex: 1 }}>
+                                  <Paper variant="outlined" sx={{ p: 2 }}>
+                                    <Typography variant="subtitle2" color="primary">Guard Data</Typography>
+                                    {guardSeal ? (
+                                      <>
+                                        <Typography variant="body2">Method: {guardSeal.method}</Typography>
+                                        <Typography variant="body2">Timestamp: {new Date(guardSeal.timestamp).toLocaleString()}</Typography>
+                                        {guardSeal.imageData && (
+                                          <Box sx={{ mt: 1 }}>
+                                            <Typography variant="body2">Image:</Typography>
+                                            <img 
+                                              src={guardSeal.imageData} 
+                                              alt="Seal tag" 
+                                              style={{ maxWidth: '100%', maxHeight: '100px', marginTop: '8px', cursor: 'pointer' }}
+                                              onClick={() => {
+                                                setSelectedImage(guardSeal.imageData);
+                                                setOpenImageModal(true);
+                                              }}
+                                            />
+                                          </Box>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <Typography variant="body2" color="error">Not scanned by guard</Typography>
+                                    )}
+                                  </Paper>
+                                </Box>
                                 
-                                {/* Operator Image */}
-                                {(guardSeal?.operatorImage || 
-                                 (operatorSeal && session.sealTags?.find(t => t.barcode === sealId)?.imageData)) && (
-                                  <Box>
-                                    <Typography variant="subtitle2">Operator Scan Image:</Typography>
-                                    <Box
-                                      component="img"
-                                      src={guardSeal?.operatorImage || 
-                                            session.sealTags?.find(t => t.barcode === sealId)?.imageData}
-                                      alt={`Seal ${sealId} operator image`}
-                                      sx={{
-                                        maxWidth: '100%',
-                                        maxHeight: '150px',
-                                        objectFit: 'contain',
-                                        mt: 1,
-                                        border: '1px solid #ccc',
-                                        borderRadius: 1
-                                      }}
-                                    />
-                                  </Box>
-                                )}
+                                {/* Operator details */}
+                                <Box sx={{ flex: 1 }}>
+                                  <Paper variant="outlined" sx={{ p: 2 }}>
+                                    <Typography variant="subtitle2" color="secondary">Operator Data</Typography>
+                                    {operatorSeal ? (
+                                      <>
+                                        <Typography variant="body2">Method: {operatorSeal.method}</Typography>
+                                        <Typography variant="body2">Timestamp: {operatorSeal.timestamp ? new Date(operatorSeal.timestamp).toLocaleString() : 'N/A'}</Typography>
+                                      </>
+                                    ) : (
+                                      <Typography variant="body2" color="warning.main">Not applied by operator</Typography>
+                                    )}
+                                  </Paper>
+                                </Box>
                               </Box>
                             </Box>
-                          </Box>
+                          </Collapse>
                         </TableCell>
                       </TableRow>
                     )}
@@ -1417,122 +1481,157 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
 
     return (
       <Box>
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h6" component="h2" gutterBottom>
           Images Verification
         </Typography>
         
-        {/* Main images table */}
-        <Table sx={{ mb: 4 }}>
-          <TableHead>
-            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
-              <TableCell width="20%">Image Type</TableCell>
-              <TableCell width="35%">Image</TableCell>
-              <TableCell width="15%" align="center">Verification</TableCell>
-              <TableCell width="30%">Comment</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {getImageItems().map(({ key, label, src }) => (
-              <TableRow key={key} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
-                <TableCell sx={{ fontWeight: 'medium' }}>{label}</TableCell>
-                <TableCell>
-                  <Box sx={{ maxWidth: '100%' }}>
-                    <img 
-                      src={src} 
-                      alt={label} 
-                      style={{ maxWidth: '100%', maxHeight: '150px', cursor: 'pointer' }}
-                      onClick={() => {
-                        setSelectedImage(src);
-                        setOpenImageModal(true);
-                      }}
-                    />
-                  </Box>
-                </TableCell>
-                <TableCell align="center">
-                  <FormControlLabel
-                    control={
-                      <Radio
-                        checked={!!verificationFields[key]?.verified}
-                        onChange={() => verifyImage(key)}
-                        color="success"
-                      />
-                    }
-                    label="Verified"
-                    sx={{ m: 0 }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Add verification"
-                    value={imageComments[key] || ''}
-                    onChange={(e) => handleImageCommentChange(key, e.target.value)}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        
-        {/* Vehicle Images Gallery */}
-        {vehicleImages.length > 0 && (
+        {/* Driver Picture Section */}
+        {session.images?.driverPicture && (
           <>
-            <Typography variant="h6" gutterBottom>
-              Vehicle Images Verification
+            <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+              Driver Image
             </Typography>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
-                  <TableCell width="20%">Image</TableCell>
-                  <TableCell width="35%">Preview</TableCell>
-                  <TableCell width="15%" align="center">Verification</TableCell>
-                  <TableCell width="30%">Comment</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {vehicleImages.map((imageUrl, index) => (
-                  <TableRow key={`vehicle-${index}`} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
-                    <TableCell sx={{ fontWeight: 'medium' }}>Vehicle Image {index + 1}</TableCell>
-                    <TableCell>
-                      <Box>
+            
+            <TableContainer component={Paper} sx={{ overflowX: 'auto', mb: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Image Type</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell align="center">Verification</TableCell>
+                    <TableCell>Comment</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ 
+                      fontWeight: 'medium',
+                      whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                      minWidth: { xs: '100px', sm: '120px' }
+                    }}>
+                      Driver Picture
+                    </TableCell>
+                    <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
+                      <Box sx={{ mt: 1, mb: 1 }}>
                         <img 
-                          src={imageUrl} 
-                          alt={`Vehicle ${index + 1}`} 
-                          style={{ maxWidth: '100%', maxHeight: '150px', cursor: 'pointer' }}
+                          src={session.images.driverPicture} 
+                          alt="Driver" 
+                          style={{ 
+                            width: '100%', 
+                            maxWidth: '150px',
+                            maxHeight: '100px', 
+                            objectFit: 'cover',
+                            cursor: 'pointer' 
+                          }}
                           onClick={() => {
-                            setSelectedImage(imageUrl);
+                            setSelectedImage(session.images?.driverPicture || '');
                             setOpenImageModal(true);
                           }}
                         />
                       </Box>
                     </TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" sx={{ minWidth: { xs: '80px', sm: '110px' } }}>
                       <FormControlLabel
                         control={
                           <Radio
-                            checked={!!verificationFields[`vehicleImage_${index}`]?.verified}
-                            onChange={() => verifyImage(`vehicleImage_${index}`)}
+                            checked={!!verificationFields['driverPicture']?.verified}
+                            onChange={() => verifyImage('driverPicture')}
                             color="success"
+                            size="small"
                           />
                         }
-                        label="Verified"
+                        label={<Typography variant="body2">Verified</Typography>}
                         sx={{ m: 0 }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ minWidth: { xs: '120px', sm: '160px' } }}>
                       <TextField
                         fullWidth
                         size="small"
                         placeholder="Add verification"
-                        value={imageComments[`vehicleImage_${index}`] || ''}
-                        onChange={(e) => handleImageCommentChange(`vehicleImage_${index}`, e.target.value)}
+                        value={imageComments['driverPicture'] || ''}
+                        onChange={(e) => handleImageCommentChange('driverPicture', e.target.value)}
                       />
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        )}
+        
+        {/* GPS IMEI Picture Section */}
+        {session.images?.gpsImeiPicture && (
+          <>
+            <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+              GPS IMEI Picture
+            </Typography>
+            
+            <TableContainer component={Paper} sx={{ overflowX: 'auto', mb: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Image Type</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell align="center">Verification</TableCell>
+                    <TableCell>Comment</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ 
+                      fontWeight: 'medium',
+                      whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                      minWidth: { xs: '100px', sm: '120px' }
+                    }}>
+                      GPS IMEI Picture
+                    </TableCell>
+                    <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
+                      <Box sx={{ mt: 1, mb: 1 }}>
+                        <img 
+                          src={session.images.gpsImeiPicture} 
+                          alt="GPS IMEI" 
+                          style={{ 
+                            width: '100%', 
+                            maxWidth: '150px',
+                            maxHeight: '100px', 
+                            objectFit: 'cover',
+                            cursor: 'pointer' 
+                          }}
+                          onClick={() => {
+                            setSelectedImage(session.images?.gpsImeiPicture || '');
+                            setOpenImageModal(true);
+                          }}
+                        />
+                      </Box>
+                    </TableCell>
+                    <TableCell align="center" sx={{ minWidth: { xs: '80px', sm: '110px' } }}>
+                      <FormControlLabel
+                        control={
+                          <Radio
+                            checked={!!verificationFields['gpsImeiPicture']?.verified}
+                            onChange={() => verifyImage('gpsImeiPicture')}
+                            color="success"
+                            size="small"
+                          />
+                        }
+                        label={<Typography variant="body2">Verified</Typography>}
+                        sx={{ m: 0 }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ minWidth: { xs: '120px', sm: '160px' } }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Add verification"
+                        value={imageComments['gpsImeiPicture'] || ''}
+                        onChange={(e) => handleImageCommentChange('gpsImeiPicture', e.target.value)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
           </>
         )}
       </Box>

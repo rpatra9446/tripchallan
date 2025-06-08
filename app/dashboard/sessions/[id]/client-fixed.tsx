@@ -1303,13 +1303,23 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
       {/* Verification Button - only visible for Guards with in-progress sessions */}
       {isGuard && session?.status === SessionStatus.IN_PROGRESS && (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+        <Box sx={{ 
+          display: "flex", 
+          justifyContent: "center", 
+          mt: 3,
+          mb: 6,
+          pb: 4
+        }}>
           <Button
             variant="contained"
             color="primary"
             size="large"
             startIcon={<Lock />}
             onClick={startVerification}
+            sx={{ 
+              py: 1.5,
+              px: 3
+            }}
           >
             Start Trip Verification
           </Button>
