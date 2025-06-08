@@ -1263,6 +1263,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <TableCell>Method</TableCell>
                     <TableCell>Scanned By</TableCell>
                     <TableCell>Timestamp</TableCell>
+                    <TableCell>Image</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1279,6 +1280,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
                       <TableCell>
                         {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {(tag.imageUrl || tag.imageData) ? (
+                          <img 
+                            src={tag.imageUrl || tag.imageData} 
+                            alt={`Seal tag ${tag.barcode}`}
+                            style={{ width: '80px', height: '80px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
+                            onClick={() => {
+                              setSelectedImage(tag.imageUrl || tag.imageData || '');
+                              setOpenImageModal(true);
+                            }}
+                          />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">No image</Typography>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1304,6 +1320,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <TableCell>Scanned By</TableCell>
                     <TableCell>Timestamp</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Image</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1330,6 +1347,21 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           }
                           size="small"
                         />
+                      </TableCell>
+                      <TableCell>
+                        {(tag.imageUrl || tag.imageData) ? (
+                          <img 
+                            src={tag.imageUrl || tag.imageData} 
+                            alt={`Seal tag ${tag.barcode}`}
+                            style={{ width: '80px', height: '80px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
+                            onClick={() => {
+                              setSelectedImage(tag.imageUrl || tag.imageData || '');
+                              setOpenImageModal(true);
+                            }}
+                          />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">No image</Typography>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

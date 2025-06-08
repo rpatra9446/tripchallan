@@ -159,7 +159,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   // Verification state
   const [verificationFields, setVerificationFields] = useState<Record<string, any>>({});
   const [guardScannedSeals, setGuardScannedSeals] = useState<Array<any>>([]);
-  const [operatorSeals, setOperatorSeals] = useState<Array<{id: string, method?: string, timestamp?: string}>>([]);
+  const [operatorSeals, setOperatorSeals] = useState<Array<{id: string, method?: string, timestamp?: string, imageUrl?: string | null, imageData?: string | null}>>([]);
   const [sealComparison, setSealComparison] = useState<{matched: string[], mismatched: string[]}>({
     matched: [], mismatched: []
   });
@@ -220,7 +220,9 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         setOperatorSeals(data.sealTags.map((tag: any) => ({ 
           id: tag.barcode,
           method: tag.method,
-          timestamp: tag.createdAt
+          timestamp: tag.createdAt,
+          imageUrl: tag.imageUrl || null,
+          imageData: tag.imageData || null
         })));
       }
       
@@ -682,21 +684,21 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         
         <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
           <Table size="small">
-            <TableHead>
-              <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+          <TableHead>
+            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
                 <TableCell>Field Name</TableCell>
                 <TableCell>Field Value</TableCell>
                 <TableCell align="center">Verification</TableCell>
                 <TableCell>Comment</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {fieldDisplayData.map(({ field, label }) => {
-                const value = session.tripDetails?.[field as keyof typeof session.tripDetails];
-                if (value === undefined || value === null) return null;
-                
-                return (
-                  <TableRow key={field} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {fieldDisplayData.map(({ field, label }) => {
+              const value = session.tripDetails?.[field as keyof typeof session.tripDetails];
+              if (value === undefined || value === null) return null;
+              
+              return (
+                <TableRow key={field} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
                     <TableCell sx={{ 
                       fontWeight: 'medium',
                       whiteSpace: { xs: 'normal', sm: 'nowrap' },
@@ -713,35 +715,35 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     <TableCell align="center" sx={{ 
                       minWidth: { xs: '80px', sm: '110px' }
                     }}>
-                      <FormControlLabel
-                        control={
-                          <Radio
-                            checked={!!verificationFields[field]?.verified}
-                            onChange={() => verifyField(field)}
-                            color="success"
+                    <FormControlLabel
+                      control={
+                        <Radio
+                          checked={!!verificationFields[field]?.verified}
+                          onChange={() => verifyField(field)}
+                          color="success"
                             size="small"
-                          />
-                        }
+                        />
+                      }
                         label={<Typography variant="body2">Verified</Typography>}
-                        sx={{ m: 0 }}
-                      />
-                    </TableCell>
+                      sx={{ m: 0 }}
+                    />
+                  </TableCell>
                     <TableCell sx={{
                       minWidth: { xs: '120px', sm: '160px' }
                     }}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Add verification"
-                        value={fieldComments[field] || ''}
-                        onChange={(e) => handleCommentChange(field, e.target.value)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              }).filter(Boolean)}
-            </TableBody>
-          </Table>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Add verification"
+                      value={fieldComments[field] || ''}
+                      onChange={(e) => handleCommentChange(field, e.target.value)}
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            }).filter(Boolean)}
+          </TableBody>
+        </Table>
         </TableContainer>
       </Box>
     );
@@ -827,15 +829,15 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
         
         <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
           <Table size="small">
-            <TableHead>
-              <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+          <TableHead>
+            <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
                 <TableCell>Field Name</TableCell>
                 <TableCell>Field Value</TableCell>
                 <TableCell align="center">Verification</TableCell>
                 <TableCell>Comment</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+            </TableRow>
+          </TableHead>
+          <TableBody>
               {/* Driver Name */}
               {session.tripDetails?.driverName && (
                 <TableRow sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
@@ -927,17 +929,17 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   </TableCell>
                 </TableRow>
               )}
-              
+            
               {/* Driver License */}
               {session.tripDetails?.driverLicense && (
-                <TableRow sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
+              <TableRow sx={{ '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}>
                   <TableCell sx={{ 
                     fontWeight: 'medium',
                     whiteSpace: { xs: 'normal', sm: 'nowrap' },
                     minWidth: { xs: '100px', sm: '120px' }
                   }}>
                     Driver License
-                  </TableCell>
+                </TableCell>
                   <TableCell sx={{ 
                     whiteSpace: { xs: 'normal', sm: 'nowrap' },
                     minWidth: { xs: '80px', sm: '100px' }
@@ -947,34 +949,34 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   <TableCell align="center" sx={{ 
                     minWidth: { xs: '80px', sm: '110px' }
                   }}>
-                    <FormControlLabel
-                      control={
-                        <Radio
+                  <FormControlLabel
+                    control={
+                      <Radio
                           checked={!!verificationFields['driverLicense']?.verified}
                           onChange={() => verifyField('driverLicense')}
-                          color="success"
+                        color="success"
                           size="small"
-                        />
-                      }
+                      />
+                    }
                       label={<Typography variant="body2">Verified</Typography>}
-                      sx={{ m: 0 }}
-                    />
-                  </TableCell>
+                    sx={{ m: 0 }}
+                  />
+                </TableCell>
                   <TableCell sx={{
                     minWidth: { xs: '120px', sm: '160px' }
                   }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="Add verification"
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Add verification"
                       value={fieldComments['driverLicense'] || ''}
                       onChange={(e) => handleCommentChange('driverLicense', e.target.value)}
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
         </TableContainer>
       </Box>
     );
@@ -993,7 +995,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     setSealTagsVerified
   }: {
     session: SessionType;
-    operatorSeals: Array<{id: string, method?: string, timestamp?: string}>;
+    operatorSeals: Array<{id: string, method?: string, timestamp?: string, imageUrl?: string | null, imageData?: string | null}>;
     guardScannedSeals: Array<any>;
     sealComparison: {matched: string[], mismatched: string[]};
     scanInput: string;
@@ -1187,9 +1189,9 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Camera input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                        const file = e.target.files[0];
+                      const file = e.target.files[0];
                         console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                        setSealTagImage(file);
+                      setSealTagImage(file);
                         // Show feedback to user
                         toast.success(`Image captured successfully: ${file.name}`);
                       } catch (error) {
@@ -1221,9 +1223,9 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Upload input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                        const file = e.target.files[0];
+                      const file = e.target.files[0];
                         console.log(`File uploaded: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                        setSealTagImage(file);
+                      setSealTagImage(file);
                         // Show feedback to user
                         toast.success(`Image uploaded successfully: ${file.name}`);
                       } catch (error) {
@@ -1322,14 +1324,14 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       <TableCell align="center">
                         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                           {guardSeal && (
-                            <IconButton 
-                              size="small" 
-                              color="error" 
-                              onClick={() => deleteGuardSeal(sealId)}
-                            >
+                          <IconButton 
+                            size="small" 
+                            color="error" 
+                            onClick={() => deleteGuardSeal(sealId)}
+                          >
                               <Delete fontSize="small" />
-                            </IconButton>
-                          )}
+                          </IconButton>
+                        )}
                           <IconButton 
                             size="small" 
                             onClick={() => toggleSealDetails(sealId)}
@@ -1348,13 +1350,13 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                             <Box sx={{ p: 2, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
                               <Typography variant="subtitle2" gutterBottom>Seal Tag Details</Typography>
                               
-                              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
                                 {/* Guard details */}
-                                <Box sx={{ flex: 1 }}>
+                              <Box sx={{ flex: 1 }}>
                                   <Paper variant="outlined" sx={{ p: 2 }}>
                                     <Typography variant="subtitle2" color="primary">Guard Data</Typography>
-                                    {guardSeal ? (
-                                      <>
+                                  {guardSeal ? (
+                                    <>
                                         <Typography variant="body2">Method: {guardSeal.method}</Typography>
                                         <Typography variant="body2">Timestamp: {new Date(guardSeal.timestamp).toLocaleString()}</Typography>
                                         {guardSeal.imageData && (
@@ -1371,10 +1373,10 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                                             />
                                           </Box>
                                         )}
-                                      </>
-                                    ) : (
+                                    </>
+                                  ) : (
                                       <Typography variant="body2" color="error">Not scanned by guard</Typography>
-                                    )}
+                                  )}
                                   </Paper>
                                 </Box>
                                 
@@ -1382,18 +1384,32 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                                 <Box sx={{ flex: 1 }}>
                                   <Paper variant="outlined" sx={{ p: 2 }}>
                                     <Typography variant="subtitle2" color="secondary">Operator Data</Typography>
-                                    {operatorSeal ? (
-                                      <>
+                                  {operatorSeal ? (
+                                    <>
                                         <Typography variant="body2">Method: {operatorSeal.method}</Typography>
                                         <Typography variant="body2">Timestamp: {operatorSeal.timestamp ? new Date(operatorSeal.timestamp).toLocaleString() : 'N/A'}</Typography>
-                                      </>
-                                    ) : (
+                                        {(operatorSeal.imageUrl || operatorSeal.imageData) && (
+                                          <Box sx={{ mt: 1 }}>
+                                            <Typography variant="body2">Image:</Typography>
+                                            <img 
+                                              src={operatorSeal.imageUrl || operatorSeal.imageData} 
+                                              alt="Seal tag" 
+                                              style={{ maxWidth: '100%', maxHeight: '100px', marginTop: '8px', cursor: 'pointer' }}
+                                              onClick={() => {
+                                                setSelectedImage(operatorSeal.imageUrl || operatorSeal.imageData || '');
+                                                setOpenImageModal(true);
+                                              }}
+                                            />
+                                          </Box>
+                                        )}
+                                    </>
+                                  ) : (
                                       <Typography variant="body2" color="warning.main">Not applied by operator</Typography>
-                                    )}
+                                  )}
                                   </Paper>
                                 </Box>
+                                </Box>
                               </Box>
-                            </Box>
                           </Collapse>
                         </TableCell>
                       </TableRow>
@@ -1566,15 +1582,15 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
             
             <TableContainer component={Paper} sx={{ overflowX: 'auto', mb: 3 }}>
               <Table size="small">
-                <TableHead>
+          <TableHead>
                   <TableRow>
                     <TableCell>Image Type</TableCell>
                     <TableCell>Image</TableCell>
                     <TableCell align="center">Verification</TableCell>
                     <TableCell>Comment</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            </TableRow>
+          </TableHead>
+          <TableBody>
                   <TableRow>
                     <TableCell sx={{ 
                       fontWeight: 'medium',
@@ -1585,7 +1601,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     </TableCell>
                     <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
                       <Box sx={{ mt: 1, mb: 1 }}>
-                        <img 
+                    <img 
                           src={item.src} 
                           alt={item.label} 
                           style={{ 
@@ -1595,43 +1611,43 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                             objectFit: 'cover',
                             cursor: 'pointer' 
                           }}
-                          onClick={() => {
+                      onClick={() => {
                             setSelectedImage(item.src);
-                            setOpenImageModal(true);
-                          }}
-                        />
-                      </Box>
-                    </TableCell>
+                        setOpenImageModal(true);
+                      }}
+                    />
+                  </Box>
+                </TableCell>
                     <TableCell align="center" sx={{ minWidth: { xs: '80px', sm: '110px' } }}>
-                      <FormControlLabel
-                        control={
-                          <Radio
+                  <FormControlLabel
+                    control={
+                      <Radio
                             checked={!!verificationFields[item.key]?.verified}
                             onChange={() => verifyImage(item.key)}
-                            color="success"
+                        color="success"
                             size="small"
-                          />
-                        }
-                        label={<Typography variant="body2">Verified</Typography>}
-                        sx={{ m: 0 }}
                       />
-                    </TableCell>
+                    }
+                        label={<Typography variant="body2">Verified</Typography>}
+                    sx={{ m: 0 }}
+                  />
+                </TableCell>
                     <TableCell sx={{ minWidth: { xs: '120px', sm: '160px' } }}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Add verification"
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Add verification"
                         value={imageComments[item.key] || ''}
                         onChange={(e) => handleImageCommentChange(item.key, e.target.value)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+                  />
+                </TableCell>
+              </TableRow>
+          </TableBody>
+        </Table>
             </TableContainer>
           </React.Fragment>
         ))}
-
+        
         {/* Vehicle Images Section */}
         {vehicleImages.length > 0 && (
           <>
@@ -1641,16 +1657,16 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
             
             <TableContainer component={Paper} sx={{ overflowX: 'auto', mb: 3 }}>
               <Table size="small">
-                <TableHead>
+              <TableHead>
                   <TableRow>
                     <TableCell>Image Type</TableCell>
                     <TableCell>Image</TableCell>
                     <TableCell align="center">Verification</TableCell>
                     <TableCell>Comment</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {vehicleImages.map((imageUrl, index) => (
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {vehicleImages.map((imageUrl, index) => (
                     <TableRow key={`vehicle-${index}`}>
                       <TableCell sx={{ 
                         fontWeight: 'medium',
@@ -1661,8 +1677,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       </TableCell>
                       <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
                         <Box sx={{ mt: 1, mb: 1 }}>
-                          <img 
-                            src={imageUrl} 
+                        <img 
+                          src={imageUrl} 
                             alt={`Vehicle Image ${index + 1}`} 
                             style={{ 
                               width: '100%', 
@@ -1671,40 +1687,40 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                               objectFit: 'cover',
                               cursor: 'pointer' 
                             }}
-                            onClick={() => {
-                              setSelectedImage(imageUrl);
-                              setOpenImageModal(true);
-                            }}
-                          />
-                        </Box>
-                      </TableCell>
+                          onClick={() => {
+                            setSelectedImage(imageUrl);
+                            setOpenImageModal(true);
+                          }}
+                        />
+                      </Box>
+                    </TableCell>
                       <TableCell align="center" sx={{ minWidth: { xs: '80px', sm: '110px' } }}>
-                        <FormControlLabel
-                          control={
-                            <Radio
+                      <FormControlLabel
+                        control={
+                          <Radio
                               checked={!!verificationFields[`vehicleImage-${index}`]?.verified}
                               onChange={() => verifyImage(`vehicleImage-${index}`)}
-                              color="success"
+                            color="success"
                               size="small"
-                            />
-                          }
+                          />
+                        }
                           label={<Typography variant="body2">Verified</Typography>}
-                          sx={{ m: 0 }}
-                        />
-                      </TableCell>
+                        sx={{ m: 0 }}
+                      />
+                    </TableCell>
                       <TableCell sx={{ minWidth: { xs: '120px', sm: '160px' } }}>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          placeholder="Add verification"
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Add verification"
                           value={imageComments[`vehicleImage-${index}`] || ''}
                           onChange={(e) => handleImageCommentChange(`vehicleImage-${index}`, e.target.value)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
             </TableContainer>
           </>
         )}
