@@ -272,6 +272,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       (verificationDetails as any).completedBy : {};
     const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
       (verificationDetails as any).completedAt : '';
+    // Extract guardSealTags if they exist
+    const guardSealTags = verificationDetails.hasOwnProperty('guardSealTags') ? 
+      (verificationDetails as any).guardSealTags || [] : [];
 
     // Calculate verification statistics
     const totalFields = Object.keys(fieldVerifications).length;
@@ -585,6 +588,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 </TableContainer>
               ) : (
                 <Typography variant="body2" color="text.secondary">No operator seal tags found</Typography>
+              )}
+            </Box>
+            
+            {/* Guard Seal Tags Table */}
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom>Guard Seal Tags</Typography>
+              {guardSealTags.length > 0 ? (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Barcode</TableCell>
+                        <TableCell>Method</TableCell>
+                        <TableCell>Scanned By</TableCell>
+                        <TableCell>Timestamp</TableCell>
+                        <TableCell>Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {guardSealTags.map((tag: any) => (
+                        <TableRow key={tag.id}>
+                          <TableCell>{tag.barcode}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={getMethodDisplay(tag.method)} 
+                              color={getMethodColor(tag.method)} 
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
+                          <TableCell>
+                            {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={tag.status || 'VERIFIED'} 
+                              color={
+                                tag.status === 'BROKEN' || tag.status === 'TAMPERED' ? 'error' : 
+                                tag.status === 'MISSING' ? 'warning' : 'success'
+                              }
+                              size="small"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Typography variant="body2" color="text.secondary">No guard seal tags found</Typography>
               )}
             </Box>
           </Box>
