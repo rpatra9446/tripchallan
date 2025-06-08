@@ -1005,6 +1005,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     const [sealTagImage, setSealTagImage] = useState<File | null>(null);
     const [expandedSealId, setExpandedSealId] = useState<string | null>(null);
     const [error, setError] = useState<string>("");
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Toggle expanded seal details
     const toggleSealDetails = (sealId: string) => {
@@ -1106,6 +1107,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               }}
               error={!!scanError || !!error}
               helperText={scanError || error}
+              inputRef={inputRef}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -1114,6 +1116,12 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                         if (sealTagImage) {
                           handleScanComplete(scanInput, 'manual', sealTagImage);
                           setSealTagImage(null);
+                          // Keep focus on the input field after submitting
+                          setTimeout(() => {
+                            if (inputRef.current) {
+                              inputRef.current.focus();
+                            }
+                          }, 0);
                         } else {
                           setError("Please attach an image of the seal tag");
                         }
@@ -1124,8 +1132,14 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     </Button>
                   </InputAdornment>
                 ),
+                // Remove autofocus which might be causing issues
                 autoComplete: "off",
-                autoFocus: false,
+                // Prevent browser autocomplete from interfering
+                inputProps: {
+                  autoCapitalize: "off",
+                  autoCorrect: "off",
+                  spellCheck: "false",
+                }
               }}
               sx={{ mb: 2 }}
               onKeyDown={(e) => {
@@ -1134,6 +1148,12 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   if (scanInput && sealTagImage) {
                     handleScanComplete(scanInput, 'manual', sealTagImage);
                     setSealTagImage(null);
+                    // Keep focus after submitting
+                    setTimeout(() => {
+                      if (inputRef.current) {
+                        inputRef.current.focus();
+                      }
+                    }, 0);
                   } else if (!sealTagImage) {
                     setError("Please attach an image of the seal tag");
                   }
@@ -1163,9 +1183,16 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
+                      console.log("Image captured:", file.name, file.size);
                       setSealTagImage(file);
                       setError("");
+                      // Clear the input value to ensure onChange fires next time
                       e.target.value = '';
+                      // Show visual confirmation
+                      toast.success("Image captured successfully!");
+                    } else {
+                      console.log("No image captured");
+                      toast.error("Failed to capture image. Please try again.");
                     }
                   }}
                 />
@@ -1439,12 +1466,30 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     useEffect(() => {
       if (!session.images) return;
       
-      const requiredImages = [
-        'vehicleNumberPlatePicture', 'gpsImeiPicture'
-      ];
+      // Build a list of all required image keys
+      const requiredImages = [];
       
+      // Add primary images
+      if (session.images.driverPicture) requiredImages.push('driverPicture');
+      if (session.images.vehicleNumberPlatePicture) requiredImages.push('vehicleNumberPlatePicture');
+      if (session.images.gpsImeiPicture) requiredImages.push('gpsImeiPicture');
+      
+      // Add vehicle images
+      if (session.images.vehicleImages) {
+        session.images.vehicleImages.forEach((_, index) => {
+          requiredImages.push(`vehicleImage-${index}`);
+        });
+      }
+      
+      // Add sealing images
+      if (session.images.sealingImages) {
+        session.images.sealingImages.forEach((_, index) => {
+          requiredImages.push(`sealingImage-${index}`);
+        });
+      }
+      
+      // Check if all images are verified
       const allVerified = requiredImages.every(imageKey => 
-        !session.images?.[imageKey as keyof typeof session.images] || 
         verificationFields[imageKey]?.verified
       );
       
@@ -1454,6 +1499,15 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     // Define the image display data
     const getImageItems = () => {
       const items = [];
+      
+      // Driver Image
+      if (session.images?.driverPicture) {
+        items.push({
+          key: 'driverPicture',
+          label: 'Driver Picture',
+          src: session.images.driverPicture
+        });
+      }
       
       // Vehicle Number Plate Image
       if (session.images?.vehicleNumberPlatePicture) {
@@ -1478,6 +1532,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
 
     // Get all vehicle images
     const vehicleImages = session.images?.vehicleImages || [];
+    // Get all sealing images
+    const sealingImages = session.images?.sealingImages || [];
 
     return (
       <Box>
@@ -1485,11 +1541,11 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
           Images Verification
         </Typography>
         
-        {/* Driver Picture Section */}
-        {session.images?.driverPicture && (
-          <>
+        {/* Main images (Driver, GPS, Number Plate) */}
+        {getImageItems().map((item) => (
+          <React.Fragment key={item.key}>
             <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-              Driver Image
+              {item.label}
             </Typography>
             
             <TableContainer component={Paper} sx={{ overflowX: 'auto', mb: 3 }}>
@@ -1509,13 +1565,13 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       whiteSpace: { xs: 'normal', sm: 'nowrap' },
                       minWidth: { xs: '100px', sm: '120px' }
                     }}>
-                      Driver Picture
+                      {item.label}
                     </TableCell>
                     <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
                       <Box sx={{ mt: 1, mb: 1 }}>
                         <img 
-                          src={session.images.driverPicture} 
-                          alt="Driver" 
+                          src={item.src} 
+                          alt={item.label} 
                           style={{ 
                             width: '100%', 
                             maxWidth: '150px',
@@ -1524,7 +1580,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                             cursor: 'pointer' 
                           }}
                           onClick={() => {
-                            setSelectedImage(session.images?.driverPicture || '');
+                            setSelectedImage(item.src);
                             setOpenImageModal(true);
                           }}
                         />
@@ -1534,8 +1590,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       <FormControlLabel
                         control={
                           <Radio
-                            checked={!!verificationFields['driverPicture']?.verified}
-                            onChange={() => verifyImage('driverPicture')}
+                            checked={!!verificationFields[item.key]?.verified}
+                            onChange={() => verifyImage(item.key)}
                             color="success"
                             size="small"
                           />
@@ -1549,22 +1605,22 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                         fullWidth
                         size="small"
                         placeholder="Add verification"
-                        value={imageComments['driverPicture'] || ''}
-                        onChange={(e) => handleImageCommentChange('driverPicture', e.target.value)}
+                        value={imageComments[item.key] || ''}
+                        onChange={(e) => handleImageCommentChange(item.key, e.target.value)}
                       />
                     </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </TableContainer>
-          </>
-        )}
-        
-        {/* GPS IMEI Picture Section */}
-        {session.images?.gpsImeiPicture && (
+          </React.Fragment>
+        ))}
+
+        {/* Vehicle Images Section */}
+        {vehicleImages.length > 0 && (
           <>
             <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-              GPS IMEI Picture
+              Vehicle Images ({vehicleImages.length})
             </Typography>
             
             <TableContainer component={Paper} sx={{ overflowX: 'auto', mb: 3 }}>
@@ -1578,57 +1634,136 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  <TableRow>
-                    <TableCell sx={{ 
-                      fontWeight: 'medium',
-                      whiteSpace: { xs: 'normal', sm: 'nowrap' },
-                      minWidth: { xs: '100px', sm: '120px' }
-                    }}>
-                      GPS IMEI Picture
-                    </TableCell>
-                    <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
-                      <Box sx={{ mt: 1, mb: 1 }}>
-                        <img 
-                          src={session.images.gpsImeiPicture} 
-                          alt="GPS IMEI" 
-                          style={{ 
-                            width: '100%', 
-                            maxWidth: '150px',
-                            maxHeight: '100px', 
-                            objectFit: 'cover',
-                            cursor: 'pointer' 
-                          }}
-                          onClick={() => {
-                            setSelectedImage(session.images?.gpsImeiPicture || '');
-                            setOpenImageModal(true);
-                          }}
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center" sx={{ minWidth: { xs: '80px', sm: '110px' } }}>
-                      <FormControlLabel
-                        control={
-                          <Radio
-                            checked={!!verificationFields['gpsImeiPicture']?.verified}
-                            onChange={() => verifyImage('gpsImeiPicture')}
-                            color="success"
-                            size="small"
+                  {vehicleImages.map((imageUrl, index) => (
+                    <TableRow key={`vehicle-${index}`}>
+                      <TableCell sx={{ 
+                        fontWeight: 'medium',
+                        whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                        minWidth: { xs: '100px', sm: '120px' }
+                      }}>
+                        Vehicle Image {index + 1}
+                      </TableCell>
+                      <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
+                        <Box sx={{ mt: 1, mb: 1 }}>
+                          <img 
+                            src={imageUrl} 
+                            alt={`Vehicle Image ${index + 1}`} 
+                            style={{ 
+                              width: '100%', 
+                              maxWidth: '150px',
+                              maxHeight: '100px', 
+                              objectFit: 'cover',
+                              cursor: 'pointer' 
+                            }}
+                            onClick={() => {
+                              setSelectedImage(imageUrl);
+                              setOpenImageModal(true);
+                            }}
                           />
-                        }
-                        label={<Typography variant="body2">Verified</Typography>}
-                        sx={{ m: 0 }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ minWidth: { xs: '120px', sm: '160px' } }}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Add verification"
-                        value={imageComments['gpsImeiPicture'] || ''}
-                        onChange={(e) => handleImageCommentChange('gpsImeiPicture', e.target.value)}
-                      />
-                    </TableCell>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center" sx={{ minWidth: { xs: '80px', sm: '110px' } }}>
+                        <FormControlLabel
+                          control={
+                            <Radio
+                              checked={!!verificationFields[`vehicleImage-${index}`]?.verified}
+                              onChange={() => verifyImage(`vehicleImage-${index}`)}
+                              color="success"
+                              size="small"
+                            />
+                          }
+                          label={<Typography variant="body2">Verified</Typography>}
+                          sx={{ m: 0 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ minWidth: { xs: '120px', sm: '160px' } }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          placeholder="Add verification"
+                          value={imageComments[`vehicleImage-${index}`] || ''}
+                          onChange={(e) => handleImageCommentChange(`vehicleImage-${index}`, e.target.value)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        )}
+        
+        {/* Sealing Images Section */}
+        {sealingImages.length > 0 && (
+          <>
+            <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+              Sealing Images ({sealingImages.length})
+            </Typography>
+            
+            <TableContainer component={Paper} sx={{ overflowX: 'auto', mb: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Image Type</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell align="center">Verification</TableCell>
+                    <TableCell>Comment</TableCell>
                   </TableRow>
+                </TableHead>
+                <TableBody>
+                  {sealingImages.map((imageUrl, index) => (
+                    <TableRow key={`sealing-${index}`}>
+                      <TableCell sx={{ 
+                        fontWeight: 'medium',
+                        whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                        minWidth: { xs: '100px', sm: '120px' }
+                      }}>
+                        Sealing Image {index + 1}
+                      </TableCell>
+                      <TableCell sx={{ minWidth: { xs: '100px', sm: '150px' } }}>
+                        <Box sx={{ mt: 1, mb: 1 }}>
+                          <img 
+                            src={imageUrl} 
+                            alt={`Sealing Image ${index + 1}`} 
+                            style={{ 
+                              width: '100%', 
+                              maxWidth: '150px',
+                              maxHeight: '100px', 
+                              objectFit: 'cover',
+                              cursor: 'pointer' 
+                            }}
+                            onClick={() => {
+                              setSelectedImage(imageUrl);
+                              setOpenImageModal(true);
+                            }}
+                          />
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center" sx={{ minWidth: { xs: '80px', sm: '110px' } }}>
+                        <FormControlLabel
+                          control={
+                            <Radio
+                              checked={!!verificationFields[`sealingImage-${index}`]?.verified}
+                              onChange={() => verifyImage(`sealingImage-${index}`)}
+                              color="success"
+                              size="small"
+                            />
+                          }
+                          label={<Typography variant="body2">Verified</Typography>}
+                          sx={{ m: 0 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ minWidth: { xs: '120px', sm: '160px' } }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          placeholder="Add verification"
+                          value={imageComments[`sealingImage-${index}`] || ''}
+                          onChange={(e) => handleImageCommentChange(`sealingImage-${index}`, e.target.value)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>
