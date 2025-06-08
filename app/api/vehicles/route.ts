@@ -46,12 +46,16 @@ export async function GET(request: NextRequest) {
       query.where.status = status;
     }
     
-    const vehicles = await prisma.vehicle.findMany(query);
-    
-    return NextResponse.json({ vehicles });
+    try {
+      const vehicles = await prisma.vehicle.findMany(query);
+      return NextResponse.json({ vehicles });
+    } catch (dbError) {
+      console.error("Database error fetching vehicles:", dbError);
+      return NextResponse.json({ error: "Database error: Failed to fetch vehicles", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 });
+    }
   } catch (error) {
     console.error("Error fetching vehicles:", error);
-    return NextResponse.json({ error: "Failed to fetch vehicles" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch vehicles", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -97,23 +101,28 @@ export async function POST(request: NextRequest) {
     }
     
     // Create the vehicle
-    const vehicle = await prisma.vehicle.create({
-      data: {
-        numberPlate: data.numberPlate,
-        model: data.model || null,
-        manufacturer: data.manufacturer || null,
-        yearOfMake: data.yearOfMake ? parseInt(data.yearOfMake) : null,
-        vehicleType: data.vehicleType || 'TRUCK',
-        registrationCertificate: data.registrationCertificate || null,
-        status: VehicleStatus.ACTIVE,
-        company: { connect: { id: session.user.companyId } },
-        createdBy: { connect: { id: session.user.id } },
-      },
-    });
-    
-    return NextResponse.json({ vehicle }, { status: 201 });
+    try {
+      const vehicle = await prisma.vehicle.create({
+        data: {
+          numberPlate: data.numberPlate,
+          model: data.model || null,
+          manufacturer: data.manufacturer || null,
+          yearOfMake: data.yearOfMake ? parseInt(data.yearOfMake) : null,
+          vehicleType: data.vehicleType || 'TRUCK',
+          registrationCertificate: data.registrationCertificate || null,
+          status: VehicleStatus.ACTIVE,
+          company: { connect: { id: session.user.companyId } },
+          createdBy: { connect: { id: session.user.id } },
+        },
+      });
+      
+      return NextResponse.json({ vehicle }, { status: 201 });
+    } catch (dbError) {
+      console.error("Database error creating vehicle:", dbError);
+      return NextResponse.json({ error: "Database error: Failed to create vehicle", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 });
+    }
   } catch (error) {
     console.error("Error creating vehicle:", error);
-    return NextResponse.json({ error: "Failed to create vehicle" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create vehicle", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 } 

@@ -460,11 +460,38 @@ export default function EmployeeDashboard({ user }: EmployeeDashboardProps) {
     setVehiclesError("");
     
     try {
-      const response = await fetch("/api/vehicles");
+      // Add retry logic for database connection issues
+      let retries = 2;
+      let response;
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Error fetching vehicles:", response.status, errorData);
+      while (retries >= 0) {
+        try {
+          response = await fetch("/api/vehicles");
+          break; // If successful, exit the retry loop
+        } catch (fetchError) {
+          console.error(`Fetch attempt failed (${2-retries}/2):`, fetchError);
+          if (retries === 0) throw fetchError;
+          retries--;
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (!response || !response.ok) {
+        const errorData = await response?.json().catch(() => ({}));
+        console.error("Error fetching vehicles:", response?.status, errorData);
+        
+        // Provide more specific error messages based on status code
+        if (response?.status === 401) {
+          throw new Error("Session expired. Please log in again.");
+        } else if (response?.status === 403) {
+          throw new Error("You don't have permission to view vehicle records.");
+        } else if (response?.status === 500) {
+          if (errorData.details && errorData.details.includes("database")) {
+            throw new Error("Database connection error. Please try again in a few moments.");
+          }
+          throw new Error(errorData.error || errorData.details || "Server error. Please try again later.");
+        }
         
         throw new Error(errorData.error || "Failed to fetch vehicles");
       }
@@ -476,10 +503,11 @@ export default function EmployeeDashboard({ user }: EmployeeDashboardProps) {
       } else {
         console.error("Unexpected API response format:", data);
         setVehicles([]);
+        setVehiclesError("Received invalid data format. Please refresh and try again.");
       }
     } catch (err) {
       console.error("Error fetching vehicles:", err);
-      setVehiclesError("Failed to load vehicles. Please try again.");
+      setVehiclesError(err instanceof Error ? err.message : "Failed to load vehicles. Please try again.");
       setVehicles([]);
     } finally {
       setLoadingVehicles(false);
