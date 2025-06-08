@@ -1003,16 +1003,18 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     setSealTagsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
     const [sealTagImage, setSealTagImage] = useState<File | null>(null);
-    const [expandedSealId, setExpandedSealId] = useState<string | null>(null);
-    const [error, setError] = useState<string>("");
+    const [expandedSeals, setExpandedSeals] = useState<Record<string, boolean>>({});
+    const [openQrScanner, setOpenQrScanner] = useState(false);
+    const [error, setError] = useState("");
+    // Create a ref for the text input to manage focus
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Toggle expanded seal details
     const toggleSealDetails = (sealId: string) => {
-      if (expandedSealId === sealId) {
-        setExpandedSealId(null);
+      if (expandedSeals[sealId]) {
+        setExpandedSeals({ ...expandedSeals, [sealId]: false });
       } else {
-        setExpandedSealId(sealId);
+        setExpandedSeals({ ...expandedSeals, [sealId]: true });
       }
     };
 
@@ -1108,6 +1110,12 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               error={!!scanError || !!error}
               helperText={scanError || error}
               inputRef={inputRef}
+              inputProps={{
+                autoCapitalize: "off",
+                autoCorrect: "off",
+                spellCheck: "false",
+                autoComplete: "off"
+              }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -1116,7 +1124,6 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                         if (sealTagImage) {
                           handleScanComplete(scanInput, 'manual', sealTagImage);
                           setSealTagImage(null);
-                          // Keep focus on the input field after submitting
                           setTimeout(() => {
                             if (inputRef.current) {
                               inputRef.current.focus();
@@ -1131,13 +1138,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       Add
                     </Button>
                   </InputAdornment>
-                ),
-                autoComplete: "off"
-              }}
-              inputProps={{
-                autoCapitalize: "off",
-                autoCorrect: "off",
-                spellCheck: "false"
+                )
               }}
               sx={{ mb: 2 }}
               onKeyDown={(e) => {
@@ -1146,7 +1147,6 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   if (scanInput && sealTagImage) {
                     handleScanComplete(scanInput, 'manual', sealTagImage);
                     setSealTagImage(null);
-                    // Keep focus after submitting
                     setTimeout(() => {
                       if (inputRef.current) {
                         inputRef.current.focus();
@@ -1181,17 +1181,23 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   onClick={(e) => {
                     // Reset the input value to ensure onChange is always triggered
                     e.currentTarget.value = '';
+                    console.log('Camera input clicked');
                   }}
                   onChange={(e) => {
+                    console.log('Camera input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
-                      const file = e.target.files[0];
-                      console.log("Image captured:", file.name, file.size, "bytes");
-                      setSealTagImage(file);
-                      setError("");
-                      toast.success("Image captured successfully!");
+                      try {
+                        const file = e.target.files[0];
+                        console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+                        setSealTagImage(file);
+                        // Show feedback to user
+                        toast.success(`Image captured successfully: ${file.name}`);
+                      } catch (error) {
+                        console.error('Error capturing image:', error);
+                        toast.error('Failed to capture image. Please try again.');
+                      }
                     } else {
-                      console.log("No image captured from camera");
-                      toast.error("Failed to capture image. Please try again.");
+                      console.log('No file selected from camera');
                     }
                   }}
                 />
@@ -1200,13 +1206,6 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 variant="outlined"
                 component="label"
                 startIcon={<CloudUpload />}
-                sx={{ 
-                  bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
-                  borderColor: sealTagImage ? 'success.main' : 'inherit',
-                  '&:hover': {
-                    bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.12)' : 'rgba(0, 0, 0, 0.04)',
-                  }
-                }}
               >
                 Upload
                 <input
@@ -1216,16 +1215,23 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   onClick={(e) => {
                     // Reset the input value to ensure onChange is always triggered
                     e.currentTarget.value = '';
+                    console.log('Upload input clicked');
                   }}
                   onChange={(e) => {
+                    console.log('Upload input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
-                      const file = e.target.files[0];
-                      console.log("Image uploaded:", file.name, file.size, "bytes");
-                      setSealTagImage(file);
-                      setError("");
-                      toast.success("Image uploaded successfully!");
+                      try {
+                        const file = e.target.files[0];
+                        console.log(`File uploaded: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+                        setSealTagImage(file);
+                        // Show feedback to user
+                        toast.success(`Image uploaded successfully: ${file.name}`);
+                      } catch (error) {
+                        console.error('Error uploading image:', error);
+                        toast.error('Failed to upload image. Please try again.');
+                      }
                     } else {
-                      console.log("No image selected for upload");
+                      console.log('No file selected for upload');
                     }
                   }}
                 />
@@ -1233,19 +1239,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
             </Box>
             
             {sealTagImage && (
-              <Box sx={{ mt: 1, mb: 2 }}>
-                <Typography variant="subtitle2">Image Preview:</Typography>
-                <Box
-                  component="img"
-                  src={URL.createObjectURL(sealTagImage)}
-                  alt="Seal Tag Preview"
-                  sx={{ 
-                    maxWidth: '100%', 
-                    maxHeight: '150px',
-                    borderRadius: 1,
-                    border: '1px solid #ccc'
-                  }}
-                />
+              <Box sx={{ mt: 2, mb: 2 }}>
+                {renderImagePreview(sealTagImage)}
               </Box>
             )}
           </Box>
@@ -1339,17 +1334,17 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                             size="small" 
                             onClick={() => toggleSealDetails(sealId)}
                           >
-                            {expandedSealId === sealId ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+                            {expandedSeals[sealId] ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
                           </IconButton>
                         </Box>
                       </TableCell>
                     </TableRow>
                     
                     {/* Expanded details row */}
-                    {expandedSealId === sealId && (
+                    {expandedSeals[sealId] && (
                       <TableRow>
                         <TableCell colSpan={5} sx={{ p: 0 }}>
-                          <Collapse in={expandedSealId === sealId} timeout="auto" unmountOnExit>
+                          <Collapse in={expandedSeals[sealId]} timeout="auto" unmountOnExit>
                             <Box sx={{ p: 2, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
                               <Typography variant="subtitle2" gutterBottom>Seal Tag Details</Typography>
                               
