@@ -170,6 +170,22 @@ type SessionType = {
     createdAt: string;
     scannedByName: string;
   }[];
+  guardSealTags?: {
+    id: string;
+    barcode: string;
+    method: string;
+    imageUrl?: string;
+    imageData?: string;
+    createdAt: string;
+    scannedByName?: string;
+    verifiedById?: string;
+    status?: string;
+    verifiedBy?: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  }[];
   fieldTimestamps?: FieldTimestampType[];
   formattedFieldTimestamps?: Record<string, FormattedTimestampType>;
 };
@@ -272,9 +288,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       (verificationDetails as any).completedBy : {};
     const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
       (verificationDetails as any).completedAt : '';
-    // Extract guardSealTags if they exist
-    const guardSealTags = verificationDetails.hasOwnProperty('guardSealTags') ? 
-      (verificationDetails as any).guardSealTags || [] : [];
+    // Use the guardSealTags directly from the session object instead of extracting from verification details
+    const guardSealTags = session.guardSealTags || [];
 
     // Calculate verification statistics
     const totalFields = Object.keys(fieldVerifications).length;
@@ -617,7 +632,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                               size="small"
                             />
                           </TableCell>
-                          <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
+                          <TableCell>{tag.verifiedBy?.name || tag.scannedByName || 'Unknown'}</TableCell>
                           <TableCell>
                             {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
                           </TableCell>
