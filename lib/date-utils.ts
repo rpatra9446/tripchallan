@@ -36,22 +36,32 @@ export function getSessionFieldTimestamp(session: any, key: string): string {
   if (!session) return 'N/A';
   
   try {
-    // For image fields that start with 'images.', extract the actual field name for legacy lookup
+    // Handle different field types with their prefixes
     const isImageField = key.startsWith('images.');
     const imageFieldName = isImageField ? key.replace('images.', '') : null;
     
-    // Find timestamp for this field if available
+    // Detect if this is a tripDetails field 
+    // In the UI, we get the raw field name (e.g., "materialName") from tripDetails
+    // but in the timestamp data, it might be stored with a prefix (e.g., "loadingDetails.materialName")
+    const isTripDetailsField = !key.includes('.') && session?.tripDetails && key in session.tripDetails;
+    
+    // Try to find timestamp for this field using different prefixes/variations
     const fieldTimestamp = session.fieldTimestamps?.find(
-      (ft: any) => ft.fieldName === key || 
-                  ft.fieldName === `loadingDetails.${key}` || 
-                  ft.fieldName === `driverDetails.${key}`
+      (ft: any) => 
+        ft.fieldName === key || 
+        ft.fieldName === `loadingDetails.${key}` || 
+        ft.fieldName === `driverDetails.${key}` ||
+        // Check unprefixed version if this is an image field
+        (isImageField && ft.fieldName === imageFieldName)
     );
     
     // Check for formatted timestamps (new API response format)
     const formattedTimestamp = 
       session.formattedFieldTimestamps?.[key] || 
       session.formattedFieldTimestamps?.[`loadingDetails.${key}`] ||
-      session.formattedFieldTimestamps?.[`driverDetails.${key}`];
+      session.formattedFieldTimestamps?.[`driverDetails.${key}`] ||
+      // Check unprefixed version if this is an image field
+      (isImageField && imageFieldName && session.formattedFieldTimestamps?.[imageFieldName]);
     
     // Fallback to legacy timestamps if formatted timestamps are not available
     let legacyTimestamp;
@@ -59,15 +69,21 @@ export function getSessionFieldTimestamp(session: any, key: string): string {
     // Check if it's an image field for specific handling
     if (isImageField && imageFieldName && session.timestamps?.imagesForm) {
       legacyTimestamp = session.timestamps.imagesForm[imageFieldName];
-    } else if (session.timestamps?.loadingDetails && 
-              session.timestamps.loadingDetails[key]) {
+    } 
+    // For trip details fields, check in loadingDetails timestamps
+    else if (isTripDetailsField && session.timestamps?.loadingDetails) {
+      legacyTimestamp = session.timestamps.loadingDetails[key];
+    }
+    // Standard checks in loadingDetails and imagesForm
+    else if (session.timestamps?.loadingDetails && 
+            session.timestamps.loadingDetails[key]) {
       legacyTimestamp = session.timestamps.loadingDetails[key];
     } else if (session.timestamps?.imagesForm && 
               session.timestamps.imagesForm[key]) {
       legacyTimestamp = session.timestamps.imagesForm[key];
     }
     
-    // Return the timestamp with the highest priority: formatted > fieldTimestamp > legacyTimestamp > session creation time
+    // Return the timestamp with the highest priority
     if (formattedTimestamp) {
       return formattedTimestamp.formattedTimestamp;
     } else if (fieldTimestamp) {
@@ -75,13 +91,16 @@ export function getSessionFieldTimestamp(session: any, key: string): string {
     } else if (legacyTimestamp) {
       return formatTimestampExact(legacyTimestamp);
     } else if (session.createdAt) {
+      // If no specific timestamp is found, use the session creation time
       return formatTimestampExact(session.createdAt);
     } else {
+      // Final fallback - should almost never be needed
       return formatTimestampExact(new Date());
     }
   } catch (error) {
     console.error('Error getting field timestamp:', error, { key });
-    return formatTimestampExact(new Date());
+    // In case of error, don't show a hardcoded value
+    return session?.createdAt ? formatTimestampExact(session.createdAt) : 'N/A';
   }
 }
 
