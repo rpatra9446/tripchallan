@@ -1125,11 +1125,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </TableContainer>
           </Paper>
 
-          {/* Seal Tags - For completed sessions or non-guard users */}
+          {/* Seal Tags - For non-completed sessions or non-guard users */}
           {session?.sealTags && session.sealTags.length > 0 && session?.status !== SessionStatus.COMPLETED && (
             <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Seal Tags
+                Operator Seal Tags
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <TableContainer>
