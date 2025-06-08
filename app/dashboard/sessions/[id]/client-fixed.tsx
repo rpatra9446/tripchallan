@@ -130,6 +130,8 @@ type SessionType = {
     receiverPartyName?: string;
     driverLicense?: string;
     registrationCertificate?: string;
+    cargoType?: string;
+    numberOfPackages?: number;
   };
   images?: {
     gpsImeiPicture?: string;
@@ -886,31 +888,185 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <TableHead>
                   <TableRow>
                     <TableCell>Field</TableCell>
-                    <TableCell>Entered At</TableCell>
                     <TableCell>Value</TableCell>
+                    <TableCell>Entered At</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {Object.entries(session?.tripDetails || {}).map(([key, value]) => {
-                    if (key === 'source' || key === 'destination') return null;
-                    
-                    return (
-                      <TableRow key={key}>
-                        <TableCell>{getFieldLabel(key)}</TableCell>
-                        <TableCell>
-                          {getSessionFieldTimestamp(session, key)}
-                        </TableCell>
-                        <TableCell>{value || 'N/A'}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {!session?.tripDetails && (
-                    <TableRow>
-                      <TableCell colSpan={3}>
-                        <Alert severity="info">No loading details available</Alert>
-                      </TableCell>
-                    </TableRow>
-                  )}
+                  {/* Source */}
+                  <TableRow>
+                    <TableCell>Source</TableCell>
+                    <TableCell>{session?.source || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'source')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Destination */}
+                  <TableRow>
+                    <TableCell>Destination</TableCell>
+                    <TableCell>{session?.destination || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'destination')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Cargo Type */}
+                  <TableRow>
+                    <TableCell>Cargo Type</TableCell>
+                    <TableCell>{session?.tripDetails?.cargoType || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'cargoType')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Material Name */}
+                  <TableRow>
+                    <TableCell>Material Name</TableCell>
+                    <TableCell>{session?.tripDetails?.materialName || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'materialName')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Quality of Materials */}
+                  <TableRow>
+                    <TableCell>Quality of Materials</TableCell>
+                    <TableCell>{session?.tripDetails?.qualityOfMaterials || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'qualityOfMaterials')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Transporter Name */}
+                  <TableRow>
+                    <TableCell>Transporter Name</TableCell>
+                    <TableCell>{session?.tripDetails?.transporterName || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'transporterName')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Receiver Party */}
+                  <TableRow>
+                    <TableCell>Receiver Party</TableCell>
+                    <TableCell>{session?.tripDetails?.receiverPartyName || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'receiverPartyName')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Loading Site */}
+                  <TableRow>
+                    <TableCell>Loading Site</TableCell>
+                    <TableCell>{session?.tripDetails?.loadingSite || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'loadingSite')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Vehicle Number */}
+                  <TableRow>
+                    <TableCell>Vehicle Number</TableCell>
+                    <TableCell>{session?.tripDetails?.vehicleNumber || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'vehicleNumber')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Registration Certificate */}
+                  <TableRow>
+                    <TableCell>Registration Certificate</TableCell>
+                    <TableCell>{session?.tripDetails?.registrationCertificate || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'registrationCertificate')}</TableCell>
+                  </TableRow>
+                  
+                  {/* GPS IMEI Number */}
+                  <TableRow>
+                    <TableCell>GPS IMEI Number</TableCell>
+                    <TableCell>{session?.tripDetails?.gpsImeiNumber || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'gpsImeiNumber')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Driver Name */}
+                  <TableRow>
+                    <TableCell>Driver Name</TableCell>
+                    <TableCell>{session?.tripDetails?.driverName || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'driverName')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Driver Contact Number */}
+                  <TableRow>
+                    <TableCell>Driver Contact Number</TableCell>
+                    <TableCell>{session?.tripDetails?.driverContactNumber || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'driverContactNumber')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Driver License */}
+                  <TableRow>
+                    <TableCell>Driver License</TableCell>
+                    <TableCell>{session?.tripDetails?.driverLicense || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'driverLicense')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Loader Name */}
+                  <TableRow>
+                    <TableCell>Loader Name</TableCell>
+                    <TableCell>{session?.tripDetails?.loaderName || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'loaderName')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Loader Mobile Number */}
+                  <TableRow>
+                    <TableCell>Loader Mobile Number</TableCell>
+                    <TableCell>{session?.tripDetails?.loaderMobileNumber || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'loaderMobileNumber')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Gross Weight */}
+                  <TableRow>
+                    <TableCell>Gross Weight</TableCell>
+                    <TableCell>{session?.tripDetails?.grossWeight || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'grossWeight')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Tare Weight */}
+                  <TableRow>
+                    <TableCell>Tare Weight</TableCell>
+                    <TableCell>{session?.tripDetails?.tareWeight || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'tareWeight')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Net Material Weight */}
+                  <TableRow>
+                    <TableCell>Net Material Weight</TableCell>
+                    <TableCell>{session?.tripDetails?.netMaterialWeight || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'netMaterialWeight')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Challan Royalty Number */}
+                  <TableRow>
+                    <TableCell>Challan Royalty Number</TableCell>
+                    <TableCell>{session?.tripDetails?.challanRoyaltyNumber || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'challanRoyaltyNumber')}</TableCell>
+                  </TableRow>
+                  
+                  {/* DO Number */}
+                  <TableRow>
+                    <TableCell>DO Number</TableCell>
+                    <TableCell>{session?.tripDetails?.doNumber || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'doNumber')}</TableCell>
+                  </TableRow>
+                  
+                  {/* TP Number */}
+                  <TableRow>
+                    <TableCell>TP Number</TableCell>
+                    <TableCell>{session?.tripDetails?.tpNumber || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'tpNumber')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Number of Packages */}
+                  <TableRow>
+                    <TableCell>Number of Packages</TableCell>
+                    <TableCell>{session?.tripDetails?.numberOfPackages || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'numberOfPackages')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Freight */}
+                  <TableRow>
+                    <TableCell>Freight</TableCell>
+                    <TableCell>{session?.tripDetails?.freight || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'freight')}</TableCell>
+                  </TableRow>
+                  
+                  {/* Created By Id */}
+                  <TableRow>
+                    <TableCell>Created By Id</TableCell>
+                    <TableCell>{session?.createdBy?.id || 'N/A'}</TableCell>
+                    <TableCell>{getSessionFieldTimestamp(session, 'createdById')}</TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </TableContainer>
