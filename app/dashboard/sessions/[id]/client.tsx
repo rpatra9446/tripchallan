@@ -255,65 +255,6 @@ function isSystemField(key: string) {
   return systemFields.includes(key);
 }
 
-// Render verification results for completed sessions
-const renderVerificationResults = () => {
-  if (!session || session.status !== SessionStatus.COMPLETED) {
-    return null;
-  }
-
-  // Find verification data from activity logs
-  const verificationLog = session.activityLogs?.find(log => 
-    log.details?.verification?.fieldVerifications || 
-    log.details?.verification?.completedBy
-  );
-
-  if (!verificationLog) {
-    return null;
-  }
-
-  const verificationDetails = verificationLog.details?.verification || {};
-  const fieldVerifications = verificationDetails.fieldVerifications || {};
-  const completedBy = verificationDetails.hasOwnProperty('completedBy') ? 
-    (verificationDetails as any).completedBy : {};
-  const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
-    (verificationDetails as any).completedAt : '';
-  // Use the guardSealTags directly from the session object 
-  const guardSealTags = session.guardSealTags || [];
-
-  // Calculate verification statistics
-  const totalFields = Object.keys(fieldVerifications).length;
-  const verifiedFields = Object.values(fieldVerifications as Record<string, any>)
-    .filter((field: any) => field.isVerified).length;
-  const matchPercentage = totalFields > 0 ? Math.round((verifiedFields / totalFields) * 100) : 0;
-
-  // Group verification fields by category
-  const loadingDetailsFields: Record<string, any> = {};
-  const driverDetailsFields: Record<string, any> = {};
-  
-  // Categorize fields
-  Object.entries(fieldVerifications as Record<string, any>).forEach(([key, value]: [string, any]) => {
-    const driverFields = ['driverName', 'driverContactNumber', 'driverLicense'];
-    if (driverFields.includes(key)) {
-      driverDetailsFields[key] = value;
-    } else {
-      loadingDetailsFields[key] = value;
-    }
-  });
-
-  // Get seal tag verification data
-  const sealTagStats = verificationDetails.hasOwnProperty('sealTags') ? 
-    (verificationDetails as any).sealTags : {
-    total: 0,
-    verified: 0,
-    missing: 0,
-    broken: 0,
-    tampered: 0
-  };
-
-  // Return the JSX to render verification results
-  return null; // Will implement the actual JSX in subsequent edits
-};
-
 function GuardVerificationTabbedView({
   session,
   sessionId,
@@ -1206,6 +1147,65 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
   const [loadingComments, setLoadingComments] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [openImageModal, setOpenImageModal] = useState(false);
+  
+  // Render verification results for completed sessions
+  const renderVerificationResults = () => {
+    if (!session || session.status !== SessionStatus.COMPLETED) {
+      return null;
+    }
+
+    // Find verification data from activity logs
+    const verificationLog = session.activityLogs?.find(log => 
+      log.details?.verification?.fieldVerifications || 
+      log.details?.verification?.completedBy
+    );
+
+    if (!verificationLog) {
+      return null;
+    }
+
+    const verificationDetails = verificationLog.details?.verification || {};
+    const fieldVerifications = verificationDetails.fieldVerifications || {};
+    const completedBy = verificationDetails.hasOwnProperty('completedBy') ? 
+      (verificationDetails as any).completedBy : {};
+    const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
+      (verificationDetails as any).completedAt : '';
+    // Use the guardSealTags directly from the session object 
+    const guardSealTags = session.guardSealTags || [];
+
+    // Calculate verification statistics
+    const totalFields = Object.keys(fieldVerifications).length;
+    const verifiedFields = Object.values(fieldVerifications as Record<string, any>)
+      .filter((field: any) => field.isVerified).length;
+    const matchPercentage = totalFields > 0 ? Math.round((verifiedFields / totalFields) * 100) : 0;
+
+    // Group verification fields by category
+    const loadingDetailsFields: Record<string, any> = {};
+    const driverDetailsFields: Record<string, any> = {};
+    
+    // Categorize fields
+    Object.entries(fieldVerifications as Record<string, any>).forEach(([key, value]: [string, any]) => {
+      const driverFields = ['driverName', 'driverContactNumber', 'driverLicense'];
+      if (driverFields.includes(key)) {
+        driverDetailsFields[key] = value;
+      } else {
+        loadingDetailsFields[key] = value;
+      }
+    });
+
+    // Get seal tag verification data
+    const sealTagStats = verificationDetails.hasOwnProperty('sealTags') ? 
+      (verificationDetails as any).sealTags : {
+      total: 0,
+      verified: 0,
+      missing: 0,
+      broken: 0,
+      tampered: 0
+    };
+
+    // Return the JSX to render verification results
+    return null; // Will implement the actual JSX in subsequent edits
+  };
   
   // Load session data on mount
   useEffect(() => {
