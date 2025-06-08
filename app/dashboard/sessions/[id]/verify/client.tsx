@@ -1132,14 +1132,12 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     </Button>
                   </InputAdornment>
                 ),
-                // Remove autofocus which might be causing issues
-                autoComplete: "off",
-                // Prevent browser autocomplete from interfering
-                inputProps: {
-                  autoCapitalize: "off",
-                  autoCorrect: "off",
-                  spellCheck: "false",
-                }
+                autoComplete: "off"
+              }}
+              inputProps={{
+                autoCapitalize: "off",
+                autoCorrect: "off",
+                spellCheck: "false"
               }}
               sx={{ mb: 2 }}
               onKeyDown={(e) => {
@@ -1180,18 +1178,19 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   hidden
                   accept="image/*"
                   capture="environment"
+                  onClick={(e) => {
+                    // Reset the input value to ensure onChange is always triggered
+                    e.currentTarget.value = '';
+                  }}
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
-                      console.log("Image captured:", file.name, file.size);
+                      console.log("Image captured:", file.name, file.size, "bytes");
                       setSealTagImage(file);
                       setError("");
-                      // Clear the input value to ensure onChange fires next time
-                      e.target.value = '';
-                      // Show visual confirmation
                       toast.success("Image captured successfully!");
                     } else {
-                      console.log("No image captured");
+                      console.log("No image captured from camera");
                       toast.error("Failed to capture image. Please try again.");
                     }
                   }}
@@ -1214,19 +1213,41 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   type="file"
                   hidden
                   accept="image/*"
+                  onClick={(e) => {
+                    // Reset the input value to ensure onChange is always triggered
+                    e.currentTarget.value = '';
+                  }}
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
+                      console.log("Image uploaded:", file.name, file.size, "bytes");
                       setSealTagImage(file);
                       setError("");
-                      e.target.value = '';
+                      toast.success("Image uploaded successfully!");
+                    } else {
+                      console.log("No image selected for upload");
                     }
                   }}
                 />
               </Button>
             </Box>
             
-            {sealTagImage && renderImagePreview(sealTagImage)}
+            {sealTagImage && (
+              <Box sx={{ mt: 1, mb: 2 }}>
+                <Typography variant="subtitle2">Image Preview:</Typography>
+                <Box
+                  component="img"
+                  src={URL.createObjectURL(sealTagImage)}
+                  alt="Seal Tag Preview"
+                  sx={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '150px',
+                    borderRadius: 1,
+                    border: '1px solid #ccc'
+                  }}
+                />
+              </Box>
+            )}
           </Box>
         </Box>
         
