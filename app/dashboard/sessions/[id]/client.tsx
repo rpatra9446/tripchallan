@@ -1730,11 +1730,249 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Box>
       </Paper>
 
-      {/* Show loading details section for completed sessions or non-guard users */}
-      {(session.status === SessionStatus.COMPLETED || 
-        (session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD)) && (
+      {/* Show loading details section for completed sessions */}
+      {session.status === SessionStatus.COMPLETED && (
         <>
           {renderVerificationResults()}
+        </>
+      )}
+
+      {/* For IN_PROGRESS sessions with non-guard users, show detailed content */}
+      {session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD && (
+        <>
+          {/* Loading Details Table */}
+          {session.tripDetails && Object.keys(session.tripDetails).length > 0 && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Loading Details</Typography>
+              </Box>
+              
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Field</TableCell>
+                      <TableCell>Value</TableCell>
+                      <TableCell>Timestamp</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {/* Display trip details dynamically */}
+                    {Object.entries(session.tripDetails).map(([key, value]) => {
+                      // Skip empty values
+                      if (value === undefined || value === null || value === '') {
+                        return null;
+                      }
+                      
+                      return (
+                        <TableRow key={key}>
+                          <TableCell>{getFieldLabel(key)}</TableCell>
+                          <TableCell>
+                            {typeof value === 'object' ? JSON.stringify(value) : value.toString()}
+                          </TableCell>
+                          <TableCell>
+                            {session.timestamps?.loadingDetails?.[key] ? 
+                              formatTimestampExact(session.timestamps.loadingDetails[key]) : 
+                              formatTimestampExact(session.createdAt)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
+
+          {/* Seal Tags - Operator */}
+          {session.sealTags && session.sealTags.length > 0 && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Operator Seal Tags</Typography>
+              </Box>
+              
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Barcode</TableCell>
+                      <TableCell>Method</TableCell>
+                      <TableCell>Scanned By</TableCell>
+                      <TableCell>Timestamp</TableCell>
+                      <TableCell>Image</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {session.sealTags.map(tag => (
+                      <TableRow key={tag.id}>
+                        <TableCell>{tag.barcode}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={getMethodDisplay(tag.method)} 
+                            color={getMethodColor(tag.method)} 
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
+                        <TableCell>
+                          {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {(tag.imageUrl || tag.imageData) ? (
+                            <img 
+                              src={tag.imageUrl || tag.imageData} 
+                              alt={`Seal tag ${tag.barcode}`}
+                              style={{ width: '80px', height: '80px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
+                              onClick={() => {
+                                setSelectedImage(tag.imageUrl || tag.imageData || '');
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">No image</Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
+
+          {/* Driver Details */}
+          {session?.tripDetails?.driverName && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Driver Details</Typography>
+              </Box>
+              
+              <Box sx={{ p: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <Phone fontSize="small" /> Contact: {session.tripDetails.driverContactNumber || 'N/A'}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
+                  <Typography variant="subtitle1">
+                    <ContactPage fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Images Section */}
+          {session?.images && Object.keys(session.images).some(key => {
+            const value = session.images && session.images[key as keyof typeof session.images];
+            return !!value;
+          }) && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Images</Typography>
+              </Box>
+              <Box sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  {session.images.driverPicture && (
+                    <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                      <Typography variant="subtitle2" gutterBottom>Driver</Typography>
+                      <img 
+                        src={session.images.driverPicture} 
+                        alt="Driver" 
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedImage(session.images!.driverPicture!);
+                          setOpenImageModal(true);
+                        }} 
+                      />
+                    </Box>
+                  )}
+                  
+                  {session.images.vehicleNumberPlatePicture && (
+                    <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                      <Typography variant="subtitle2" gutterBottom>Vehicle Number Plate</Typography>
+                      <img 
+                        src={session.images.vehicleNumberPlatePicture} 
+                        alt="Vehicle Number Plate" 
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedImage(session.images!.vehicleNumberPlatePicture!);
+                          setOpenImageModal(true);
+                        }} 
+                      />
+                    </Box>
+                  )}
+                  
+                  {session.images.gpsImeiPicture && (
+                    <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                      <Typography variant="subtitle2" gutterBottom>GPS IMEI</Typography>
+                      <img 
+                        src={session.images.gpsImeiPicture} 
+                        alt="GPS IMEI" 
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedImage(session.images!.gpsImeiPicture!);
+                          setOpenImageModal(true);
+                        }} 
+                      />
+                    </Box>
+                  )}
+                  
+                  {session.images.vehicleImages && session.images.vehicleImages.map((image, index) => (
+                    <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                      <Typography variant="subtitle2" gutterBottom>Vehicle Image {index + 1}</Typography>
+                      <img 
+                        src={image} 
+                        alt={`Vehicle ${index + 1}`} 
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedImage(image);
+                          setOpenImageModal(true);
+                        }} 
+                      />
+                    </Box>
+                  ))}
+                  
+                  {session.images.sealingImages && session.images.sealingImages.map((image, index) => (
+                    <Box key={`sealing-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                      <Typography variant="subtitle2" gutterBottom>Sealing Image {index + 1}</Typography>
+                      <img 
+                        src={image} 
+                        alt={`Sealing ${index + 1}`} 
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedImage(image);
+                          setOpenImageModal(true);
+                        }} 
+                      />
+                    </Box>
+                  ))}
+                  
+                  {session.images.additionalImages && session.images.additionalImages.map((image, index) => (
+                    <Box key={`additional-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                      <Typography variant="subtitle2" gutterBottom>Additional Image {index + 1}</Typography>
+                      <img 
+                        src={image} 
+                        alt={`Additional ${index + 1}`} 
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedImage(image);
+                          setOpenImageModal(true);
+                        }} 
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Paper>
+          )}
         </>
       )}
 
