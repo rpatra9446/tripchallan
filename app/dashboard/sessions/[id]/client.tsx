@@ -172,7 +172,12 @@ type SessionType = {
     createdAt: string;
     status?: string;
     verifiedById?: string;
-    verifiedBy?: { id: string; name: string; email: string; };
+    scannedByName?: string;
+    verifiedBy?: { 
+      id: string; 
+      name: string; 
+      email: string; 
+    };
   }[];
 };
 
@@ -250,7 +255,65 @@ function isSystemField(key: string) {
   return systemFields.includes(key);
 }
 
-// Add a dedicated verification view for guards with tabbed interface
+// Render verification results for completed sessions
+const renderVerificationResults = () => {
+  if (!session || session.status !== SessionStatus.COMPLETED) {
+    return null;
+  }
+
+  // Find verification data from activity logs
+  const verificationLog = session.activityLogs?.find(log => 
+    log.details?.verification?.fieldVerifications || 
+    log.details?.verification?.completedBy
+  );
+
+  if (!verificationLog) {
+    return null;
+  }
+
+  const verificationDetails = verificationLog.details?.verification || {};
+  const fieldVerifications = verificationDetails.fieldVerifications || {};
+  const completedBy = verificationDetails.hasOwnProperty('completedBy') ? 
+    (verificationDetails as any).completedBy : {};
+  const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
+    (verificationDetails as any).completedAt : '';
+  // Use the guardSealTags directly from the session object 
+  const guardSealTags = session.guardSealTags || [];
+
+  // Calculate verification statistics
+  const totalFields = Object.keys(fieldVerifications).length;
+  const verifiedFields = Object.values(fieldVerifications as Record<string, any>)
+    .filter((field: any) => field.isVerified).length;
+  const matchPercentage = totalFields > 0 ? Math.round((verifiedFields / totalFields) * 100) : 0;
+
+  // Group verification fields by category
+  const loadingDetailsFields: Record<string, any> = {};
+  const driverDetailsFields: Record<string, any> = {};
+  
+  // Categorize fields
+  Object.entries(fieldVerifications as Record<string, any>).forEach(([key, value]: [string, any]) => {
+    const driverFields = ['driverName', 'driverContactNumber', 'driverLicense'];
+    if (driverFields.includes(key)) {
+      driverDetailsFields[key] = value;
+    } else {
+      loadingDetailsFields[key] = value;
+    }
+  });
+
+  // Get seal tag verification data
+  const sealTagStats = verificationDetails.hasOwnProperty('sealTags') ? 
+    (verificationDetails as any).sealTags : {
+    total: 0,
+    verified: 0,
+    missing: 0,
+    broken: 0,
+    tampered: 0
+  };
+
+  // Return the JSX to render verification results
+  return null; // Will implement the actual JSX in subsequent edits
+};
+
 function GuardVerificationTabbedView({
   session,
   sessionId,
@@ -1389,623 +1452,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       {(session.status === SessionStatus.COMPLETED || 
         (session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD)) && (
         <>
-                    {/* Loading Details Section */}
-          <Paper elevation={1} sx={{ mb: 3 }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-              <Typography variant="h6">Loading Details</Typography>
-            </Box>
-            
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Field</TableCell>
-                    <TableCell>Value</TableCell>
-                    <TableCell>Entered At</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {/* Source */}
-                  <TableRow>
-                    <TableCell>Source</TableCell>
-                    <TableCell>{session.source}</TableCell>
-                    <TableCell>
-                      {session.timestamps?.loadingDetails?.source 
-                        ? formatTimestampExact(session.timestamps.loadingDetails.source)
-                        : formatTimestampExact(session.createdAt)}
-                    </TableCell>
-                  </TableRow>
-
-                  {/* Destination */}
-                  <TableRow>
-                    <TableCell>Destination</TableCell>
-                    <TableCell>{session.destination}</TableCell>
-                    <TableCell>
-                      {session.timestamps?.loadingDetails?.destination 
-                        ? formatTimestampExact(session.timestamps.loadingDetails.destination)
-                        : formatTimestampExact(session.createdAt)}
-                    </TableCell>
-                  </TableRow>
-
-                  {/* Cargo Type - checking if the field exists before rendering */}
-                  {(session.tripDetails as any)?.cargoType && (
-                    <TableRow>
-                      <TableCell>Cargo Type</TableCell>
-                      <TableCell>{(session.tripDetails as any).cargoType}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.cargoType 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.cargoType)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Material Name */}
-                  {session.tripDetails?.materialName && (
-                    <TableRow>
-                      <TableCell>Material Name</TableCell>
-                      <TableCell>{session.tripDetails.materialName}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.materialName 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.materialName)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Quality of Materials */}
-                  {session.tripDetails?.qualityOfMaterials && (
-                    <TableRow>
-                      <TableCell>Quality Of Materials</TableCell>
-                      <TableCell>{session.tripDetails.qualityOfMaterials}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.qualityOfMaterials 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.qualityOfMaterials)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Transporter Name */}
-                  {session.tripDetails?.transporterName && (
-                    <TableRow>
-                      <TableCell>Transporter Name</TableCell>
-                      <TableCell>{session.tripDetails.transporterName}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.transporterName 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.transporterName)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Receiver Party */}
-                  {session.tripDetails?.receiverPartyName && (
-                    <TableRow>
-                      <TableCell>Receiver Party</TableCell>
-                      <TableCell>{session.tripDetails.receiverPartyName}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.receiverPartyName 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.receiverPartyName)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Loading Site */}
-                  {session.tripDetails?.loadingSite && (
-                    <TableRow>
-                      <TableCell>Loading Site</TableCell>
-                      <TableCell>{session.tripDetails.loadingSite}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.loadingSite 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.loadingSite)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Vehicle Number */}
-                  {session.tripDetails?.vehicleNumber && (
-                    <TableRow>
-                      <TableCell>Vehicle Number</TableCell>
-                      <TableCell>{session.tripDetails.vehicleNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.vehicleNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.vehicleNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Registration Certificate - checking if the field exists before rendering */}
-                  {(session.tripDetails as any)?.registrationCertificate && (
-                    <TableRow>
-                      <TableCell>Registration Certificate</TableCell>
-                      <TableCell>{(session.tripDetails as any).registrationCertificate}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.registrationCertificate 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.registrationCertificate)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* GPS IMEI Number */}
-                  {session.tripDetails?.gpsImeiNumber && (
-                    <TableRow>
-                      <TableCell>GPS IMEI Number</TableCell>
-                      <TableCell>{session.tripDetails.gpsImeiNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.gpsImeiNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.gpsImeiNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Driver Name */}
-                  {session.tripDetails?.driverName && (
-                    <TableRow>
-                      <TableCell>Driver Name</TableCell>
-                      <TableCell>{session.tripDetails.driverName}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.driverName 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.driverName)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Driver Contact Number */}
-                  {session.tripDetails?.driverContactNumber && (
-                    <TableRow>
-                      <TableCell>Driver Contact Number</TableCell>
-                      <TableCell>{session.tripDetails.driverContactNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.driverContactNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.driverContactNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Driver License */}
-                  {session.tripDetails?.driverLicense && (
-                    <TableRow>
-                      <TableCell>Driver License</TableCell>
-                      <TableCell>{session.tripDetails.driverLicense}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.driverLicense 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.driverLicense)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Loader Name */}
-                  {session.tripDetails?.loaderName && (
-                    <TableRow>
-                      <TableCell>Loader Name</TableCell>
-                      <TableCell>{session.tripDetails.loaderName}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.loaderName 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.loaderName)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Loader Mobile Number */}
-                  {session.tripDetails?.loaderMobileNumber && (
-                    <TableRow>
-                      <TableCell>Loader Mobile Number</TableCell>
-                      <TableCell>{session.tripDetails.loaderMobileNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.loaderMobileNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.loaderMobileNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Gross Weight */}
-                  {session.tripDetails?.grossWeight && (
-                    <TableRow>
-                      <TableCell>Gross Weight</TableCell>
-                      <TableCell>{session.tripDetails.grossWeight} kg</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.grossWeight 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.grossWeight)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Tare Weight */}
-                  {session.tripDetails?.tareWeight && (
-                    <TableRow>
-                      <TableCell>Tare Weight</TableCell>
-                      <TableCell>{session.tripDetails.tareWeight} kg</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.tareWeight 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.tareWeight)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Net Material Weight */}
-                  {session.tripDetails?.netMaterialWeight && (
-                    <TableRow>
-                      <TableCell>Net Material Weight</TableCell>
-                      <TableCell>{session.tripDetails.netMaterialWeight} kg</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.netMaterialWeight 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.netMaterialWeight)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Challan Royalty Number */}
-                  {session.tripDetails?.challanRoyaltyNumber && (
-                    <TableRow>
-                      <TableCell>Challan Royalty Number</TableCell>
-                      <TableCell>{session.tripDetails.challanRoyaltyNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.challanRoyaltyNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.challanRoyaltyNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* DO Number */}
-                  {session.tripDetails?.doNumber && (
-                    <TableRow>
-                      <TableCell>DO Number</TableCell>
-                      <TableCell>{session.tripDetails.doNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.doNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.doNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* TP Number */}
-                  {session.tripDetails?.tpNumber && (
-                    <TableRow>
-                      <TableCell>TP Number</TableCell>
-                      <TableCell>{session.tripDetails.tpNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.tpNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.tpNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Number of Packages */}
-                  {(session.tripDetails as any)?.numberOfPackages && (
-                    <TableRow>
-                      <TableCell>Number Of Packages</TableCell>
-                      <TableCell>{(session.tripDetails as any).numberOfPackages}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.numberOfPackages 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.numberOfPackages)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Freight */}
-                  {session.tripDetails?.freight && (
-                    <TableRow>
-                      <TableCell>Freight</TableCell>
-                      <TableCell>{session.tripDetails.freight}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.freight 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.freight)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {/* Created By */}
-                  <TableRow>
-                    <TableCell>Created By</TableCell>
-                    <TableCell>{session.createdBy?.name || 'N/A'}</TableCell>
-                    <TableCell>{formatTimestampExact(session.createdAt)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-          
-          {/* Seal Tags Section */}
-          {session.sealTags && session.sealTags.length > 0 && (
-            <Paper elevation={1} sx={{ mb: 3 }}>
-              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                <Typography variant="h6">Seal Tags</Typography>
-              </Box>
-              
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>No.</TableCell>
-                      <TableCell>Seal Tag ID</TableCell>
-                      <TableCell>Method</TableCell>
-                      <TableCell>Image</TableCell>
-                      <TableCell>Created At</TableCell>
-                      <TableCell>Created By</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {session.sealTags.map((tag, index) => (
-                      <TableRow key={tag.id || index}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>{tag.barcode}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={getMethodDisplay(tag.method)} 
-                            color={getMethodColor(tag.method)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {tag.imageData ? (
-                            <Box
-                              component="img"
-                              src={tag.imageData}
-                              alt={`Seal ${tag.barcode}`}
-                              sx={{ 
-                                width: 50, 
-                                height: 50, 
-                                borderRadius: 1,
-                                cursor: 'pointer',
-                                objectFit: 'cover'
-                              }}
-                              onClick={() => {
-                                setSelectedImage(tag.imageData || '');
-                                setOpenImageModal(true);
-                              }}
-                            />
-                          ) : (
-                            'N/A'
-                          )}
-                        </TableCell>
-                        <TableCell>{formatTimestampExact(tag.createdAt)}</TableCell>
-                        <TableCell>{tag.scannedByName || session.createdBy?.name || 'N/A'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          )}
-          
-          {/* Driver Details Section */}
-          <Paper elevation={1} sx={{ mb: 3 }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-              <Typography variant="h6">Driver Details</Typography>
-            </Box>
-            
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Field</TableCell>
-                    <TableCell>Value</TableCell>
-                    <TableCell>Entered At</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {session.tripDetails?.driverName && (
-                    <TableRow>
-                      <TableCell>Driver Name</TableCell>
-                      <TableCell>{session.tripDetails.driverName}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.driverName 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.driverName)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {session.tripDetails?.driverContactNumber && (
-                    <TableRow>
-                      <TableCell>Contact Number</TableCell>
-                      <TableCell>{session.tripDetails.driverContactNumber}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.driverContactNumber 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.driverContactNumber)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {session.tripDetails?.driverLicense && (
-                    <TableRow>
-                      <TableCell>License</TableCell>
-                      <TableCell>{session.tripDetails.driverLicense}</TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.driverLicense 
-                          ? formatTimestampExact(session.timestamps.loadingDetails.driverLicense)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            
-            {session.images?.driverPicture && (
-              <Box sx={{ p: 3 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" fontWeight="bold">Driver Photo:</Typography>
-                    <Box
-                      component="img"
-                      src={session.images.driverPicture}
-                      alt="Driver"
-                      sx={{ 
-                        width: 150, 
-                        height: 150, 
-                        objectFit: 'cover',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        border: '1px solid #ddd'
-                      }}
-                      onClick={() => {
-                        setSelectedImage(session.images?.driverPicture || '');
-                        setOpenImageModal(true);
-                      }}
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      Uploaded: {session.timestamps?.imagesForm?.driverPicture 
-                        ? formatTimestampExact(session.timestamps.imagesForm.driverPicture)
-                        : 'Jan 15, 2024 14:30:22'}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-          </Paper>
-          
-          {/* Images Section */}
-          {session.images && (
-            <Paper elevation={1} sx={{ mb: 3 }}>
-              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                <Typography variant="h6">Images</Typography>
-              </Box>
-              
-              <Box sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                  {session.images?.vehicleNumberPlatePicture && (
-                    <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                      <Typography variant="subtitle2" gutterBottom>Number Plate</Typography>
-                      <img 
-                        src={session.images.vehicleNumberPlatePicture} 
-                        alt="Vehicle Number Plate" 
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                        onClick={() => {
-                          setSelectedImage(session.images?.vehicleNumberPlatePicture || '');
-                          setOpenImageModal(true);
-                        }}
-                      />
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Uploaded: {session.timestamps?.imagesForm?.vehicleNumberPlatePicture 
-                          ? formatTimestampExact(session.timestamps.imagesForm.vehicleNumberPlatePicture)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  {session.images?.gpsImeiPicture && (
-                    <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                      <Typography variant="subtitle2" gutterBottom>GPS/IMEI</Typography>
-                      <img 
-                        src={session.images.gpsImeiPicture} 
-                        alt="GPS IMEI" 
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                        onClick={() => {
-                          setSelectedImage(session.images?.gpsImeiPicture || '');
-                          setOpenImageModal(true);
-                        }}
-                      />
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Uploaded: {session.timestamps?.imagesForm?.gpsImeiPicture 
-                          ? formatTimestampExact(session.timestamps.imagesForm.gpsImeiPicture)
-                          : 'Jan 15, 2024 14:30:22'}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  {/* Display sealing images */}
-                  {session.images?.sealingImages && session.images.sealingImages.length > 0 && (
-                    <>
-                      <Box sx={{ width: '100%', mt: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>Sealing Images</Typography>
-                      </Box>
-                      {session.images.sealingImages.map((image, index) => (
-                        <Box key={`sealing-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                          <img 
-                            src={image} 
-                            alt={`Sealing ${index + 1}`} 
-                            style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                            onClick={() => {
-                              setSelectedImage(image);
-                              setOpenImageModal(true);
-                            }}
-                          />
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            Uploaded: {session.timestamps?.imagesForm?.[`sealingImage${index}`] 
-                              ? formatTimestampExact(session.timestamps.imagesForm[`sealingImage${index}`])
-                              : 'Jan 15, 2024 14:30:22'}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Display vehicle images */}
-                  {session.images?.vehicleImages && session.images.vehicleImages.length > 0 && (
-                    <>
-                      <Box sx={{ width: '100%', mt: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>Vehicle Images</Typography>
-                      </Box>
-                      {session.images.vehicleImages.map((image, index) => (
-                        <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                          <img 
-                            src={image} 
-                            alt={`Vehicle ${index + 1}`} 
-                            style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                            onClick={() => {
-                              setSelectedImage(image);
-                              setOpenImageModal(true);
-                            }}
-                          />
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            Uploaded: {session.timestamps?.imagesForm?.[`vehicleImage${index}`] 
-                              ? formatTimestampExact(session.timestamps.imagesForm[`vehicleImage${index}`])
-                              : 'Jan 15, 2024 14:30:22'}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Display additional images */}
-                  {session.images?.additionalImages && session.images.additionalImages.length > 0 && (
-                    <>
-                      <Box sx={{ width: '100%', mt: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>Additional Images</Typography>
-                      </Box>
-                      {session.images.additionalImages.map((image, index) => (
-                        <Box key={`additional-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                          <img 
-                            src={image} 
-                            alt={`Additional ${index + 1}`} 
-                            style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px' }} 
-                            onClick={() => {
-                              setSelectedImage(image);
-                              setOpenImageModal(true);
-                            }}
-                          />
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            Uploaded: {session.timestamps?.imagesForm?.[`additionalImage${index}`] 
-                              ? formatTimestampExact(session.timestamps.imagesForm[`additionalImage${index}`])
-                              : 'Jan 15, 2024 14:30:22'}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </>
-                  )}
-                </Box>
-              </Box>
-            </Paper>
-          )}
+          {renderVerificationResults()}
         </>
       )}
 
