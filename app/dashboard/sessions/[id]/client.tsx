@@ -1485,7 +1485,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     />
                     <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                       {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'driverPicture')?.timestamp
-                        ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'driverPicture').timestamp).toLocaleString()
+                        ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'driverPicture').timestamp))
                         : formatTimestampExact(session.createdAt)}
                     </Typography>
                   </Box>
@@ -1505,7 +1505,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     />
                     <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                       {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture')?.timestamp
-                        ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture').timestamp).toLocaleString()
+                        ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture').timestamp))
                         : formatTimestampExact(session.createdAt)}
                     </Typography>
                   </Box>
@@ -1525,7 +1525,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     />
                     <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                       {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'gpsImeiPicture')?.timestamp
-                        ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'gpsImeiPicture').timestamp).toLocaleString()
+                        ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'gpsImeiPicture').timestamp))
                         : formatTimestampExact(session.createdAt)}
                     </Typography>
                   </Box>
@@ -1550,7 +1550,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                         <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                           {session?.fieldTimestamps?.find((t: any) => t.fieldName === `vehicleImages[${index}]`)?.timestamp
-                            ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp).toLocaleString()
+                            ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp))
                             : formatTimestampExact(session.createdAt)}
                         </Typography>
                       </Box>
@@ -1577,7 +1577,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         />
                         <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                           {session?.fieldTimestamps?.find((t: any) => t.fieldName === `sealingImages[${index}]`)?.timestamp
-                            ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp).toLocaleString()
+                            ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp))
                             : formatTimestampExact(session.createdAt)}
                         </Typography>
                       </Box>
@@ -2022,7 +2022,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'driverPicture')?.timestamp
-                          ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'driverPicture').timestamp).toLocaleString()
+                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'driverPicture').timestamp))
                           : formatTimestampExact(session.createdAt)}
                       </Typography>
                     </Box>
@@ -2042,7 +2042,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture')?.timestamp
-                          ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture').timestamp).toLocaleString()
+                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture').timestamp))
                           : formatTimestampExact(session.createdAt)}
                       </Typography>
                     </Box>
@@ -2062,7 +2062,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'gpsImeiPicture')?.timestamp
-                          ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'gpsImeiPicture').timestamp).toLocaleString()
+                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'gpsImeiPicture').timestamp))
                           : formatTimestampExact(session.createdAt)}
                       </Typography>
                     </Box>
@@ -2082,7 +2082,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === `vehicleImages[${index}]`)?.timestamp
-                          ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp).toLocaleString()
+                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp))
                           : formatTimestampExact(session.createdAt)}
                       </Typography>
                     </Box>
@@ -2102,7 +2102,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === `sealingImages[${index}]`)?.timestamp
-                          ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp).toLocaleString()
+                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp))
                           : formatTimestampExact(session.createdAt)}
                       </Typography>
                     </Box>
@@ -2122,7 +2122,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === `additionalImages[${index}]`)?.timestamp
-                          ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `additionalImages[${index}]`).timestamp).toLocaleString()
+                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `additionalImages[${index}]`).timestamp))
                           : formatTimestampExact(session.createdAt)}
                       </Typography>
                     </Box>
