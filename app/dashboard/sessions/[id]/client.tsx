@@ -1193,11 +1193,17 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     );
 
     if (!verificationLog) {
+      console.log("No verification log found in activity logs", session.activityLogs);
       return null;
     }
 
+    console.log("Verification log found:", verificationLog);
     const verificationDetails = verificationLog.details?.verification || {};
+    console.log("Verification details:", verificationDetails);
+    
     const fieldVerifications = verificationDetails.fieldVerifications || {};
+    console.log("Field verifications:", fieldVerifications);
+    
     const completedBy = verificationDetails.hasOwnProperty('completedBy') ? 
       (verificationDetails as any).completedBy : {};
     const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
@@ -2016,15 +2022,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         </Box>
       </Paper>
 
-      {/* Show loading details section for completed sessions */}
-      {session.status === SessionStatus.COMPLETED && (
-        <>
-          {renderVerificationResults()}
-        </>
-      )}
-
-      {/* For IN_PROGRESS sessions with non-guard users, show detailed content */}
-      {session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD && (
+      {/* For COMPLETED or IN_PROGRESS sessions with non-guard users, show detailed content */}
+      {(session.status === SessionStatus.COMPLETED || 
+         (session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD)) && (
         <>
           {/* Loading Details Table */}
           {session.tripDetails && Object.keys(session.tripDetails).length > 0 && (
@@ -2251,69 +2251,90 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     </Box>
                   )}
                   
-                  {session.images.vehicleImages && session.images.vehicleImages.map((image, index) => (
-                    <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                      <Typography variant="subtitle2" gutterBottom>Vehicle Image {index + 1}</Typography>
-                      <img 
-                        src={image} 
-                        alt={`Vehicle ${index + 1}`} 
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                        onClick={() => {
-                          setSelectedImage(image);
-                          setOpenImageModal(true);
-                        }} 
-                      />
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        {session?.fieldTimestamps?.find((t: any) => t.fieldName === `vehicleImages[${index}]`)?.timestamp
-                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp))
-                          : formatTimestampExact(session.createdAt)}
-                      </Typography>
-                    </Box>
-                  ))}
+                  {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
+                    <>
+                      <Box sx={{ width: '100%', mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Vehicle Images</Typography>
+                      </Box>
+                      {session.images.vehicleImages.map((image, index) => (
+                        <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                          <img 
+                            src={image} 
+                            alt={`Vehicle ${index + 1}`} 
+                            style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                            onClick={() => {
+                              setSelectedImage(image);
+                              setOpenImageModal(true);
+                            }} 
+                          />
+                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                            {session?.fieldTimestamps?.find((t: any) => t.fieldName === `vehicleImages[${index}]`)?.timestamp
+                              ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp))
+                              : formatTimestampExact(session.createdAt)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </>
+                  )}
                   
-                  {session.images.sealingImages && session.images.sealingImages.map((image, index) => (
-                    <Box key={`sealing-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                      <Typography variant="subtitle2" gutterBottom>Sealing Image {index + 1}</Typography>
-                      <img 
-                        src={image} 
-                        alt={`Sealing ${index + 1}`} 
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                        onClick={() => {
-                          setSelectedImage(image);
-                          setOpenImageModal(true);
-                        }} 
-                      />
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        {session?.fieldTimestamps?.find((t: any) => t.fieldName === `sealingImages[${index}]`)?.timestamp
-                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp))
-                          : formatTimestampExact(session.createdAt)}
-                      </Typography>
-                    </Box>
-                  ))}
+                  {session.images.sealingImages && session.images.sealingImages.length > 0 && (
+                    <>
+                      <Box sx={{ width: '100%', mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Sealing Images</Typography>
+                      </Box>
+                      {session.images.sealingImages.map((image, index) => (
+                        <Box key={`sealing-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                          <img 
+                            src={image} 
+                            alt={`Sealing ${index + 1}`} 
+                            style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                            onClick={() => {
+                              setSelectedImage(image);
+                              setOpenImageModal(true);
+                            }} 
+                          />
+                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                            {session?.fieldTimestamps?.find((t: any) => t.fieldName === `sealingImages[${index}]`)?.timestamp
+                              ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp))
+                              : formatTimestampExact(session.createdAt)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </>
+                  )}
                   
-                  {session.images.additionalImages && session.images.additionalImages.map((image, index) => (
-                    <Box key={`additional-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                      <Typography variant="subtitle2" gutterBottom>Additional Image {index + 1}</Typography>
-                      <img 
-                        src={image} 
-                        alt={`Additional ${index + 1}`} 
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                        onClick={() => {
-                          setSelectedImage(image);
-                          setOpenImageModal(true);
-                        }} 
-                      />
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        {session?.fieldTimestamps?.find((t: any) => t.fieldName === `additionalImages[${index}]`)?.timestamp
-                          ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `additionalImages[${index}]`).timestamp))
-                          : formatTimestampExact(session.createdAt)}
-                      </Typography>
-                    </Box>
-                  ))}
+                  {session.images.additionalImages && session.images.additionalImages.length > 0 && (
+                    <>
+                      <Box sx={{ width: '100%', mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Additional Images</Typography>
+                      </Box>
+                      {session.images.additionalImages.map((image, index) => (
+                        <Box key={`additional-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                          <img 
+                            src={image} 
+                            alt={`Additional ${index + 1}`} 
+                            style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                            onClick={() => {
+                              setSelectedImage(image);
+                              setOpenImageModal(true);
+                            }} 
+                          />
+                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                            {session?.fieldTimestamps?.find((t: any) => t.fieldName === `additionalImages[${index}]`)?.timestamp
+                              ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `additionalImages[${index}]`).timestamp))
+                              : formatTimestampExact(session.createdAt)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </>
+                  )}
                 </Box>
               </Box>
             </Paper>
           )}
+          
+          {/* Verification Results - for COMPLETED sessions only, positioned between Images and Comments */}
+          {session.status === SessionStatus.COMPLETED && renderVerificationResults()}
         </>
       )}
 
