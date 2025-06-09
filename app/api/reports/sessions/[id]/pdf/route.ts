@@ -268,7 +268,7 @@ export const GET = withAuth(
       });
 
       // Document settings - Simplified color scheme with just 2-3 colors
-      const primaryColor = [0, 123, 255]; // Blue color - primary color
+      const primaryColor = [0, 83, 156]; // Changed from blue to dark blue (no red component)
       const grayColor = [100, 100, 100]; // Gray for text - secondary color
       const lightGray = [240, 240, 240]; // Light gray for backgrounds - tertiary color
       const pageWidth = doc.internal.pageSize.width;
@@ -364,12 +364,32 @@ export const GET = withAuth(
         yPos = (doc as any).lastAutoTable.finalY + 10;
         yPos = addSectionHeader('OPERATOR SEAL TAGS', yPos);
 
-        const sealTagRows = sessionData.sealTags.map(tag => [
-          tag.barcode,
-          tag.method || 'N/A',
-          tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
-        ]);
+        // Calculate image size that works well in the table
+        const sealImageSize = 20; // Size in mm for seal images in table
+        
+        // Prepare rows with barcode, method, image, and timestamp
+        const sealTagRows = [];
+        
+        // Process each seal tag
+        for (const tag of sessionData.sealTags) {
+          // Base row data
+          const rowData = [
+            tag.barcode || 'N/A',
+            tag.method || 'N/A',
+            tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
+          ];
+          
+          // Store if this tag has an image for adding after table creation
+          if (tag.imageData || tag.imageUrl) {
+            (tag as any)._hasImage = true;
+          } else {
+            (tag as any)._hasImage = false;
+          }
+          
+          sealTagRows.push(rowData);
+        }
 
+        // Create table
         autoTable(doc, {
           startY: yPos,
           head: [['Barcode', 'Method', 'Applied At']],
@@ -383,6 +403,38 @@ export const GET = withAuth(
           },
           headStyles: {
             fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]]
+          },
+          didDrawCell: function(data) {
+            // Don't add images to header cells
+            if (data.row.index === 0) return;
+            
+            // Get the tag for this row
+            const tag = sessionData.sealTags![data.row.index - 1];
+            
+            // Only add image if tag has one and we're in a new cell where image should be shown
+            if ((tag as any)._hasImage && data.column.index === 1) {
+              try {
+                const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+                const cellHeight = data.cell.height - 2;
+                const cellWidth = data.cell.width - 2;
+                const imgSize = Math.min(cellHeight, cellWidth);
+                
+                // Add image in the cell next to method
+                doc.addImage(
+                  imageUrl,
+                  'AUTO',
+                  data.cell.x + data.cell.width + 2,
+                  data.cell.y + 1,
+                  imgSize - 2,
+                  imgSize - 2,
+                  undefined,
+                  'FAST',
+                  0
+                );
+              } catch (err) {
+                console.error(`Error adding seal tag image in table:`, err);
+              }
+            }
           }
         });
       }
@@ -392,13 +444,33 @@ export const GET = withAuth(
         yPos = (doc as any).lastAutoTable.finalY + 10;
         yPos = addSectionHeader('GUARD SEAL TAGS', yPos);
 
-        const guardSealTagRows = sessionData.guardSealTags.map(tag => [
-          tag.barcode,
-          tag.method || 'N/A',
-          tag.status || 'N/A',
-          tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
-        ]);
+        // Calculate image size that works well in the table
+        const sealImageSize = 20; // Size in mm for seal images in table
+        
+        // Prepare rows with barcode, method, status, and timestamp
+        const guardSealTagRows = [];
+        
+        // Process each seal tag
+        for (const tag of sessionData.guardSealTags) {
+          // Base row data
+          const rowData = [
+            tag.barcode || 'N/A',
+            tag.method || 'N/A',
+            tag.status || 'N/A',
+            tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
+          ];
+          
+          // Store if this tag has an image for adding after table creation
+          if (tag.imageData || tag.imageUrl) {
+            (tag as any)._hasImage = true;
+          } else {
+            (tag as any)._hasImage = false;
+          }
+          
+          guardSealTagRows.push(rowData);
+        }
 
+        // Create table
         autoTable(doc, {
           startY: yPos,
           head: [['Barcode', 'Method', 'Status', 'Verified At']],
@@ -413,6 +485,38 @@ export const GET = withAuth(
           },
           headStyles: {
             fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]]
+          },
+          didDrawCell: function(data) {
+            // Don't add images to header cells
+            if (data.row.index === 0) return;
+            
+            // Get the tag for this row
+            const tag = sessionData.guardSealTags![data.row.index - 1];
+            
+            // Only add image if tag has one and we're in a new cell where image should be shown
+            if ((tag as any)._hasImage && data.column.index === 2) {
+              try {
+                const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+                const cellHeight = data.cell.height - 2;
+                const cellWidth = data.cell.width - 2;
+                const imgSize = Math.min(cellHeight, cellWidth);
+                
+                // Add image in the cell next to status
+                doc.addImage(
+                  imageUrl,
+                  'AUTO',
+                  data.cell.x + data.cell.width + 2,
+                  data.cell.y + 1,
+                  imgSize - 2,
+                  imgSize - 2,
+                  undefined,
+                  'FAST',
+                  0
+                );
+              } catch (err) {
+                console.error(`Error adding guard seal tag image in table:`, err);
+              }
+            }
           }
         });
       }
@@ -540,46 +644,6 @@ export const GET = withAuth(
           addImagesToPdf(singleImageData, 'SESSION IMAGES', singleImageLabels);
         }
       };
-
-      // Add seal tag images with proper labels
-      if (sessionData.sealTags && sessionData.sealTags.length > 0) {
-        const sealTagImages: string[] = [];
-        const sealTagLabels: string[] = [];
-        
-        sessionData.sealTags
-          .filter(tag => tag.imageData || tag.imageUrl)
-          .forEach(tag => {
-            const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
-            if (imageUrl) {
-              sealTagImages.push(imageUrl);
-              sealTagLabels.push(`Seal Tag: ${tag.barcode}`);
-            }
-          });
-        
-        if (sealTagImages.length > 0) {
-          addImagesToPdf(sealTagImages, 'OPERATOR SEAL TAG IMAGES', sealTagLabels);
-        }
-      }
-      
-      // Add guard seal tag images with proper labels
-      if (sessionData.guardSealTags && sessionData.guardSealTags.length > 0) {
-        const guardSealTagImages: string[] = [];
-        const guardSealTagLabels: string[] = [];
-        
-        sessionData.guardSealTags
-          .filter(tag => tag.imageData || tag.imageUrl)
-          .forEach(tag => {
-            const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
-            if (imageUrl) {
-              guardSealTagImages.push(imageUrl);
-              guardSealTagLabels.push(`Guard Seal Tag: ${tag.barcode}`);
-            }
-          });
-        
-        if (guardSealTagImages.length > 0) {
-          addImagesToPdf(guardSealTagImages, 'GUARD SEAL TAG IMAGES', guardSealTagLabels);
-        }
-      }
 
       // Add single session images (driver, vehicle plate, GPS)
       addSingleImagesSection();
