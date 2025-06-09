@@ -1823,54 +1823,59 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             <Button 
               variant="contained" 
               color="error"
-              startIcon={
-                <Box sx={{ 
-                  width: 24, 
-                  height: 24, 
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Box sx={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    backgroundColor: '#f44336',
-                    borderRadius: '2px',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      right: 0,
-                      width: '25%',
-                      height: '25%',
-                      backgroundColor: '#e57373',
-                      borderBottomLeftRadius: '4px'
-                    }
-                  }}>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        color: 'white', 
-                        fontWeight: 'bold',
-                        fontSize: '10px',
-                        lineHeight: 1
-                      }}
-                    >
-                      PDF
-                    </Typography>
-                  </Box>
-                </Box>
-              }
+              sx={{ 
+                minWidth: '48px', 
+                width: '48px', 
+                height: '48px', 
+                p: 0 
+              }}
+              title="Generate PDF Report"
+              startIcon={null}
               onClick={() => {
                 toast.success("PDF Report generation will be implemented");
               }}
             >
-              PDF Report
+              <Box sx={{ 
+                width: 30, 
+                height: 36, 
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Box sx={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  backgroundColor: '#f44336',
+                  borderRadius: '2px',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '25%',
+                    height: '25%',
+                    backgroundColor: '#e57373',
+                    borderBottomLeftRadius: '4px'
+                  }
+                }}>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      color: 'white', 
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      lineHeight: 1
+                    }}
+                  >
+                    PDF
+                  </Typography>
+                </Box>
+              </Box>
             </Button>
           </Box>
         )}
