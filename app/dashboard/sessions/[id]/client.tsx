@@ -1967,9 +1967,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <TableRow>
                       <TableCell>Barcode</TableCell>
                       <TableCell>Method</TableCell>
+                      <TableCell>Image</TableCell>
                       <TableCell>Scanned By</TableCell>
                       <TableCell>Timestamp</TableCell>
-                      <TableCell>Image</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1982,10 +1982,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             color={getMethodColor(tag.method)} 
                             size="small"
                           />
-                        </TableCell>
-                        <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
-                        <TableCell>
-                          {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
                         </TableCell>
                         <TableCell>
                           {(tag.imageUrl || tag.imageData) ? (
@@ -2001,6 +1997,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           ) : (
                             <Typography variant="body2" color="text.secondary">No image</Typography>
                           )}
+                        </TableCell>
+                        <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
+                        <TableCell>
+                          {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -2023,10 +2023,10 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                     <TableRow>
                       <TableCell>Barcode</TableCell>
                       <TableCell>Method</TableCell>
+                      <TableCell>Image</TableCell>
+                      <TableCell>Status</TableCell>
                       <TableCell>Scanned By</TableCell>
                       <TableCell>Timestamp</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Image</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2037,20 +2037,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           <Chip 
                             label={getMethodDisplay(tag.method)} 
                             color={getMethodColor(tag.method)} 
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>{tag.verifiedBy?.name || tag.scannedByName || 'Unknown'}</TableCell>
-                        <TableCell>
-                          {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={tag.status || 'VERIFIED'} 
-                            color={
-                              tag.status === 'BROKEN' || tag.status === 'TAMPERED' ? 'error' : 
-                              tag.status === 'MISSING' ? 'warning' : 'success'
-                            }
                             size="small"
                           />
                         </TableCell>
@@ -2068,6 +2054,20 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                           ) : (
                             <Typography variant="body2" color="text.secondary">No image</Typography>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={tag.status || 'VERIFIED'} 
+                            color={
+                              tag.status === 'BROKEN' || tag.status === 'TAMPERED' ? 'error' : 
+                              tag.status === 'MISSING' ? 'warning' : 'success'
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{tag.verifiedBy?.name || tag.scannedByName || 'Unknown'}</TableCell>
+                        <TableCell>
+                          {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
                         </TableCell>
                       </TableRow>
                     ))}
