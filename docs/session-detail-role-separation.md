@@ -307,3 +307,192 @@ Properly implementing role separation is crucial for maintaining the business pr
 Additionally, the completed session view should provide a comprehensive display of all verification results, not just seal tag verification. This ensures complete transparency into the verification process and maintains a robust chain of custody for the entire transport session.
 
 By implementing these recommendations, the system will enforce role-based access control consistently across both the user interface and backend services, providing a more secure and intuitive user experience with comprehensive verification tracking.
+
+## Session Report Generation Feature
+
+### Overview
+
+The session report generation feature would be a restricted yet valuable tool for management and oversight, with specific constraints in place to maintain security and data integrity.
+
+### Access Control
+
+- **Authorized Users Only**:
+  - SUPERADMIN, ADMIN, and COMPANY users can generate reports
+  - EMPLOYEE users (Operators and Guards) cannot access report generation
+- Access controls would be enforced at both UI and API levels
+
+### Report Availability
+
+- **Session Status Coverage**:
+  - Reports available for IN_PROGRESS sessions (providing real-time monitoring)
+  - Reports available for COMPLETED sessions (offering comprehensive documentation)
+- Different report templates would adapt to the available data based on session status
+
+### Report Content
+
+Each report will include a timestamp indicating when it was generated. The report sections will follow the exact order as shown in the Session Details:
+
+1. **Basic Information**
+   - Trip details (source, destination, date/time)
+   - Company and operator information
+   - Session status and ID
+   - Report generation timestamp
+
+2. **Loading Details**
+   - All 21+ loading fields in the standardized order
+   - Timestamps for each entry
+   - Material details and quantities
+
+3. **Operator Seal Tags**
+   - Seal tag data entered by operators
+   - Application timestamps
+   - Status indicators
+
+4. **Guard Seal Tags**
+   - Seal tag data verified by guards
+   - Verification timestamps
+   - Status indicators
+
+5. **Driver Details**
+   - Driver identification information
+   - Contact details
+   - License information
+
+6. **Images**
+   - Driver photos
+   - Vehicle images
+   - Seal application images
+   - Any additional verification photos
+
+7. **Verification Result**
+   - Seal Tag Verification (match rates, discrepancies)
+   - Loading Detail Verification (fields verified, differences)
+   - Driver Detail Verification (confirmation status)
+
+### Content Restrictions
+
+- **Excluded Information**:
+  - Comments section explicitly excluded from all reports
+  - Private operational notes not included
+  - Personal identifiable information minimized
+
+### Implementation Approaches
+
+The system could support multiple report formats:
+
+- **PDF Reports**
+  - Professional, printable documentation
+  - Watermarking based on session status (DRAFT for in-progress)
+  - Hierarchical access controls embedded in document properties
+
+- **CSV/Excel Export**
+  - Data analysis capabilities for management
+  - Integration with company ERP/logistics systems
+  - Batch reporting for multiple sessions
+
+The report generation feature serves management needs for oversight, compliance documentation, and operational analytics while maintaining appropriate access controls and information boundaries.
+
+### UI Implementation
+
+#### Report Generation Buttons
+
+- **Button Placement**:
+  - Position the report generation buttons at the top of the Trip Detail page
+  - Align them to the right side, opposite to the 'Back to Sessions' button
+  - Group related export options together with a consistent visual style
+
+- **Button Types**:
+  - **Generate PDF Report**: Primary action button with PDF icon
+  - **Export to Excel**: Secondary action button with Excel icon
+  - **Print Report**: Optional tertiary action for direct printing
+
+- **Visual Representation**:
+  ```
+  +----------------------------------------------------------------------+
+  | Back to Sessions                        [Excel] [Print] [PDF Report] |
+  +----------------------------------------------------------------------+
+  |                                                                      |
+  | Session Details Content...                                           |
+  ```
+
+- **Responsive Behavior**:
+  - On mobile devices, collapse the export buttons into a single "Export" dropdown menu
+  - Ensure all buttons remain accessible on smaller screens
+
+#### Access Control Implementation
+
+- Use role-based conditional rendering to only show report buttons to authorized users:
+
+  ```typescript
+  // Example conditional rendering in the UI
+  {(user.role === UserRole.SUPERADMIN || 
+    user.role === UserRole.ADMIN || 
+    user.role === UserRole.COMPANY) && (
+    <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
+      <Button 
+        variant="outlined" 
+        startIcon={<FileExcelIcon />}
+        onClick={handleExcelExport}
+      >
+        Excel
+      </Button>
+      <Button 
+        variant="outlined" 
+        startIcon={<PrintIcon />}
+        onClick={handlePrint}
+      >
+        Print
+      </Button>
+      <Button 
+        variant="contained" 
+        startIcon={<PdfIcon />}
+        onClick={handlePdfGeneration}
+      >
+        PDF Report
+      </Button>
+    </Box>
+  )}
+  ```
+
+- Implement corresponding server-side checks to prevent unauthorized API access:
+
+  ```typescript
+  // Example API endpoint protection
+  export async function POST(request: Request) {
+    const session = await getServerSession(authOptions);
+    
+    // Only allow SUPERADMIN, ADMIN, and COMPANY roles
+    if (![UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.COMPANY].includes(session?.user?.role)) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: You don't have permission to generate reports" }),
+        { status: 403 }
+      );
+    }
+    
+    // Process report generation
+    // ...
+  }
+  ```
+
+#### Status Indication
+
+- **Visual Indicators**:
+  - Add a "DRAFT" watermark for reports generated from IN_PROGRESS sessions
+  - Display generation timestamp prominently at the top of each report
+  - Include status indicators that clearly communicate the session's current state
+
+- **Export Filename Convention**:
+  - For PDF: `Session_[ID]_Report_[Status]_[YYYY-MM-DD].pdf`
+  - For Excel: `Session_[ID]_Data_[Status]_[YYYY-MM-DD].xlsx`
+
+#### Implementation Checklist
+
+- [ ] Add report generation buttons to the session detail page header
+- [ ] Implement PDF report generation service
+- [ ] Implement Excel export functionality
+- [ ] Add role-based access controls for the UI buttons
+- [ ] Create server-side APIs with proper authorization checks
+- [ ] Implement proper error handling and loading states
+- [ ] Add appropriate visual feedback during report generation
+- [ ] Test report generation with different session statuses
+- [ ] Verify all report sections render correctly in both formats
