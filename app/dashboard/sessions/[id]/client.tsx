@@ -1208,18 +1208,23 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     // Calculate verification statistics
     const totalFields = Object.keys(fieldVerifications).length;
     const verifiedFields = Object.values(fieldVerifications as Record<string, any>)
-      .filter((field: any) => field.isVerified).length;
+      .filter((field: any) => field.verified).length;
     const matchPercentage = totalFields > 0 ? Math.round((verifiedFields / totalFields) * 100) : 0;
 
     // Group verification fields by category
     const loadingDetailsFields: Record<string, any> = {};
     const driverDetailsFields: Record<string, any> = {};
+    const imageVerificationFields: Record<string, any> = {};
     
     // Categorize fields
     Object.entries(fieldVerifications as Record<string, any>).forEach(([key, value]: [string, any]) => {
       const driverFields = ['driverName', 'driverContactNumber', 'driverLicense'];
+      const imageFields = ['driverPicture', 'vehicleNumberPlatePicture', 'gpsImeiPicture'];
+      
       if (driverFields.includes(key)) {
         driverDetailsFields[key] = value;
+      } else if (key.startsWith('vehicleImages[') || key.startsWith('sealingImages[') || imageFields.includes(key)) {
+        imageVerificationFields[key] = value;
       } else {
         loadingDetailsFields[key] = value;
       }
@@ -1237,6 +1242,313 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
     return (
       <>
+        {/* Verification Summary */}
+        <Paper elevation={1} sx={{ mb: 3 }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)', bgcolor: 'primary.main', color: 'white' }}>
+            <Typography variant="h6">Verification Results</Typography>
+          </Box>
+          
+          <Box sx={{ p: 3 }}>
+            {/* Verification metadata */}
+            <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary">Verified by:</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{completedBy?.name || 'Unknown'}</Typography>
+              </Box>
+              
+              <Box>
+                <Typography variant="body2" color="text.secondary">Verification completed:</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                  {completedAt ? formatTimestampExact(new Date(completedAt)) : 'N/A'}
+                </Typography>
+              </Box>
+              
+              <Box>
+                <Typography variant="body2" color="text.secondary">Overall match rate:</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 'medium', color: matchPercentage > 80 ? 'success.main' : matchPercentage > 60 ? 'warning.main' : 'error.main' }}>
+                  {matchPercentage}% ({verifiedFields} of {totalFields} fields)
+                </Typography>
+              </Box>
+            </Box>
+            
+            {/* Summary statistics */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+              {/* Loading Details Stats */}
+              <Paper elevation={2} sx={{ p: 2, minWidth: 200, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>Loading Details</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5">
+                      {Object.values(loadingDetailsFields).filter((f: any) => f.verified).length}/{Object.keys(loadingDetailsFields).length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">fields verified</Typography>
+                  </Box>
+                  {Object.keys(loadingDetailsFields).length > 0 && (
+                    <Box>
+                      <Chip 
+                        label={`${Math.round((Object.values(loadingDetailsFields).filter((f: any) => f.verified).length / Object.keys(loadingDetailsFields).length) * 100)}%`}
+                        color={
+                          Object.values(loadingDetailsFields).filter((f: any) => f.verified).length / Object.keys(loadingDetailsFields).length > 0.8
+                            ? 'success'
+                            : Object.values(loadingDetailsFields).filter((f: any) => f.verified).length / Object.keys(loadingDetailsFields).length > 0.6
+                              ? 'warning'
+                              : 'error'
+                        }
+                      />
+                    </Box>
+                  )}
+                </Box>
+              </Paper>
+              
+              {/* Driver Details Stats */}
+              <Paper elevation={2} sx={{ p: 2, minWidth: 200, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>Driver Details</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5">
+                      {Object.values(driverDetailsFields).filter((f: any) => f.verified).length}/{Object.keys(driverDetailsFields).length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">fields verified</Typography>
+                  </Box>
+                  {Object.keys(driverDetailsFields).length > 0 && (
+                    <Box>
+                      <Chip 
+                        label={`${Math.round((Object.values(driverDetailsFields).filter((f: any) => f.verified).length / Object.keys(driverDetailsFields).length) * 100)}%`}
+                        color={
+                          Object.values(driverDetailsFields).filter((f: any) => f.verified).length / Object.keys(driverDetailsFields).length > 0.8
+                            ? 'success'
+                            : Object.values(driverDetailsFields).filter((f: any) => f.verified).length / Object.keys(driverDetailsFields).length > 0.6
+                              ? 'warning'
+                              : 'error'
+                        }
+                      />
+                    </Box>
+                  )}
+                </Box>
+              </Paper>
+              
+              {/* Seal Tags Stats */}
+              <Paper elevation={2} sx={{ p: 2, minWidth: 200, flex: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>Seal Tags</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h5">
+                      {sealTagStats.verified || 0}/{sealTagStats.total || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">verified</Typography>
+                  </Box>
+                  {sealTagStats.total > 0 && (
+                    <Box>
+                      <Chip 
+                        label={`${Math.round(((sealTagStats.verified || 0) / (sealTagStats.total || 1)) * 100)}%`}
+                        color={
+                          (sealTagStats.verified || 0) / (sealTagStats.total || 1) > 0.8
+                            ? 'success'
+                            : (sealTagStats.verified || 0) / (sealTagStats.total || 1) > 0.6
+                              ? 'warning'
+                              : 'error'
+                        }
+                      />
+                    </Box>
+                  )}
+                </Box>
+                {sealTagStats.missing > 0 || sealTagStats.broken > 0 || sealTagStats.tampered > 0 ? (
+                  <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {sealTagStats.missing > 0 && <Chip size="small" label={`${sealTagStats.missing} Missing`} color="warning" />}
+                    {sealTagStats.broken > 0 && <Chip size="small" label={`${sealTagStats.broken} Broken`} color="error" />}
+                    {sealTagStats.tampered > 0 && <Chip size="small" label={`${sealTagStats.tampered} Tampered`} color="error" />}
+                  </Box>
+                ) : null}
+              </Paper>
+            </Box>
+          </Box>
+        </Paper>
+
+        {/* Loading Details Verification Results */}
+        {Object.keys(loadingDetailsFields).length > 0 && (
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6">Loading Details Verification</Typography>
+            </Box>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Operator Value</TableCell>
+                    <TableCell>Guard Verified Value</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Comment</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Object.entries(loadingDetailsFields).map(([key, field]: [string, any]) => {
+                    const operatorValue = field.operatorValue || session.tripDetails?.[key as keyof typeof session.tripDetails];
+                    const guardValue = field.guardValue !== undefined ? field.guardValue : operatorValue;
+                    const isMatch = String(operatorValue).toLowerCase() === String(guardValue).toLowerCase();
+                    
+                    return (
+                      <TableRow key={key}>
+                        <TableCell>{getFieldLabel(key)}</TableCell>
+                        <TableCell>{operatorValue || 'N/A'}</TableCell>
+                        <TableCell>{guardValue || 'N/A'}</TableCell>
+                        <TableCell>
+                          {field.verified ? (
+                            isMatch ? (
+                              <Chip
+                                size="small"
+                                label="MATCH"
+                                color="success"
+                                icon={<CheckCircle fontSize="small" />}
+                              />
+                            ) : (
+                              <Chip
+                                size="small"
+                                label="MISMATCH"
+                                color="warning"
+                                icon={<Warning fontSize="small" />}
+                              />
+                            )
+                          ) : (
+                            <Chip
+                              size="small"
+                              label="NOT VERIFIED"
+                              color="default"
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>{field.comment || '-'}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
+        
+        {/* Driver Details Verification Results */}
+        {Object.keys(driverDetailsFields).length > 0 && (
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6">Driver Details Verification</Typography>
+            </Box>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Operator Value</TableCell>
+                    <TableCell>Guard Verified Value</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Comment</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Object.entries(driverDetailsFields).map(([key, field]: [string, any]) => {
+                    const operatorValue = field.operatorValue || session.tripDetails?.[key as keyof typeof session.tripDetails];
+                    const guardValue = field.guardValue !== undefined ? field.guardValue : operatorValue;
+                    const isMatch = String(operatorValue).toLowerCase() === String(guardValue).toLowerCase();
+                    
+                    return (
+                      <TableRow key={key}>
+                        <TableCell>{getFieldLabel(key)}</TableCell>
+                        <TableCell>{operatorValue || 'N/A'}</TableCell>
+                        <TableCell>{guardValue || 'N/A'}</TableCell>
+                        <TableCell>
+                          {field.verified ? (
+                            isMatch ? (
+                              <Chip
+                                size="small"
+                                label="MATCH"
+                                color="success"
+                                icon={<CheckCircle fontSize="small" />}
+                              />
+                            ) : (
+                              <Chip
+                                size="small"
+                                label="MISMATCH"
+                                color="warning"
+                                icon={<Warning fontSize="small" />}
+                              />
+                            )
+                          ) : (
+                            <Chip
+                              size="small"
+                              label="NOT VERIFIED"
+                              color="default"
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>{field.comment || '-'}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
+        
+        {/* Seal Tag Verification Results */}
+        {guardSealTags.length > 0 && (
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6">Seal Tag Verification</Typography>
+            </Box>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Operator Seal Tag</TableCell>
+                    <TableCell>Guard Verified</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Verified By</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {session.sealTags && session.sealTags.map(tag => {
+                    // Find matching guard tag
+                    const matchingGuardTag = guardSealTags.find((guardTag: any) => 
+                      guardTag.barcode === tag.barcode
+                    );
+                    
+                    return (
+                      <TableRow key={tag.id}>
+                        <TableCell>{tag.barcode}</TableCell>
+                        <TableCell>{matchingGuardTag ? 'Yes' : 'No'}</TableCell>
+                        <TableCell>
+                          {matchingGuardTag ? (
+                            <Chip 
+                              size="small"
+                              label={matchingGuardTag.status || 'VERIFIED'} 
+                              color={
+                                matchingGuardTag.status === 'BROKEN' || matchingGuardTag.status === 'TAMPERED' ? 'error' : 
+                                matchingGuardTag.status === 'MISSING' ? 'warning' : 'success'
+                              }
+                            />
+                          ) : (
+                            <Chip size="small" label="NOT VERIFIED" color="default" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {matchingGuardTag ? 
+                            (matchingGuardTag.verifiedBy?.name || matchingGuardTag.scannedByName || 'Unknown') : 
+                            '-'
+                          }
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
+
         {/* Loading Details Table */}
         <Paper elevation={1} sx={{ mb: 3 }}>
           <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
@@ -1459,135 +1771,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Box>
           )}
         </Paper>
-
-        {/* Images Section */}
-        {session?.images && Object.keys(session.images).some(key => {
-          const value = session.images && session.images[key as keyof typeof session.images];
-          return !!value;
-        }) && (
-          <Paper elevation={1} sx={{ mb: 3 }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-              <Typography variant="h6">Images</Typography>
-            </Box>
-            <Box sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {session.images.driverPicture && (
-                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <Typography variant="subtitle2" gutterBottom>Driver</Typography>
-                    <img 
-                      src={session.images.driverPicture} 
-                      alt="Driver" 
-                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                      onClick={() => {
-                        setSelectedImage(session.images!.driverPicture!);
-                        setOpenImageModal(true);
-                      }} 
-                    />
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'driverPicture')?.timestamp
-                        ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'driverPicture').timestamp))
-                        : formatTimestampExact(session.createdAt)}
-                    </Typography>
-                  </Box>
-                )}
-                
-                {session.images.vehicleNumberPlatePicture && (
-                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <Typography variant="subtitle2" gutterBottom>Number Plate</Typography>
-                    <img 
-                      src={session.images.vehicleNumberPlatePicture} 
-                      alt="Vehicle Number Plate" 
-                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                      onClick={() => {
-                        setSelectedImage(session.images!.vehicleNumberPlatePicture!);
-                        setOpenImageModal(true);
-                      }} 
-                    />
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture')?.timestamp
-                        ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture').timestamp))
-                        : formatTimestampExact(session.createdAt)}
-                    </Typography>
-                  </Box>
-                )}
-                
-                {session.images.gpsImeiPicture && (
-                  <Box sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                    <Typography variant="subtitle2" gutterBottom>GPS/IMEI</Typography>
-                    <img 
-                      src={session.images.gpsImeiPicture} 
-                      alt="GPS IMEI" 
-                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                      onClick={() => {
-                        setSelectedImage(session.images!.gpsImeiPicture!);
-                        setOpenImageModal(true);
-                      }} 
-                    />
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'gpsImeiPicture')?.timestamp
-                        ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'gpsImeiPicture').timestamp))
-                        : formatTimestampExact(session.createdAt)}
-                    </Typography>
-                  </Box>
-                )}
-                
-                {/* Vehicle Images */}
-                {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
-                  <>
-                    <Box sx={{ width: '100%', mt: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>Vehicle Images</Typography>
-                    </Box>
-                    {session.images.vehicleImages.map((image, index) => (
-                      <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                        <img 
-                          src={image} 
-                          alt={`Vehicle ${index + 1}`} 
-                          style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                          onClick={() => {
-                            setSelectedImage(image);
-                            setOpenImageModal(true);
-                          }} 
-                        />
-                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                          {session?.fieldTimestamps?.find((t: any) => t.fieldName === `vehicleImages[${index}]`)?.timestamp
-                            ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp))
-                            : formatTimestampExact(session.createdAt)}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </>
-                )}
-                
-                {/* Sealing Images */}
-                {session.images.sealingImages && session.images.sealingImages.length > 0 && (
-                  <>
-                    <Box sx={{ width: '100%', mt: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>Sealing Images</Typography>
-                    </Box>
-                    {session.images.sealingImages.map((image, index) => (
-                      <Box key={`sealing-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
-                        <img 
-                          src={image} 
-                          alt={`Sealing ${index + 1}`} 
-                          style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                          onClick={() => {
-                            setSelectedImage(image);
-                            setOpenImageModal(true);
-                          }} 
-                        />
-                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                          {session?.fieldTimestamps?.find((t: any) => t.fieldName === `sealingImages[${index}]`)?.timestamp
-                            ? formatTimestampExact(new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp))
-                            : formatTimestampExact(session.createdAt)}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </>
-                )}
-              </Box>
-            </Box>
-          </Paper>
-        )}
       </>
     );
   };
