@@ -1850,16 +1850,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 </Box>
               </Box>
             </Box>
-            <Button 
-              variant="outlined" 
-              startIcon={<Print />}
-              onClick={() => {
-                toast.success("Print current session details");
-              }}
-              title="Print the current view of session details"
-            >
-              Print
-            </Button>
             {/* PDF Icon - No button container */}
             <Box 
               sx={{ 
