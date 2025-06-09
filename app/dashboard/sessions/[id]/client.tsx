@@ -1748,6 +1748,46 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     router.push('/dashboard/sessions');
   };
 
+  // Add function to download PDF
+  const handleDownloadPdf = async () => {
+    try {
+      toast.loading("Generating PDF report...");
+      
+      // Request PDF from the API
+      const response = await fetch(`/api/reports/sessions/${sessionId}/pdf`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF report');
+      }
+      
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `session-${sessionId}.pdf`;
+      
+      // Append to the document, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL
+      window.URL.revokeObjectURL(url);
+      
+      toast.dismiss();
+      toast.success("PDF report downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      toast.dismiss();
+      toast.error("Failed to download PDF report");
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -1862,9 +1902,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 cursor: 'pointer',
                 ml: 1
               }}
-              onClick={() => {
-                toast.success("PDF Report generation will be implemented");
-              }}
+              onClick={handleDownloadPdf}
               title="Generate PDF Report"
             >
               <Box sx={{ 
