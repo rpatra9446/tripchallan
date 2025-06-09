@@ -1221,7 +1221,6 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   type="file"
                   hidden
                   accept="image/*"
-                  capture="environment"
                   onClick={(e) => {
                     // Reset the input value to ensure onChange is always triggered
                     e.currentTarget.value = '';
@@ -1231,11 +1230,24 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Camera input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                      const file = e.target.files[0];
+                        const file = e.target.files[0];
                         console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                      setSealTagImage(file);
-                        // Show feedback to user
-                        toast.success(`Image captured successfully: ${file.name}`);
+                        
+                        // Create a new FileReader to read the image file
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          console.log('FileReader onload event triggered');
+                          // Set the image to state to ensure it's retained
+                          setSealTagImage(file);
+                          // Show feedback to user
+                          toast.success(`Image captured successfully: ${file.name}`);
+                        };
+                        reader.onerror = () => {
+                          console.error('Error reading file:', reader.error);
+                          toast.error('Failed to process image. Please try again.');
+                        };
+                        // Start reading the file
+                        reader.readAsDataURL(file);
                       } catch (error) {
                         console.error('Error capturing image:', error);
                         toast.error('Failed to capture image. Please try again.');
@@ -1265,11 +1277,24 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Upload input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                      const file = e.target.files[0];
+                        const file = e.target.files[0];
                         console.log(`File uploaded: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                      setSealTagImage(file);
-                        // Show feedback to user
-                        toast.success(`Image uploaded successfully: ${file.name}`);
+                        
+                        // Create a new FileReader to read the image file
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          console.log('FileReader onload event triggered');
+                          // Set the image to state to ensure it's retained
+                          setSealTagImage(file);
+                          // Show feedback to user
+                          toast.success(`Image uploaded successfully: ${file.name}`);
+                        };
+                        reader.onerror = () => {
+                          console.error('Error reading file:', reader.error);
+                          toast.error('Failed to process image. Please try again.');
+                        };
+                        // Start reading the file
+                        reader.readAsDataURL(file);
                       } catch (error) {
                         console.error('Error uploading image:', error);
                         toast.error('Failed to upload image. Please try again.');
