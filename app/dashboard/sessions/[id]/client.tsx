@@ -1988,6 +1988,73 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               </TableContainer>
             </Paper>
           )}
+          
+          {/* Guard Seal Tags - For completed sessions only */}
+          {session.status === SessionStatus.COMPLETED && session.guardSealTags && session.guardSealTags.length > 0 && (
+            <Paper elevation={1} sx={{ mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                <Typography variant="h6">Guard Seal Tags</Typography>
+              </Box>
+              
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Barcode</TableCell>
+                      <TableCell>Method</TableCell>
+                      <TableCell>Scanned By</TableCell>
+                      <TableCell>Timestamp</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Image</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {session.guardSealTags.map((tag: any) => (
+                      <TableRow key={tag.id}>
+                        <TableCell>{tag.barcode}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={getMethodDisplay(tag.method)} 
+                            color={getMethodColor(tag.method)} 
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{tag.verifiedBy?.name || tag.scannedByName || 'Unknown'}</TableCell>
+                        <TableCell>
+                          {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={tag.status || 'VERIFIED'} 
+                            color={
+                              tag.status === 'BROKEN' || tag.status === 'TAMPERED' ? 'error' : 
+                              tag.status === 'MISSING' ? 'warning' : 'success'
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {(tag.imageUrl || tag.imageData) ? (
+                            <img 
+                              src={tag.imageUrl || tag.imageData} 
+                              alt={`Seal tag ${tag.barcode}`}
+                              style={{ width: '80px', height: '80px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
+                              onClick={() => {
+                                setSelectedImage(tag.imageUrl || tag.imageData || '');
+                                setOpenImageModal(true);
+                              }}
+                            />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">No image</Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
 
           {/* Driver Details */}
           {session?.tripDetails?.driverName && (
