@@ -390,7 +390,11 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   };
 
   // Process images for upload
-  const processImageForUpload = async (imageFile: File): Promise<string> => {
+  const processImageForUpload = async (imageFile: File | null): Promise<string> => {
+    if (!imageFile) {
+      throw new Error("No image file provided");
+    }
+    
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -428,9 +432,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
 
       // Prepare image data if provided
       let imageData = null;
-      if (imageFile) {
-        imageData = await processImageForUpload(imageFile);
-      }
+      // Image file will never be null at this point - we checked above
+      imageData = await processImageForUpload(imageFile);
       
       // Send to API
       const response = await fetch(`/api/sessions/${sessionId}/guardSealTags`, {
@@ -1212,29 +1215,44 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 sx={{ 
                   bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
                   borderColor: sealTagImage ? 'success.main' : 'inherit',
+                  color: sealTagImage ? 'success.main' : 'inherit',
                   '&:hover': {
                     bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.12)' : 'rgba(0, 0, 0, 0.04)',
                   }
                 }}
               >
-                {sealTagImage ? 'Image Captured' : 'Take Photo'}
+                {sealTagImage ? (
+                  <>
+                    <CheckCircle fontSize="small" sx={{ mr: 0.5 }} />
+                    Image Ready
+                  </>
+                ) : 'Take Photo'}
                 <input
                   type="file"
                   hidden
                   accept="image/*"
                   capture="environment"
                   onClick={(e) => {
-                    // Reset the input value to ensure onChange is always triggered
+                    // We don't need to store currentImageRef since we're not using it
+                    // Just reset the input value
                     e.currentTarget.value = '';
-                    console.log('Camera input clicked');
+                    
+                    // Set a flag on the element to indicate we're processing a new image selection
+                    (e.currentTarget as any).imageSelectionInProgress = true;
+                    
+                    console.log('Camera input clicked, current image preserved');
                   }}
                   onChange={(e) => {
                     console.log('Camera input onChange triggered');
+                    
+                    // Mark the selection as no longer in progress
+                    (e.currentTarget as any).imageSelectionInProgress = false;
+                    
                     if (e.target.files && e.target.files[0]) {
                       try {
-                      const file = e.target.files[0];
+                        const file = e.target.files[0];
                         console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                      setSealTagImage(file);
+                        setSealTagImage(file);
                         // Show feedback to user
                         toast.success(`Image captured successfully: ${file.name}`);
                       } catch (error) {
@@ -1243,7 +1261,21 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       }
                     } else {
                       console.log('No file selected from camera');
+                      // Don't clear sealTagImage here - it should retain the previous value
                     }
+                  }}
+                  onBlur={(e) => {
+                    // If selection was canceled and we lost focus without selecting a file,
+                    // ensure we don't inadvertently clear the existing image
+                    setTimeout(() => {
+                      const inputEl = e.currentTarget;
+                      
+                      // If there was a selection in progress but no files were selected
+                      if ((inputEl as any).imageSelectionInProgress && (!inputEl.files || inputEl.files.length === 0)) {
+                        console.log('Selection canceled, keeping existing image');
+                        (inputEl as any).imageSelectionInProgress = false;
+                      }
+                    }, 200);
                   }}
                 />
               </Button>
@@ -1251,24 +1283,46 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 variant="outlined"
                 component="label"
                 startIcon={<CloudUpload />}
+                sx={{ 
+                  bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
+                  borderColor: sealTagImage ? 'success.main' : 'inherit',
+                  color: sealTagImage ? 'success.main' : 'inherit',
+                  '&:hover': {
+                    bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                  }
+                }}
               >
-                Upload
+                {sealTagImage ? (
+                  <>
+                    <CheckCircle fontSize="small" sx={{ mr: 0.5 }} />
+                    Image Ready
+                  </>
+                ) : 'Upload'}
                 <input
                   type="file"
                   hidden
                   accept="image/*"
                   onClick={(e) => {
-                    // Reset the input value to ensure onChange is always triggered
+                    // We don't need to store currentImageRef since we're not using it
+                    // Just reset the input value
                     e.currentTarget.value = '';
-                    console.log('Upload input clicked');
+                    
+                    // Set a flag on the element to indicate we're processing a new image selection
+                    (e.currentTarget as any).imageSelectionInProgress = true;
+                    
+                    console.log('Upload input clicked, current image preserved');
                   }}
                   onChange={(e) => {
                     console.log('Upload input onChange triggered');
+                    
+                    // Mark the selection as no longer in progress
+                    (e.currentTarget as any).imageSelectionInProgress = false;
+                    
                     if (e.target.files && e.target.files[0]) {
                       try {
-                      const file = e.target.files[0];
+                        const file = e.target.files[0];
                         console.log(`File uploaded: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                      setSealTagImage(file);
+                        setSealTagImage(file);
                         // Show feedback to user
                         toast.success(`Image uploaded successfully: ${file.name}`);
                       } catch (error) {
@@ -1277,7 +1331,21 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                       }
                     } else {
                       console.log('No file selected for upload');
+                      // Don't clear sealTagImage here - it should retain the previous value
                     }
+                  }}
+                  onBlur={(e) => {
+                    // If selection was canceled and we lost focus without selecting a file,
+                    // ensure we don't inadvertently clear the existing image
+                    setTimeout(() => {
+                      const inputEl = e.currentTarget;
+                      
+                      // If there was a selection in progress but no files were selected
+                      if ((inputEl as any).imageSelectionInProgress && (!inputEl.files || inputEl.files.length === 0)) {
+                        console.log('Selection canceled, keeping existing image');
+                        (inputEl as any).imageSelectionInProgress = false;
+                      }
+                    }, 200);
                   }}
                 />
               </Button>
