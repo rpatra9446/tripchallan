@@ -1106,8 +1106,9 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               label="Seal Tag ID"
               value={scanInput}
               onChange={(e) => {
-                setScanInput(e.target.value);
-                setError("");
+                const newValue = e.target.value;
+                setScanInput(newValue);
+                if (error) setError("");
               }}
               error={!!scanError || !!error}
               helperText={scanError || error}
@@ -1118,20 +1119,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 spellCheck: "false",
                 autoComplete: "off",
               }}
-              onBlur={(e) => {
-                // Prevent losing focus when we're just displaying an error
-                // Allow blur only when explicitly clicking away
-                if (e.relatedTarget && !e.relatedTarget.closest('button')) {
-                  // Let it blur naturally if clicking somewhere else
-                  return;
-                }
-                // Refocus after a slight delay to prevent continuous blur/focus cycle
-                setTimeout(() => {
-                  if (inputRef.current) {
-                    inputRef.current.focus();
-                  }
-                }, 100);
-              }}
+              // Removed automatic refocus on blur to prevent focus cycling issues
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
