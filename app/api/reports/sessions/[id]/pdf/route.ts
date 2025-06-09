@@ -419,7 +419,7 @@ export const GET = withAuth(
 
       // Add Images
       // Helper function to add images to PDF with better layout
-      const addImagesToPdf = (imageList: string[], title: string) => {
+      const addImagesToPdf = (imageList: string[], title: string, imageLabels?: string[]) => {
         if (!imageList || imageList.length === 0) return;
         
         doc.addPage();
@@ -432,9 +432,12 @@ export const GET = withAuth(
         doc.setFontSize(12);
         doc.text(title, pageWidth / 2, 10, { align: 'center' });
         
+        // Set up a responsive grid layout similar to the web interface
         const margin = 15;
-        const imgWidth = 80;
-        const imgHeight = 80;
+        const contentWidth = pageWidth - (margin * 2);
+        const imagesPerRow = 2; // Show 2 images per row like the web interface
+        const imgWidth = (contentWidth / imagesPerRow) - 10; // 10px gap between images
+        const imgHeight = 120; // Taller images like on the web page
         const spacing = 10;
         let xPos = margin;
         let yPos = 25;
@@ -443,30 +446,54 @@ export const GET = withAuth(
           if (!img) return;
           
           try {
-            // Add image frame
-            doc.setDrawColor(220, 220, 220);
+            // Create a card-like container for each image
+            doc.setDrawColor(200, 200, 200);
             doc.setFillColor(252, 252, 252);
-            doc.roundedRect(xPos - 2, yPos - 2, imgWidth + 4, imgHeight + 14, 2, 2, 'FD');
+            doc.roundedRect(xPos, yPos, imgWidth, imgHeight + 25, 2, 2, 'FD');
             
-            // Add image to PDF
-            doc.addImage(img, 'AUTO', xPos, yPos, imgWidth, imgHeight);
-            
-            // Add caption
-            doc.setFontSize(9);
-            doc.setTextColor(80, 80, 80);
+            // Add label as a header above the image
+            const label = imageLabels && imageLabels[index] 
+              ? imageLabels[index] 
+              : `Image ${index+1}`;
+              
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
             doc.setFont('helvetica', 'bold');
-            doc.text(`Image ${index+1}`, xPos + imgWidth/2, yPos + imgHeight + 7, { align: 'center' });
+            doc.text(label, xPos + 5, yPos + 10);
+            
+            // Add image to PDF with proper aspect ratio preservation
+            try {
+              doc.addImage(
+                img, 
+                'AUTO', 
+                xPos + 5, 
+                yPos + 15, 
+                imgWidth - 10, 
+                imgHeight - 10, 
+                undefined, 
+                'FAST', 
+                0
+              );
+            } catch (err) {
+              console.error(`Error adding image ${index}:`, err);
+              // Add placeholder for failed image
+              doc.setFillColor(240, 240, 240);
+              doc.rect(xPos + 5, yPos + 15, imgWidth - 10, imgHeight - 10, 'F');
+              doc.setTextColor(150, 150, 150);
+              doc.setFontSize(8);
+              doc.text('Image not available', xPos + (imgWidth/2), yPos + (imgHeight/2), { align: 'center' });
+            }
             
             // Update position for next image
-            xPos += imgWidth + spacing + 5;
+            xPos += imgWidth + spacing;
             
             // If we're at the end of the row, go to the next row
             if (xPos + imgWidth > doc.internal.pageSize.width - margin) {
               xPos = margin;
-              yPos += imgHeight + spacing + 15; // 15 extra for caption and frame
+              yPos += imgHeight + spacing + 25; // Additional space for captions
               
               // If we're at the bottom of the page, add a new page
-              if (yPos + imgHeight > doc.internal.pageSize.height - margin) {
+              if (yPos + imgHeight + 20 > doc.internal.pageSize.height - margin) {
                 doc.addPage();
                 
                 // Add header to the new page
@@ -481,54 +508,101 @@ export const GET = withAuth(
               }
             }
           } catch (error) {
-            console.error(`Error adding image to PDF:`, error);
+            console.error(`Error processing image in PDF:`, error);
           }
         });
       };
 
-      // Add seal tag images
-      let sealTagImages: string[] = [];
-      if (sessionData.sealTags) {
-        sealTagImages = sessionData.sealTags
+      // Function to organize and add single images with proper labels
+      const addSingleImagesSection = () => {
+        const singleImageData: string[] = [];
+        const singleImageLabels: string[] = [];
+        
+        // Add driver picture
+        if (images.driverPicture) {
+          singleImageData.push(images.driverPicture);
+          singleImageLabels.push('Driver Picture');
+        }
+        
+        // Add vehicle number plate picture
+        if (images.vehicleNumberPlatePicture) {
+          singleImageData.push(images.vehicleNumberPlatePicture);
+          singleImageLabels.push('Vehicle Number Plate');
+        }
+        
+        // Add GPS IMEI picture
+        if (images.gpsImeiPicture) {
+          singleImageData.push(images.gpsImeiPicture);
+          singleImageLabels.push('GPS IMEI Picture');
+        }
+        
+        if (singleImageData.length > 0) {
+          addImagesToPdf(singleImageData, 'SESSION IMAGES', singleImageLabels);
+        }
+      };
+
+      // Add seal tag images with proper labels
+      if (sessionData.sealTags && sessionData.sealTags.length > 0) {
+        const sealTagImages: string[] = [];
+        const sealTagLabels: string[] = [];
+        
+        sessionData.sealTags
           .filter(tag => tag.imageData || tag.imageUrl)
-          .map(tag => (tag.imageData || tag.imageUrl || '') as string);
+          .forEach(tag => {
+            const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+            if (imageUrl) {
+              sealTagImages.push(imageUrl);
+              sealTagLabels.push(`Seal Tag: ${tag.barcode}`);
+            }
+          });
+        
+        if (sealTagImages.length > 0) {
+          addImagesToPdf(sealTagImages, 'OPERATOR SEAL TAG IMAGES', sealTagLabels);
+        }
       }
       
-      if (sealTagImages.length > 0) {
-        addImagesToPdf(sealTagImages, 'OPERATOR SEAL TAG IMAGES');
-      }
-      
-      // Add guard seal tag images
-      let guardSealTagImages: string[] = [];
-      if (sessionData.guardSealTags) {
-        guardSealTagImages = sessionData.guardSealTags
+      // Add guard seal tag images with proper labels
+      if (sessionData.guardSealTags && sessionData.guardSealTags.length > 0) {
+        const guardSealTagImages: string[] = [];
+        const guardSealTagLabels: string[] = [];
+        
+        sessionData.guardSealTags
           .filter(tag => tag.imageData || tag.imageUrl)
-          .map(tag => (tag.imageData || tag.imageUrl || '') as string);
-      }
-      
-      if (guardSealTagImages.length > 0) {
-        addImagesToPdf(guardSealTagImages, 'GUARD SEAL TAG IMAGES');
+          .forEach(tag => {
+            const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+            if (imageUrl) {
+              guardSealTagImages.push(imageUrl);
+              guardSealTagLabels.push(`Guard Seal Tag: ${tag.barcode}`);
+            }
+          });
+        
+        if (guardSealTagImages.length > 0) {
+          addImagesToPdf(guardSealTagImages, 'GUARD SEAL TAG IMAGES', guardSealTagLabels);
+        }
       }
 
-      // Add other session images
-      if (images.driverPicture || images.vehicleNumberPlatePicture || images.gpsImeiPicture) {
-        const singleImages = [
-          images.driverPicture,
-          images.vehicleNumberPlatePicture,
-          images.gpsImeiPicture
-        ].filter(Boolean) as string[];
-        
-        addImagesToPdf(singleImages, 'SESSION IMAGES');
+      // Add single session images (driver, vehicle plate, GPS)
+      addSingleImagesSection();
+      
+      // Add vehicle images with labels
+      if (images.vehicleImages && images.vehicleImages.length > 0) {
+        const validImages = images.vehicleImages.filter(Boolean);
+        const vehicleLabels = validImages.map((_, i) => `Vehicle Image ${i+1}`);
+        addImagesToPdf(validImages, 'VEHICLE IMAGES', vehicleLabels);
       }
       
-      // Add vehicle images
-      if (images.vehicleImages && images.vehicleImages.length > 0) {
-        addImagesToPdf(images.vehicleImages.filter(Boolean), 'VEHICLE IMAGES');
+      // Add sealing images with labels
+      if (images.sealingImages && images.sealingImages.length > 0) {
+        const validImages = images.sealingImages.filter(Boolean);
+        const sealingLabels = validImages.map((_, i) => `Sealing Image ${i+1}`);
+        addImagesToPdf(validImages, 'SEALING IMAGES', sealingLabels);
       }
       
       // Add additional images
       if (images.additionalImages && images.additionalImages.length > 0) {
-        addImagesToPdf(images.additionalImages.filter(Boolean), 'ADDITIONAL IMAGES');
+        const validImages = images.additionalImages.filter(Boolean);
+        const additionalLabels = validImages.map((_, i) => `Additional Image ${i+1}`);
+        addImagesToPdf(validImages, 'ADDITIONAL IMAGES', additionalLabels);
       }
       
       // Add footer with page numbers
