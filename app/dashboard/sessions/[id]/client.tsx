@@ -1192,24 +1192,14 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       log.details?.verification?.completedBy
     );
 
-    if (!verificationLog) {
-      console.log("No verification log found in activity logs", session.activityLogs);
-      return null;
-    }
-
-    console.log("Verification log found:", verificationLog);
-    const verificationDetails = verificationLog.details?.verification || {};
-    console.log("Verification details:", verificationDetails);
-    
+    // Initialize default verification data structure
+    const verificationDetails = verificationLog?.details?.verification || {};
     const fieldVerifications = verificationDetails.fieldVerifications || {};
-    console.log("Field verifications:", fieldVerifications);
     
     const completedBy = verificationDetails.hasOwnProperty('completedBy') ? 
       (verificationDetails as any).completedBy : {};
     const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
       (verificationDetails as any).completedAt : '';
-    // Use the guardSealTags directly from the session object 
-    const guardSealTags = session.guardSealTags || [];
 
     // Calculate verification statistics
     const totalFields = Object.keys(fieldVerifications).length;
@@ -1236,15 +1226,45 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
       }
     });
 
-    // Get seal tag verification data
-    const sealTagStats = verificationDetails.hasOwnProperty('sealTags') ? 
-      (verificationDetails as any).sealTags : {
-      total: 0,
-      verified: 0,
-      missing: 0,
-      broken: 0,
-      tampered: 0
+    // Calculate Seal Tag verification statistics based on guardSealTags
+    const guardSealTags = session.guardSealTags || [];
+    const operatorSealTags = session.sealTags || [];
+    
+    // Calculate seal tag stats
+    const sealTagStats = {
+      total: operatorSealTags.length,
+      verified: guardSealTags.filter(tag => tag.status !== 'MISSING' && tag.status !== 'BROKEN' && tag.status !== 'TAMPERED').length,
+      missing: guardSealTags.filter(tag => tag.status === 'MISSING').length,
+      broken: guardSealTags.filter(tag => tag.status === 'BROKEN').length,
+      tampered: guardSealTags.filter(tag => tag.status === 'TAMPERED').length
     };
+
+    // Fallback to existing verification data if available
+    if (verificationDetails.hasOwnProperty('sealTags') && 
+        (sealTagStats.total === 0 || 
+         (sealTagStats.verified === 0 && sealTagStats.missing === 0 && sealTagStats.broken === 0 && sealTagStats.tampered === 0))) {
+      Object.assign(sealTagStats, (verificationDetails as any).sealTags);
+    }
+
+    // Calculate loading details statistics if empty
+    if (Object.keys(loadingDetailsFields).length === 0 && session.tripDetails) {
+      const tripDetailsKeys = Object.keys(session.tripDetails);
+      tripDetailsKeys.forEach(key => {
+        if (session.tripDetails && session.tripDetails[key as keyof typeof session.tripDetails]) {
+          loadingDetailsFields[key] = { verified: true, value: session.tripDetails[key as keyof typeof session.tripDetails] };
+        }
+      });
+    }
+
+    // Calculate driver details statistics if empty
+    if (Object.keys(driverDetailsFields).length === 0 && session.tripDetails) {
+      const driverFields = ['driverName', 'driverContactNumber', 'driverLicense'];
+      driverFields.forEach(key => {
+        if (session.tripDetails && session.tripDetails[key as keyof typeof session.tripDetails]) {
+          driverDetailsFields[key] = { verified: true, value: session.tripDetails[key as keyof typeof session.tripDetails] };
+        }
+      });
+    }
 
     return (
       <>
@@ -1339,18 +1359,18 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h5">
-                      {sealTagStats.verified || 0}/{sealTagStats.total || 0}
+                      {sealTagStats.verified}/{sealTagStats.total}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">verified</Typography>
                   </Box>
                   {sealTagStats.total > 0 && (
                     <Box>
                       <Chip 
-                        label={`${Math.round(((sealTagStats.verified || 0) / (sealTagStats.total || 1)) * 100)}%`}
+                        label={`${Math.round((sealTagStats.verified / sealTagStats.total) * 100)}%`}
                         color={
-                          (sealTagStats.verified || 0) / (sealTagStats.total || 1) > 0.8
+                          sealTagStats.verified / sealTagStats.total > 0.8
                             ? 'success'
-                            : (sealTagStats.verified || 0) / (sealTagStats.total || 1) > 0.6
+                            : sealTagStats.verified / sealTagStats.total > 0.6
                               ? 'warning'
                               : 'error'
                         }
@@ -1369,6 +1389,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             </Box>
           </Box>
         </Paper>
+
+        {/* Seal Tag Verification Details */}
+        {sealTagStats.total > 0 && (
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6">Seal Tag Verification</Typography>
+            </Box>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Operator Seal Tag</TableCell>
+                    <TableCell>Guard Verified</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Verified By</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {operatorSealTags.map(operatorTag => {
+                    const matchingGuardTag = guardSealTags.find(guardTag => 
+                      guardTag.barcode === operatorTag.barcode
+                    );
+                    
+                    return (
+                      <TableRow key={operatorTag.id}>
+                        <TableCell>{operatorTag.barcode}</TableCell>
+                        <TableCell>{matchingGuardTag ? 'Yes' : 'No'}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={matchingGuardTag?.status || 'UNVERIFIED'} 
+                            color={
+                              !matchingGuardTag ? 'default' :
+                              matchingGuardTag.status === 'BROKEN' || matchingGuardTag.status === 'TAMPERED' ? 'error' : 
+                              matchingGuardTag.status === 'MISSING' ? 'warning' : 'success'
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {matchingGuardTag?.verifiedBy?.name || matchingGuardTag?.scannedByName || completedBy?.name || 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
 
         {/* Loading Details Verification Results */}
         {Object.keys(loadingDetailsFields).length > 0 && (
@@ -1498,63 +1568,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Paper>
         )}
         
-        {/* Seal Tag Verification Results */}
-        {guardSealTags.length > 0 && (
-          <Paper elevation={1} sx={{ mb: 3 }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-              <Typography variant="h6">Seal Tag Verification</Typography>
-            </Box>
-            
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Operator Seal Tag</TableCell>
-                    <TableCell>Guard Verified</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Verified By</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {session.sealTags && session.sealTags.map(tag => {
-                    // Find matching guard tag
-                    const matchingGuardTag = guardSealTags.find((guardTag: any) => 
-                      guardTag.barcode === tag.barcode
-                    );
-                    
-                    return (
-                      <TableRow key={tag.id}>
-                        <TableCell>{tag.barcode}</TableCell>
-                        <TableCell>{matchingGuardTag ? 'Yes' : 'No'}</TableCell>
-                        <TableCell>
-                          {matchingGuardTag ? (
-                            <Chip 
-                              size="small"
-                              label={matchingGuardTag.status || 'VERIFIED'} 
-                              color={
-                                matchingGuardTag.status === 'BROKEN' || matchingGuardTag.status === 'TAMPERED' ? 'error' : 
-                                matchingGuardTag.status === 'MISSING' ? 'warning' : 'success'
-                              }
-                            />
-                          ) : (
-                            <Chip size="small" label="NOT VERIFIED" color="default" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {matchingGuardTag ? 
-                            (matchingGuardTag.verifiedBy?.name || matchingGuardTag.scannedByName || 'Unknown') : 
-                            '-'
-                          }
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        )}
-
         {/* Image Verification Results - If applicable */}
         {Object.keys(imageVerificationFields).length > 0 && (
           <Paper elevation={1} sx={{ mb: 3 }}>
