@@ -18,27 +18,37 @@ interface SuperAdminTransferCoinsFormProps {
   currentBalance: number;
 }
 
+// Create validation schema
 const transferSchema = Yup.object().shape({
-  toUserId: Yup.string().required('Recipient is required'),
+  toUserId: Yup.string()
+    .required('Please select an admin'),
   amount: Yup.number()
     .required('Amount is required')
     .positive('Amount must be positive')
     .integer('Amount must be a whole number'),
-  notes: Yup.string(),
+  notes: Yup.string()
+    .max(200, 'Notes cannot be longer than 200 characters')
 });
 
 export default function SuperAdminTransferCoinsForm({ onSuccess, currentBalance }: SuperAdminTransferCoinsFormProps) {
-  const { data: session } = useSession();
-  const { refreshUserSession } = useContext(SessionUpdateContext);
+  const { data: session, update: updateSessionData } = useSession();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { refreshUserSession } = useContext(SessionUpdateContext);
 
   // Function to fetch admin users
   const fetchAdminUsers = async () => {
     try {
       if (session?.user?.role === UserRole.SUPERADMIN) {
-        const response = await fetch('/api/admins');
+        const response = await fetch('/api/admins', {
+          cache: 'no-store', // Ensure we don't get cached data
+          headers: {
+            'pragma': 'no-cache',
+            'cache-control': 'no-cache',
+            'x-refresh-timestamp': Date.now().toString()
+          }
+        });
         
         if (!response.ok) {
           throw new Error(`API returned status ${response.status}`);
@@ -52,7 +62,7 @@ export default function SuperAdminTransferCoinsForm({ onSuccess, currentBalance 
       }
     } catch (err) {
       console.error('Error fetching admins:', err);
-      setError('Failed to refresh admin users');
+      setError('Failed to load admin users');
     }
   };
 
@@ -140,11 +150,28 @@ export default function SuperAdminTransferCoinsForm({ onSuccess, currentBalance 
         throw new Error(data.error || 'Failed to allocate coins');
       }
 
+      // Store the verified coin balance temporarily in localStorage
+      // This ensures it's immediately available in other parts of the UI
+      if (data.verified && data.verified.sender && data.verified.sender.coins !== undefined) {
+        try {
+          localStorage.setItem('lastCoinBalance', data.verified.sender.coins.toString());
+          localStorage.setItem('coinBalanceUpdatedAt', Date.now().toString());
+        } catch (err) {
+          console.error("Error saving balance to localStorage:", err);
+        }
+      }
+
       toast.success('Coins allocated successfully!');
       resetForm();
       
+      // Important: Wait for async operations to complete
       // Update the session to reflect new coin balance - wait for it to complete
       await refreshUserSession();
+      
+      // Force a second refresh after a small delay to ensure changes are picked up
+      setTimeout(async () => {
+        await refreshUserSession();
+      }, 500);
       
       // Refresh admin users list to update their coin balances
       await fetchAdminUsers();
@@ -208,14 +235,12 @@ export default function SuperAdminTransferCoinsForm({ onSuccess, currentBalance 
                 as="select"
                 id="toUserId"
                 name="toUserId"
-                className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md ${
-                  errors.toUserId && touched.toUserId ? 'border-red-500' : ''
-                }`}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
               >
                 <option value="">Select an admin</option>
                 {admins.map((admin) => (
                   <option key={admin.id} value={admin.id}>
-                    {admin.name} ({admin.email}) - Current: {admin.coins || 0} coins
+                    {admin.name} ({admin.email}) - {admin.coins} coins
                   </option>
                 ))}
               </Field>
@@ -230,10 +255,9 @@ export default function SuperAdminTransferCoinsForm({ onSuccess, currentBalance 
                 type="number"
                 id="amount"
                 name="amount"
+                min="1"
                 max={currentBalance}
-                className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md ${
-                  errors.amount && touched.amount ? 'border-red-500' : ''
-                }`}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
               />
               <ErrorMessage name="amount" component="div" className="text-red-500 text-sm mt-1" />
             </div>

@@ -147,11 +147,27 @@ async function handler(req: NextRequest) {
       timeout: 10000, // 10 seconds timeout
     });
 
-    // After transaction, double-check the actual user balance to ensure consistency
+    // IMPORTANT: We need to make sure the transaction has been committed
+    // and the database is updated before returning a response.
+    // Let's verify the sender's balance has been properly updated.
     const verifiedSenderData = await prisma.user.findUnique({
       where: { id: fromUserId },
-      select: { id: true, coins: true }
+      select: { id: true, name: true, coins: true }
     });
+
+    // If the verified balance doesn't match what we expected after the transaction,
+    // something went wrong and we need to fix it.
+    if (verifiedSenderData && transaction.sender.coins !== verifiedSenderData.coins) {
+      console.error(`Balance mismatch detected! Transaction shows ${transaction.sender.coins} coins, but actual balance is ${verifiedSenderData.coins} coins.`);
+      
+      // Let's force an update to the correct balance
+      await prisma.user.update({
+        where: { id: fromUserId },
+        data: { coins: transaction.sender.coins }
+      });
+      
+      console.log(`Fixed balance for user ${verifiedSenderData.name} (${fromUserId}): Set to ${transaction.sender.coins} coins`);
+    }
 
     // Prepare the details object for activity logging
     const logDetails: {
@@ -188,7 +204,12 @@ async function handler(req: NextRequest) {
       targetUserId: toUserId,
     });
 
-    return NextResponse.json(transaction, { status: 200 });
+    return NextResponse.json({
+      ...transaction,
+      verified: {
+        sender: verifiedSenderData
+      }
+    }, { status: 200 });
   } catch (error: unknown) {
     console.error("Error allocating coins:", error);
     return NextResponse.json(
