@@ -405,7 +405,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   };
 
   // Handle scanned barcode
-  const handleScanComplete = async (barcodeData: string, method: string = 'digital', imageFile?: File) => {
+  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File | null) => {
     if (!sessionId || !barcodeData.trim()) {
       setScanError("Please enter a valid seal tag barcode");
       return;
@@ -1001,7 +1001,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     scanInput: string;
     setScanInput: React.Dispatch<React.SetStateAction<string>>;
     scanError: string;
-    handleScanComplete: (barcodeData: string, method: string, imageFile?: File) => Promise<void>;
+    handleScanComplete: (barcodeData: string, method: string, imageFile?: File | null) => Promise<void>;
     setSealTagsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
     const [sealTagImage, setSealTagImage] = useState<File | null>(null);
@@ -1116,23 +1116,55 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 autoCapitalize: "off",
                 autoCorrect: "off",
                 spellCheck: "false",
-                autoComplete: "off"
+                autoComplete: "off",
+              }}
+              autoFocus
+              onBlur={(e) => {
+                // Prevent losing focus when we're just displaying an error
+                // Allow blur only when explicitly clicking away
+                if (e.relatedTarget && !e.relatedTarget.closest('button')) {
+                  // Let it blur naturally if clicking somewhere else
+                  return;
+                }
+                // Refocus after a slight delay to prevent continuous blur/focus cycle
+                setTimeout(() => {
+                  if (inputRef.current) {
+                    inputRef.current.focus();
+                  }
+                }, 100);
               }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <Button 
                       onClick={() => {
-                        if (sealTagImage) {
-                          handleScanComplete(scanInput, 'manual', sealTagImage);
-                          setSealTagImage(null);
+                        if (scanInput.trim() === "") {
+                          setError("Please enter a seal tag ID");
+                          // Refocus on input after showing error
                           setTimeout(() => {
                             if (inputRef.current) {
                               inputRef.current.focus();
                             }
-                          }, 0);
+                          }, 100);
+                          return;
+                        }
+                        if (sealTagImage) {
+                          handleScanComplete(scanInput, 'manual', sealTagImage);
+                          setSealTagImage(null);
+                          // Keep focus on the input field after submission
+                          setTimeout(() => {
+                            if (inputRef.current) {
+                              inputRef.current.focus();
+                            }
+                          }, 100);
                         } else {
                           setError("Please attach an image of the seal tag");
+                          // Keep focus on the input field even when showing error
+                          setTimeout(() => {
+                            if (inputRef.current) {
+                              inputRef.current.focus();
+                            }
+                          }, 100);
                         }
                       }}
                       disabled={!scanInput}
@@ -1146,16 +1178,27 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
+                  if (scanInput.trim() === "") {
+                    setError("Please enter a seal tag ID");
+                    return;
+                  }
                   if (scanInput && sealTagImage) {
                     handleScanComplete(scanInput, 'manual', sealTagImage);
                     setSealTagImage(null);
+                    // Keep focus on the input field after submission
                     setTimeout(() => {
                       if (inputRef.current) {
                         inputRef.current.focus();
                       }
-                    }, 0);
+                    }, 100);
                   } else if (!sealTagImage) {
                     setError("Please attach an image of the seal tag");
+                    // Keep focus on the input field even when showing error
+                    setTimeout(() => {
+                      if (inputRef.current) {
+                        inputRef.current.focus();
+                      }
+                    }, 100);
                   }
                 }
               }}
