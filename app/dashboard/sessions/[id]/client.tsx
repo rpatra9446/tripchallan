@@ -1471,6 +1471,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         setOpenImageModal(true);
                       }} 
                     />
+                    {session.timestamps?.imagesForm?.driverPicture && (
+                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                        {new Date(session.timestamps.imagesForm.driverPicture).toLocaleString()}
+                      </Typography>
+                    )}
                   </Box>
                 )}
                 
@@ -1486,6 +1491,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         setOpenImageModal(true);
                       }} 
                     />
+                    {session.timestamps?.imagesForm?.vehicleNumberPlatePicture && (
+                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                        {new Date(session.timestamps.imagesForm.vehicleNumberPlatePicture).toLocaleString()}
+                      </Typography>
+                    )}
                   </Box>
                 )}
                 
@@ -1501,7 +1511,39 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         setOpenImageModal(true);
                       }} 
                     />
+                    {session.timestamps?.imagesForm?.gpsImeiPicture && (
+                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                        {new Date(session.timestamps.imagesForm.gpsImeiPicture).toLocaleString()}
+                      </Typography>
+                    )}
                   </Box>
+                )}
+                
+                {/* Vehicle Images */}
+                {session.images.vehicleImages && session.images.vehicleImages.length > 0 && (
+                  <>
+                    <Box sx={{ width: '100%', mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Vehicle Images</Typography>
+                    </Box>
+                    {session.images.vehicleImages.map((image, index) => (
+                      <Box key={`vehicle-${index}`} sx={{ flex: '1 0 30%', minWidth: '200px' }}>
+                        <img 
+                          src={image} 
+                          alt={`Vehicle ${index + 1}`} 
+                          style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                          onClick={() => {
+                            setSelectedImage(image);
+                            setOpenImageModal(true);
+                          }} 
+                        />
+                        {session.timestamps?.imagesForm?.[`vehicleImages[${index}]`] && (
+                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                            {new Date(session.timestamps.imagesForm[`vehicleImages[${index}]`]).toLocaleString()}
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                  </>
                 )}
                 
                 {/* Sealing Images */}
@@ -1521,6 +1563,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             setOpenImageModal(true);
                           }} 
                         />
+                        {session.timestamps?.imagesForm?.[`sealingImages[${index}]`] && (
+                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                            {new Date(session.timestamps.imagesForm[`sealingImages[${index}]`]).toLocaleString()}
+                          </Typography>
+                        )}
                       </Box>
                     ))}
                   </>
