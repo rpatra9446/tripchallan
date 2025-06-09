@@ -86,7 +86,7 @@ export const GET = withAuth(
             },
             take: 5,
           },
-          // Fetch seal tags and guard seal tags
+          // Include all tags and detailed information
           sealTags: true,
           guardSealTags: true,
         },
@@ -359,9 +359,51 @@ export const GET = withAuth(
         }
       });
 
+      // Function to attempt all possible ways of getting an image for the PDF
+      const tryGetImageData = (imageSource: any): string | undefined => {
+        try {
+          // Log what we're trying to process
+          console.log('Attempting to process image source:', typeof imageSource);
+          
+          // If it's already a string, just return it
+          if (typeof imageSource === 'string' && imageSource) {
+            console.log('Image source is a string:', imageSource.substring(0, 30) + '...');
+            return imageSource;
+          }
+          
+          // If it's an object with imageUrl or imageData
+          if (imageSource && typeof imageSource === 'object') {
+            // Try imageUrl first
+            if (imageSource.imageUrl) {
+              console.log('Using imageUrl:', imageSource.imageUrl.substring(0, 30) + '...');
+              return imageSource.imageUrl;
+            }
+            
+            // Try imageData next
+            if (imageSource.imageData) {
+              console.log('Using imageData:', imageSource.imageData.substring(0, 30) + '...');
+              return imageSource.imageData;
+            }
+            
+            // Try data property
+            if (imageSource.data) {
+              const contentType = imageSource.contentType || 'image/jpeg';
+              console.log('Using data property with contentType:', contentType);
+              return `data:${contentType};base64,${imageSource.data}`;
+            }
+          }
+          
+          console.log('No valid image data found');
+          return undefined;
+        } catch (err) {
+          console.error('Error processing image source:', err);
+          return undefined;
+        }
+      };
+
       // Operator Seal Tags
       if (sessionData.sealTags && sessionData.sealTags.length > 0) {
-        yPos = (doc as any).lastAutoTable.finalY + 10;
+        yPos = Math.max(yPos, (doc as any).lastAutoTable?.finalY || 0) + 10;
         yPos = addSectionHeader('OPERATOR SEAL TAGS', yPos);
 
         // Prepare rows with barcode, method, and timestamp
@@ -389,7 +431,14 @@ export const GET = withAuth(
         });
 
         // After the table, add operator seal images in a grid layout
-        const sealTagsWithImages = sessionData.sealTags.filter(tag => tag.imageData || tag.imageUrl);
+        console.log(`Processing ${sessionData.sealTags.length} operator seal tags`);
+        
+        // Filter out tags with images
+        const sealTagsWithImages = sessionData.sealTags.filter(tag => 
+          tag.imageUrl || tag.imageData || (tag as any).image
+        );
+        
+        console.log(`Found ${sealTagsWithImages.length} operator seal tags with potential images`);
         
         if (sealTagsWithImages.length > 0) {
           yPos = (doc as any).lastAutoTable.finalY + 10;
@@ -400,15 +449,23 @@ export const GET = withAuth(
           yPos += 8;
           
           // Set up image grid
-          const imgWidth = 40; // Width in mm
-          const imgHeight = 40; // Height in mm
+          const imgWidth = 45; // Width in mm
+          const imgHeight = 45; // Height in mm
           const imgsPerRow = 3;
           const spacing = 10;
           let xPos = margin;
           
+          let successfulImages = 0;
+          
           sealTagsWithImages.forEach((tag, index) => {
             try {
-              const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+                             // Try all possible ways to get the image
+               const imageUrl = tryGetImageData(tag);
+               
+               if (imageUrl === undefined) {
+                 console.log(`No image data found for operator seal tag ${tag.barcode}`);
+                 return; // Skip this tag
+               }
               
               // Draw image with border
               doc.setDrawColor(grayColor[0], grayColor[1], grayColor[2]);
@@ -416,17 +473,28 @@ export const GET = withAuth(
               doc.rect(xPos, yPos, imgWidth, imgHeight + 10, 'FD');
               
               // Add image
-              doc.addImage(
-                imageUrl,
-                'AUTO',
-                xPos + 2,
-                yPos + 2,
-                imgWidth - 4,
-                imgHeight - 4,
-                undefined,
-                'FAST',
-                0
-              );
+              try {
+                doc.addImage(
+                  imageUrl,
+                  'AUTO',
+                  xPos + 2,
+                  yPos + 2,
+                  imgWidth - 4,
+                  imgHeight - 4,
+                  undefined,
+                  'FAST',
+                  0
+                );
+                successfulImages++;
+              } catch (imgErr) {
+                console.error(`Error adding operator seal image to PDF:`, imgErr);
+                // Add placeholder for failed image
+                doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+                doc.rect(xPos + 2, yPos + 2, imgWidth - 4, imgHeight - 4, 'F');
+                doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+                doc.setFontSize(8);
+                doc.text('Image error', xPos + imgWidth/2, yPos + imgHeight/2, { align: 'center' });
+              }
               
               // Add caption with barcode
               doc.setFontSize(8);
@@ -442,7 +510,7 @@ export const GET = withAuth(
               xPos += imgWidth + spacing;
               
               // If end of row, move to next row
-              if ((index + 1) % imgsPerRow === 0 || index === sealTagsWithImages.length - 1) {
+              if ((index + 1) % imgsPerRow === 0) {
                 xPos = margin;
                 yPos += imgHeight + spacing + 5;
               }
@@ -451,11 +519,20 @@ export const GET = withAuth(
               if (yPos > doc.internal.pageSize.height - 40) {
                 doc.addPage();
                 yPos = margin;
+                xPos = margin;
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.setFontSize(11);
+                doc.text('Operator Seal Images (continued):', margin, yPos);
+                yPos += 8;
               }
             } catch (err) {
-              console.error(`Error adding operator seal image:`, err);
+              console.error(`Error processing operator seal image:`, err);
             }
           });
+          
+          console.log(`Successfully added ${successfulImages} of ${sealTagsWithImages.length} operator seal images`);
           
           // Ensure we have space after the images
           if (xPos !== margin) {
@@ -496,7 +573,14 @@ export const GET = withAuth(
         });
 
         // After the table, add guard seal images in a grid layout
-        const guardSealTagsWithImages = sessionData.guardSealTags.filter(tag => tag.imageData || tag.imageUrl);
+        console.log(`Processing ${sessionData.guardSealTags.length} guard seal tags`);
+        
+        // Filter out tags with images
+        const guardSealTagsWithImages = sessionData.guardSealTags.filter(tag => 
+          tag.imageUrl || tag.imageData || (tag as any).image
+        );
+        
+        console.log(`Found ${guardSealTagsWithImages.length} guard seal tags with potential images`);
         
         if (guardSealTagsWithImages.length > 0) {
           yPos = (doc as any).lastAutoTable.finalY + 10;
@@ -507,15 +591,23 @@ export const GET = withAuth(
           yPos += 8;
           
           // Set up image grid
-          const imgWidth = 40; // Width in mm
-          const imgHeight = 40; // Height in mm
+          const imgWidth = 45; // Width in mm
+          const imgHeight = 45; // Height in mm
           const imgsPerRow = 3;
           const spacing = 10;
           let xPos = margin;
           
+          let successfulImages = 0;
+          
           guardSealTagsWithImages.forEach((tag, index) => {
             try {
-              const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+                             // Try all possible ways to get the image
+               const imageUrl = tryGetImageData(tag);
+               
+               if (imageUrl === undefined) {
+                 console.log(`No image data found for guard seal tag ${tag.barcode}`);
+                 return; // Skip this tag
+               }
               
               // Draw image with border
               doc.setDrawColor(grayColor[0], grayColor[1], grayColor[2]);
@@ -523,17 +615,28 @@ export const GET = withAuth(
               doc.rect(xPos, yPos, imgWidth, imgHeight + 10, 'FD');
               
               // Add image
-              doc.addImage(
-                imageUrl,
-                'AUTO',
-                xPos + 2,
-                yPos + 2,
-                imgWidth - 4,
-                imgHeight - 4,
-                undefined,
-                'FAST',
-                0
-              );
+              try {
+                doc.addImage(
+                  imageUrl,
+                  'AUTO',
+                  xPos + 2,
+                  yPos + 2,
+                  imgWidth - 4,
+                  imgHeight - 4,
+                  undefined,
+                  'FAST',
+                  0
+                );
+                successfulImages++;
+              } catch (imgErr) {
+                console.error(`Error adding guard seal image to PDF:`, imgErr);
+                // Add placeholder for failed image
+                doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+                doc.rect(xPos + 2, yPos + 2, imgWidth - 4, imgHeight - 4, 'F');
+                doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+                doc.setFontSize(8);
+                doc.text('Image error', xPos + imgWidth/2, yPos + imgHeight/2, { align: 'center' });
+              }
               
               // Add caption with barcode and status
               doc.setFontSize(8);
@@ -549,7 +652,7 @@ export const GET = withAuth(
               xPos += imgWidth + spacing;
               
               // If end of row, move to next row
-              if ((index + 1) % imgsPerRow === 0 || index === guardSealTagsWithImages.length - 1) {
+              if ((index + 1) % imgsPerRow === 0) {
                 xPos = margin;
                 yPos += imgHeight + spacing + 5;
               }
@@ -558,11 +661,20 @@ export const GET = withAuth(
               if (yPos > doc.internal.pageSize.height - 40) {
                 doc.addPage();
                 yPos = margin;
+                xPos = margin;
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.setFontSize(11);
+                doc.text('Guard Seal Images (continued):', margin, yPos);
+                yPos += 8;
               }
             } catch (err) {
-              console.error(`Error adding guard seal image:`, err);
+              console.error(`Error processing guard seal image:`, err);
             }
           });
+          
+          console.log(`Successfully added ${successfulImages} of ${guardSealTagsWithImages.length} guard seal images`);
           
           // Ensure we have space after the images
           if (xPos !== margin) {
@@ -571,14 +683,13 @@ export const GET = withAuth(
         }
       }
 
-      // Add Images
-      // Helper function to add images to PDF with fixed dimensions
+      // Helper function to add images to PDF with better layout
       const addImagesToPdf = (imageList: string[], title: string, imageLabels?: string[]) => {
         if (!imageList || imageList.length === 0) return;
         
         doc.addPage();
         
-        // Add header to image page - using primary color
+        // Add header to image page
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(0, 0, pageWidth, 15, 'F');
         doc.setFont('helvetica', 'bold');
@@ -596,10 +707,20 @@ export const GET = withAuth(
         let xPos = margin;
         let yPos = 25;
         
+        let successfulImages = 0;
+        
         imageList.forEach((img, index) => {
           if (!img) return;
           
           try {
+                         // Process image data
+             const imageUrl = tryGetImageData(img);
+             
+             if (imageUrl === undefined) {
+               console.log(`No valid image data found for image ${index} in ${title}`);
+               return; // Skip this image
+             }
+            
             // Create a simple border - using gray color
             doc.setDrawColor(grayColor[0], grayColor[1], grayColor[2]);
             doc.setFillColor(255, 255, 255); // White background for image container
@@ -618,19 +739,20 @@ export const GET = withAuth(
             // Add image to PDF with fixed dimensions
             try {
               doc.addImage(
-                img, 
-                'AUTO', 
-                xPos + 5, 
-                yPos + 15, 
-                imgWidth - 10, 
-                imgHeight - 15, 
-                undefined, 
-                'FAST', 
+                imageUrl,
+                'AUTO',
+                xPos + 5,
+                yPos + 15,
+                imgWidth - 10,
+                imgHeight - 15,
+                undefined,
+                'FAST',
                 0
               );
-            } catch (err) {
-              console.error(`Error adding image ${index}:`, err);
-              // Add placeholder for failed image - using light gray
+              successfulImages++;
+            } catch (imgErr) {
+              console.error(`Error adding image to PDF in ${title}:`, imgErr);
+              // Add placeholder for failed image
               doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
               doc.rect(xPos + 5, yPos + 15, imgWidth - 10, imgHeight - 15, 'F');
               doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
@@ -662,9 +784,11 @@ export const GET = withAuth(
               }
             }
           } catch (error) {
-            console.error(`Error processing image in PDF:`, error);
+            console.error(`Error processing image in PDF for ${title}:`, error);
           }
         });
+        
+        console.log(`Successfully added ${successfulImages} of ${imageList.length} images for ${title}`);
       };
 
       // Function to organize and add single images with proper labels

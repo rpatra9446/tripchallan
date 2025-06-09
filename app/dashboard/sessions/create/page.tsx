@@ -547,13 +547,13 @@ export default function CreateSessionPage() {
       const shouldUpdateTimestamp = currentValue !== newValue;
       
       const updatedState = {
-        ...prev,
+      ...prev,
         [name]: newValue,
-        timestamps: {
-          ...prev.timestamps,
+      timestamps: {
+        ...prev.timestamps,
           // Only update timestamp if value changed
           ...(shouldUpdateTimestamp ? { [name]: new Date().toISOString() } : {})
-        }
+      }
       };
       
       return updatedState;
@@ -580,13 +580,13 @@ export default function CreateSessionPage() {
       const shouldUpdateTimestamp = currentValue !== value;
       
       const updatedState = {
-        ...prev,
-        [name]: value,
-        timestamps: {
-          ...prev.timestamps,
+            ...prev,
+      [name]: value,
+      timestamps: {
+        ...prev.timestamps,
           // Only update timestamp if value changed
           ...(shouldUpdateTimestamp ? { [name]: new Date().toISOString() } : {})
-        }
+      }
       };
       
       return updatedState;
