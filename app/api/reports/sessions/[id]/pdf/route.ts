@@ -364,30 +364,12 @@ export const GET = withAuth(
         yPos = (doc as any).lastAutoTable.finalY + 10;
         yPos = addSectionHeader('OPERATOR SEAL TAGS', yPos);
 
-        // Calculate image size that works well in the table
-        const sealImageSize = 20; // Size in mm for seal images in table
-        
-        // Prepare rows with barcode, method, image, and timestamp
-        const sealTagRows = [];
-        
-        // Process each seal tag
-        for (const tag of sessionData.sealTags) {
-          // Base row data
-          const rowData = [
-            tag.barcode || 'N/A',
-            tag.method || 'N/A',
-            tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
-          ];
-          
-          // Store if this tag has an image for adding after table creation
-          if (tag.imageData || tag.imageUrl) {
-            (tag as any)._hasImage = true;
-          } else {
-            (tag as any)._hasImage = false;
-          }
-          
-          sealTagRows.push(rowData);
-        }
+        // Prepare rows with barcode, method, and timestamp
+        const sealTagRows = sessionData.sealTags.map(tag => [
+          tag.barcode || 'N/A',
+          tag.method || 'N/A',
+          tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
+        ]);
 
         // Create table
         autoTable(doc, {
@@ -403,72 +385,97 @@ export const GET = withAuth(
           },
           headStyles: {
             fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]]
-          },
-          didDrawCell: function(data) {
-            // Don't add images to header cells
-            if (data.row.index === 0) return;
-            
-            // Get the tag for this row
-            const tag = sessionData.sealTags![data.row.index - 1];
-            
-            // Only add image if tag has one and we're in a new cell where image should be shown
-            if ((tag as any)._hasImage && data.column.index === 1) {
-              try {
-                const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
-                const cellHeight = data.cell.height - 2;
-                const cellWidth = data.cell.width - 2;
-                const imgSize = Math.min(cellHeight, cellWidth);
-                
-                // Add image in the cell next to method
-                doc.addImage(
-                  imageUrl,
-                  'AUTO',
-                  data.cell.x + data.cell.width + 2,
-                  data.cell.y + 1,
-                  imgSize - 2,
-                  imgSize - 2,
-                  undefined,
-                  'FAST',
-                  0
-                );
-              } catch (err) {
-                console.error(`Error adding seal tag image in table:`, err);
-              }
-            }
           }
         });
+
+        // After the table, add operator seal images in a grid layout
+        const sealTagsWithImages = sessionData.sealTags.filter(tag => tag.imageData || tag.imageUrl);
+        
+        if (sealTagsWithImages.length > 0) {
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+          doc.setFontSize(11);
+          doc.text('Operator Seal Images:', margin, yPos);
+          yPos += 8;
+          
+          // Set up image grid
+          const imgWidth = 40; // Width in mm
+          const imgHeight = 40; // Height in mm
+          const imgsPerRow = 3;
+          const spacing = 10;
+          let xPos = margin;
+          
+          sealTagsWithImages.forEach((tag, index) => {
+            try {
+              const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+              
+              // Draw image with border
+              doc.setDrawColor(grayColor[0], grayColor[1], grayColor[2]);
+              doc.setFillColor(255, 255, 255);
+              doc.rect(xPos, yPos, imgWidth, imgHeight + 10, 'FD');
+              
+              // Add image
+              doc.addImage(
+                imageUrl,
+                'AUTO',
+                xPos + 2,
+                yPos + 2,
+                imgWidth - 4,
+                imgHeight - 4,
+                undefined,
+                'FAST',
+                0
+              );
+              
+              // Add caption with barcode
+              doc.setFontSize(8);
+              doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+              doc.text(
+                `Seal: ${tag.barcode}`,
+                xPos + imgWidth/2,
+                yPos + imgHeight + 5,
+                { align: 'center' }
+              );
+              
+              // Move to next position
+              xPos += imgWidth + spacing;
+              
+              // If end of row, move to next row
+              if ((index + 1) % imgsPerRow === 0 || index === sealTagsWithImages.length - 1) {
+                xPos = margin;
+                yPos += imgHeight + spacing + 5;
+              }
+              
+              // If near bottom of page, add new page
+              if (yPos > doc.internal.pageSize.height - 40) {
+                doc.addPage();
+                yPos = margin;
+              }
+            } catch (err) {
+              console.error(`Error adding operator seal image:`, err);
+            }
+          });
+          
+          // Ensure we have space after the images
+          if (xPos !== margin) {
+            yPos += imgHeight + spacing;
+          }
+        }
       }
 
       // Guard Seal Tags
       if (sessionData.guardSealTags && sessionData.guardSealTags.length > 0) {
-        yPos = (doc as any).lastAutoTable.finalY + 10;
+        yPos = Math.max(yPos, (doc as any).lastAutoTable?.finalY || 0) + 10;
         yPos = addSectionHeader('GUARD SEAL TAGS', yPos);
 
-        // Calculate image size that works well in the table
-        const sealImageSize = 20; // Size in mm for seal images in table
-        
         // Prepare rows with barcode, method, status, and timestamp
-        const guardSealTagRows = [];
-        
-        // Process each seal tag
-        for (const tag of sessionData.guardSealTags) {
-          // Base row data
-          const rowData = [
-            tag.barcode || 'N/A',
-            tag.method || 'N/A',
-            tag.status || 'N/A',
-            tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
-          ];
-          
-          // Store if this tag has an image for adding after table creation
-          if (tag.imageData || tag.imageUrl) {
-            (tag as any)._hasImage = true;
-          } else {
-            (tag as any)._hasImage = false;
-          }
-          
-          guardSealTagRows.push(rowData);
-        }
+        const guardSealTagRows = sessionData.guardSealTags.map(tag => [
+          tag.barcode || 'N/A',
+          tag.method || 'N/A',
+          tag.status || 'N/A',
+          tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
+        ]);
 
         // Create table
         autoTable(doc, {
@@ -485,40 +492,83 @@ export const GET = withAuth(
           },
           headStyles: {
             fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]]
-          },
-          didDrawCell: function(data) {
-            // Don't add images to header cells
-            if (data.row.index === 0) return;
-            
-            // Get the tag for this row
-            const tag = sessionData.guardSealTags![data.row.index - 1];
-            
-            // Only add image if tag has one and we're in a new cell where image should be shown
-            if ((tag as any)._hasImage && data.column.index === 2) {
-              try {
-                const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
-                const cellHeight = data.cell.height - 2;
-                const cellWidth = data.cell.width - 2;
-                const imgSize = Math.min(cellHeight, cellWidth);
-                
-                // Add image in the cell next to status
-                doc.addImage(
-                  imageUrl,
-                  'AUTO',
-                  data.cell.x + data.cell.width + 2,
-                  data.cell.y + 1,
-                  imgSize - 2,
-                  imgSize - 2,
-                  undefined,
-                  'FAST',
-                  0
-                );
-              } catch (err) {
-                console.error(`Error adding guard seal tag image in table:`, err);
-              }
-            }
           }
         });
+
+        // After the table, add guard seal images in a grid layout
+        const guardSealTagsWithImages = sessionData.guardSealTags.filter(tag => tag.imageData || tag.imageUrl);
+        
+        if (guardSealTagsWithImages.length > 0) {
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+          doc.setFontSize(11);
+          doc.text('Guard Seal Images:', margin, yPos);
+          yPos += 8;
+          
+          // Set up image grid
+          const imgWidth = 40; // Width in mm
+          const imgHeight = 40; // Height in mm
+          const imgsPerRow = 3;
+          const spacing = 10;
+          let xPos = margin;
+          
+          guardSealTagsWithImages.forEach((tag, index) => {
+            try {
+              const imageUrl = (tag.imageData || tag.imageUrl || '') as string;
+              
+              // Draw image with border
+              doc.setDrawColor(grayColor[0], grayColor[1], grayColor[2]);
+              doc.setFillColor(255, 255, 255);
+              doc.rect(xPos, yPos, imgWidth, imgHeight + 10, 'FD');
+              
+              // Add image
+              doc.addImage(
+                imageUrl,
+                'AUTO',
+                xPos + 2,
+                yPos + 2,
+                imgWidth - 4,
+                imgHeight - 4,
+                undefined,
+                'FAST',
+                0
+              );
+              
+              // Add caption with barcode and status
+              doc.setFontSize(8);
+              doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+              doc.text(
+                `Seal: ${tag.barcode}${tag.status ? ` (${tag.status})` : ''}`,
+                xPos + imgWidth/2,
+                yPos + imgHeight + 5,
+                { align: 'center' }
+              );
+              
+              // Move to next position
+              xPos += imgWidth + spacing;
+              
+              // If end of row, move to next row
+              if ((index + 1) % imgsPerRow === 0 || index === guardSealTagsWithImages.length - 1) {
+                xPos = margin;
+                yPos += imgHeight + spacing + 5;
+              }
+              
+              // If near bottom of page, add new page
+              if (yPos > doc.internal.pageSize.height - 40) {
+                doc.addPage();
+                yPos = margin;
+              }
+            } catch (err) {
+              console.error(`Error adding guard seal image:`, err);
+            }
+          });
+          
+          // Ensure we have space after the images
+          if (xPos !== margin) {
+            yPos += imgHeight + spacing;
+          }
+        }
       }
 
       // Add Images
