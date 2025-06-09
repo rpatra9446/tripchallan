@@ -267,49 +267,60 @@ export const GET = withAuth(
         format: 'a4'
       });
 
-      // Set initial font
+      // Document settings
+      const primaryColor = [0, 123, 255]; // Blue color
+      const secondaryColor = [108, 117, 125]; // Gray color
+      const successColor = [40, 167, 69]; // Green color
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 20;
+
+      // Add header with logo-like styling
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, pageWidth, 25, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.text('SESSION REPORT', pageWidth / 2, 15, { align: 'center' });
 
-      // Add title
-      doc.text('Session Details', 20, 20);
-      doc.setFontSize(12);
-      doc.text(`Session ID: ${sessionData.id}`, 20, 30);
-      doc.text(`Status: ${sessionData.status.replace(/_/g, ' ')}`, 20, 40);
-
-      // Basic Information
+      // Add session basic info box
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(245, 245, 245);
+      doc.roundedRect(margin, 30, pageWidth - (margin * 2), 40, 3, 3, 'FD');
+      
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Basic Information', 20, 55);
+      doc.text('Session Details', margin + 5, 40);
+      
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-
-      const basicInfo = [
-        ['Source', sessionData.source || 'N/A'],
-        ['Destination', sessionData.destination || 'N/A'],
-        ['Created', formatDate(sessionData.createdAt)],
-        ['Company', sessionData.company.name || 'N/A'],
-      ];
-
-      autoTable(doc, {
-        startY: 60,
-        head: [],
-        body: basicInfo,
-        theme: 'grid',
-        styles: { fontSize: 10 },
-        columnStyles: {
-          0: { cellWidth: 40, fontStyle: 'bold' },
-          1: { cellWidth: 130 }
-        }
-      });
-
-      // Trip Details
-      doc.setFontSize(14);
+      doc.text(`Session ID: ${sessionData.id}`, margin + 5, 50);
+      doc.text(`Status: ${sessionData.status.replace(/_/g, ' ')}`, margin + 5, 58);
+      doc.text(`Date: ${formatDate(sessionData.createdAt)}`, margin + 5, 66);
+      
+      // Add company info on the right side
       doc.setFont('helvetica', 'bold');
-      doc.text('Trip Details', 20, (doc as any).lastAutoTable.finalY + 10);
-      doc.setFontSize(10);
+      doc.text('Company Information', pageWidth - margin - 70, 40);
       doc.setFont('helvetica', 'normal');
+      doc.text(`${sessionData.company.name || 'N/A'}`, pageWidth - margin - 70, 50);
+      doc.text(`Source: ${sessionData.source || 'N/A'}`, pageWidth - margin - 70, 58);
+      doc.text(`Destination: ${sessionData.destination || 'N/A'}`, pageWidth - margin - 70, 66);
 
+      // Section styling function
+      const addSectionHeader = (title: string, y: number) => {
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2], 0.1);
+        doc.rect(margin, y, pageWidth - (margin * 2), 8, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFontSize(12);
+        doc.text(title, margin + 3, y + 5.5);
+        return y + 15;
+      };
+
+      // Trip Details section
+      let yPos = 80;
+      yPos = addSectionHeader('TRIP DETAILS', yPos);
+
+      // Format trip details in a more structured way
       const tripDetailsRows = [
         ['Freight', tripDetails.freight != null ? String(tripDetails.freight) : 'N/A'],
         ['Do Number', tripDetails.doNumber ?? 'N/A'],
@@ -331,24 +342,27 @@ export const GET = withAuth(
       ];
 
       autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 15,
+        startY: yPos,
         head: [],
         body: tripDetailsRows,
-        theme: 'grid',
+        theme: 'striped',
         styles: { fontSize: 10 },
         columnStyles: {
           0: { cellWidth: 60, fontStyle: 'bold' },
           1: { cellWidth: 110 }
+        },
+        headStyles: {
+          fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]]
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
         }
       });
 
       // Operator Seal Tags
       if (sessionData.sealTags && sessionData.sealTags.length > 0) {
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Operator Seal Tags', 20, (doc as any).lastAutoTable.finalY + 10);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+        yPos = addSectionHeader('OPERATOR SEAL TAGS', yPos);
 
         const sealTagRows = sessionData.sealTags.map(tag => [
           tag.barcode,
@@ -357,7 +371,7 @@ export const GET = withAuth(
         ]);
 
         autoTable(doc, {
-          startY: (doc as any).lastAutoTable.finalY + 15,
+          startY: yPos,
           head: [['Barcode', 'Method', 'Applied At']],
           body: sealTagRows,
           theme: 'grid',
@@ -366,17 +380,17 @@ export const GET = withAuth(
             0: { cellWidth: 60 },
             1: { cellWidth: 60 },
             2: { cellWidth: 60 }
+          },
+          headStyles: {
+            fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]]
           }
         });
       }
 
       // Guard Seal Tags
       if (sessionData.guardSealTags && sessionData.guardSealTags.length > 0) {
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Guard Seal Tags', 20, (doc as any).lastAutoTable.finalY + 10);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+        yPos = addSectionHeader('GUARD SEAL TAGS', yPos);
 
         const guardSealTagRows = sessionData.guardSealTags.map(tag => [
           tag.barcode,
@@ -386,63 +400,84 @@ export const GET = withAuth(
         ]);
 
         autoTable(doc, {
-          startY: (doc as any).lastAutoTable.finalY + 15,
+          startY: yPos,
           head: [['Barcode', 'Method', 'Status', 'Verified At']],
           body: guardSealTagRows,
           theme: 'grid',
           styles: { fontSize: 10 },
           columnStyles: {
-            0: { cellWidth: 50 },
-            1: { cellWidth: 45 },
-            2: { cellWidth: 45 },
+            0: { cellWidth: 45 },
+            1: { cellWidth: 40 },
+            2: { cellWidth: 40 },
             3: { cellWidth: 45 }
+          },
+          headStyles: {
+            fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]]
           }
         });
       }
 
       // Add Images
-      // Helper function to add images to PDF
+      // Helper function to add images to PDF with better layout
       const addImagesToPdf = (imageList: string[], title: string) => {
         if (!imageList || imageList.length === 0) return;
         
         doc.addPage();
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text(title, 20, 20);
         
-        const margin = 20;
+        // Add header to image page
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(0, 0, pageWidth, 15, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(12);
+        doc.text(title, pageWidth / 2, 10, { align: 'center' });
+        
+        const margin = 15;
         const imgWidth = 80;
         const imgHeight = 80;
         const spacing = 10;
         let xPos = margin;
-        let yPos = 30;
+        let yPos = 25;
         
         imageList.forEach((img, index) => {
           if (!img) return;
           
           try {
+            // Add image frame
+            doc.setDrawColor(220, 220, 220);
+            doc.setFillColor(252, 252, 252);
+            doc.roundedRect(xPos - 2, yPos - 2, imgWidth + 4, imgHeight + 14, 2, 2, 'FD');
+            
             // Add image to PDF
             doc.addImage(img, 'AUTO', xPos, yPos, imgWidth, imgHeight);
             
             // Add caption
-            doc.setFontSize(8);
-            doc.text(`Image ${index+1}`, xPos + imgWidth/2, yPos + imgHeight + 5, { align: 'center' });
+            doc.setFontSize(9);
+            doc.setTextColor(80, 80, 80);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Image ${index+1}`, xPos + imgWidth/2, yPos + imgHeight + 7, { align: 'center' });
             
             // Update position for next image
-            xPos += imgWidth + spacing;
+            xPos += imgWidth + spacing + 5;
             
             // If we're at the end of the row, go to the next row
             if (xPos + imgWidth > doc.internal.pageSize.width - margin) {
               xPos = margin;
-              yPos += imgHeight + spacing + 10; // 10 extra for caption
+              yPos += imgHeight + spacing + 15; // 15 extra for caption and frame
               
               // If we're at the bottom of the page, add a new page
               if (yPos + imgHeight > doc.internal.pageSize.height - margin) {
                 doc.addPage();
-                doc.setFontSize(14);
+                
+                // Add header to the new page
+                doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.rect(0, 0, pageWidth, 15, 'F');
                 doc.setFont('helvetica', 'bold');
-                doc.text(`${title} (continued)`, 20, 20);
-                yPos = 30;
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(12);
+                doc.text(`${title} (continued)`, pageWidth / 2, 10, { align: 'center' });
+                
+                yPos = 25;
               }
             }
           } catch (error) {
@@ -460,7 +495,7 @@ export const GET = withAuth(
       }
       
       if (sealTagImages.length > 0) {
-        addImagesToPdf(sealTagImages, 'Operator Seal Tag Images');
+        addImagesToPdf(sealTagImages, 'OPERATOR SEAL TAG IMAGES');
       }
       
       // Add guard seal tag images
@@ -472,7 +507,7 @@ export const GET = withAuth(
       }
       
       if (guardSealTagImages.length > 0) {
-        addImagesToPdf(guardSealTagImages, 'Guard Seal Tag Images');
+        addImagesToPdf(guardSealTagImages, 'GUARD SEAL TAG IMAGES');
       }
 
       // Add other session images
@@ -483,28 +518,31 @@ export const GET = withAuth(
           images.gpsImeiPicture
         ].filter(Boolean) as string[];
         
-        addImagesToPdf(singleImages, 'Session Images');
+        addImagesToPdf(singleImages, 'SESSION IMAGES');
       }
       
       // Add vehicle images
       if (images.vehicleImages && images.vehicleImages.length > 0) {
-        addImagesToPdf(images.vehicleImages.filter(Boolean), 'Vehicle Images');
+        addImagesToPdf(images.vehicleImages.filter(Boolean), 'VEHICLE IMAGES');
       }
       
       // Add additional images
       if (images.additionalImages && images.additionalImages.length > 0) {
-        addImagesToPdf(images.additionalImages.filter(Boolean), 'Additional Images');
+        addImagesToPdf(images.additionalImages.filter(Boolean), 'ADDITIONAL IMAGES');
       }
       
       // Add footer with page numbers
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
+        doc.setFillColor(245, 245, 245);
+        doc.rect(0, doc.internal.pageSize.height - 15, pageWidth, 15, 'F');
         doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
         doc.text(
           `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleString()}`,
           doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
+          doc.internal.pageSize.height - 6,
           { align: 'center' }
         );
       }
