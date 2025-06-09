@@ -267,10 +267,10 @@ export const GET = withAuth(
         format: 'a4'
       });
 
-      // Document settings
-      const primaryColor = [0, 123, 255]; // Blue color
-      const secondaryColor = [108, 117, 125]; // Gray color
-      const successColor = [40, 167, 69]; // Green color
+      // Document settings - Simplified color scheme with just 2-3 colors
+      const primaryColor = [0, 123, 255]; // Blue color - primary color
+      const grayColor = [100, 100, 100]; // Gray for text - secondary color
+      const lightGray = [240, 240, 240]; // Light gray for backgrounds - tertiary color
       const pageWidth = doc.internal.pageSize.width;
       const margin = 20;
 
@@ -283,11 +283,11 @@ export const GET = withAuth(
       doc.text('SESSION REPORT', pageWidth / 2, 15, { align: 'center' });
 
       // Add session basic info box
-      doc.setDrawColor(200, 200, 200);
-      doc.setFillColor(245, 245, 245);
+      doc.setDrawColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
       doc.roundedRect(margin, 30, pageWidth - (margin * 2), 40, 3, 3, 'FD');
       
-      doc.setTextColor(0, 0, 0);
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
       doc.setFontSize(14);
       doc.text('Session Details', margin + 5, 40);
       
@@ -418,13 +418,13 @@ export const GET = withAuth(
       }
 
       // Add Images
-      // Helper function to add images to PDF with better layout
+      // Helper function to add images to PDF with fixed dimensions
       const addImagesToPdf = (imageList: string[], title: string, imageLabels?: string[]) => {
         if (!imageList || imageList.length === 0) return;
         
         doc.addPage();
         
-        // Add header to image page
+        // Add header to image page - using primary color
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(0, 0, pageWidth, 15, 'F');
         doc.setFont('helvetica', 'bold');
@@ -432,13 +432,13 @@ export const GET = withAuth(
         doc.setFontSize(12);
         doc.text(title, pageWidth / 2, 10, { align: 'center' });
         
-        // Set up a responsive grid layout similar to the web interface
+        // Set up layout with fixed dimensions
         const margin = 15;
-        const contentWidth = pageWidth - (margin * 2);
-        const imagesPerRow = 2; // Show 2 images per row like the web interface
-        const imgWidth = (contentWidth / imagesPerRow) - 10; // 10px gap between images
-        const imgHeight = 120; // Taller images like on the web page
+        const imgWidth = 200 / 2.83; // Convert 200px to mm (1px ≈ 0.35mm but using 2.83 for better sizing)
+        const imgHeight = 200 / 2.83; // Fixed 200px height
         const spacing = 10;
+        // Calculate images per row based on page width and image width
+        const imagesPerRow = Math.floor((pageWidth - (margin * 2)) / (imgWidth + spacing));
         let xPos = margin;
         let yPos = 25;
         
@@ -446,10 +446,10 @@ export const GET = withAuth(
           if (!img) return;
           
           try {
-            // Create a card-like container for each image
-            doc.setDrawColor(200, 200, 200);
-            doc.setFillColor(252, 252, 252);
-            doc.roundedRect(xPos, yPos, imgWidth, imgHeight + 25, 2, 2, 'FD');
+            // Create a simple border - using gray color
+            doc.setDrawColor(grayColor[0], grayColor[1], grayColor[2]);
+            doc.setFillColor(255, 255, 255); // White background for image container
+            doc.rect(xPos, yPos, imgWidth, imgHeight + 20, 'FD');
             
             // Add label as a header above the image
             const label = imageLabels && imageLabels[index] 
@@ -457,11 +457,11 @@ export const GET = withAuth(
               : `Image ${index+1}`;
               
             doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
+            doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
             doc.setFont('helvetica', 'bold');
-            doc.text(label, xPos + 5, yPos + 10);
+            doc.text(label, xPos + 5, yPos + 12);
             
-            // Add image to PDF with proper aspect ratio preservation
+            // Add image to PDF with fixed dimensions
             try {
               doc.addImage(
                 img, 
@@ -469,17 +469,17 @@ export const GET = withAuth(
                 xPos + 5, 
                 yPos + 15, 
                 imgWidth - 10, 
-                imgHeight - 10, 
+                imgHeight - 15, 
                 undefined, 
                 'FAST', 
                 0
               );
             } catch (err) {
               console.error(`Error adding image ${index}:`, err);
-              // Add placeholder for failed image
-              doc.setFillColor(240, 240, 240);
-              doc.rect(xPos + 5, yPos + 15, imgWidth - 10, imgHeight - 10, 'F');
-              doc.setTextColor(150, 150, 150);
+              // Add placeholder for failed image - using light gray
+              doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+              doc.rect(xPos + 5, yPos + 15, imgWidth - 10, imgHeight - 15, 'F');
+              doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
               doc.setFontSize(8);
               doc.text('Image not available', xPos + (imgWidth/2), yPos + (imgHeight/2), { align: 'center' });
             }
@@ -490,10 +490,10 @@ export const GET = withAuth(
             // If we're at the end of the row, go to the next row
             if (xPos + imgWidth > doc.internal.pageSize.width - margin) {
               xPos = margin;
-              yPos += imgHeight + spacing + 25; // Additional space for captions
+              yPos += imgHeight + spacing + 15; // Space for image and caption
               
               // If we're at the bottom of the page, add a new page
-              if (yPos + imgHeight + 20 > doc.internal.pageSize.height - margin) {
+              if (yPos + imgHeight + 15 > doc.internal.pageSize.height - margin) {
                 doc.addPage();
                 
                 // Add header to the new page
@@ -609,10 +609,10 @@ export const GET = withAuth(
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFillColor(245, 245, 245);
+        doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
         doc.rect(0, doc.internal.pageSize.height - 15, pageWidth, 15, 'F');
         doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
         doc.text(
           `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleString()}`,
           doc.internal.pageSize.width / 2,
