@@ -65,7 +65,9 @@ import {
   Business,
   CardMembership,
   CameraAlt,
-  ContactPage
+  ContactPage,
+  Print,
+  FileDownload
 } from "@mui/icons-material";
 import Link from "next/link";
 import { UserRole, EmployeeSubrole, SessionStatus } from "@/prisma/enums";
@@ -1776,15 +1778,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
   return (
     <Box sx={{ p: 2, maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Back button */}
-      <Button
-        variant="text"
-        startIcon={<ArrowBack />}
-        onClick={handleBack}
-        sx={{ mb: 2 }}
-      >
-        Back to Sessions
-      </Button>
+      {/* Back button and Report Generation buttons */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 2 
+      }}>
+        <Button
+          variant="text"
+          startIcon={<ArrowBack />}
+          onClick={handleBack}
+        >
+          Back to Sessions
+        </Button>
+
+        {/* Report Generation Buttons - only visible to authorized roles */}
+        {(authSession?.user?.role === UserRole.SUPERADMIN || 
+          authSession?.user?.role === UserRole.ADMIN || 
+          authSession?.user?.role === UserRole.COMPANY) && (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button 
+              variant="outlined" 
+              startIcon={<FileDownload />}
+              onClick={() => {
+                toast.success("Excel export functionality will be implemented");
+              }}
+            >
+              Excel
+            </Button>
+            <Button 
+              variant="outlined" 
+              startIcon={<Print />}
+              onClick={() => {
+                toast.success("Print functionality will be implemented");
+              }}
+            >
+              Print
+            </Button>
+            <Button 
+              variant="contained" 
+              startIcon={<PictureAsPdf />}
+              onClick={() => {
+                toast.success("PDF Report generation will be implemented");
+              }}
+            >
+              PDF Report
+            </Button>
+          </Box>
+        )}
+      </Box>
 
       {/* Trip Details */}
       <Paper elevation={1} sx={{ mb: 3, overflow: 'hidden' }}>
@@ -1878,25 +1921,25 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
 
       {/* For COMPLETED or IN_PROGRESS sessions with non-guard users, show detailed content */}
       {(session.status === SessionStatus.COMPLETED || 
-         (session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD)) && (
+        (session.status === SessionStatus.IN_PROGRESS && authSession?.user?.subrole !== EmployeeSubrole.GUARD)) && (
         <>
           {/* Loading Details Table */}
           {session.tripDetails && Object.keys(session.tripDetails).length > 0 && (
-            <Paper elevation={1} sx={{ mb: 3 }}>
-              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                <Typography variant="h6">Loading Details</Typography>
-              </Box>
-              
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Field</TableCell>
-                      <TableCell>Value</TableCell>
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6">Loading Details</Typography>
+            </Box>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Field</TableCell>
+                    <TableCell>Value</TableCell>
                       <TableCell>Timestamp</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                     {/* Display trip details in specified order */}
                     {[
                       'source',
@@ -1930,25 +1973,25 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                       return (
                         <TableRow key={key}>
                           <TableCell>{getFieldLabel(key)}</TableCell>
-                          <TableCell>
+                    <TableCell>
                             {value !== undefined && value !== null && value !== '' 
                               ? (typeof value === 'object' ? JSON.stringify(value) : value.toString())
                               : 'N/A'}
-                          </TableCell>
-                          <TableCell>
+                    </TableCell>
+                      <TableCell>
                             {session.timestamps?.loadingDetails?.[key] ? 
                               formatTimestampExact(session.timestamps.loadingDetails[key]) : 
                               formatTimestampExact(session.createdAt)}
-                          </TableCell>
-                        </TableRow>
+                      </TableCell>
+                    </TableRow>
                       );
                     })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
           )}
-
+          
           {/* Seal Tags - Operator */}
           {session.sealTags && session.sealTags.length > 0 && (
             <Paper elevation={1} sx={{ mb: 3 }}>
@@ -1974,7 +2017,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         <TableCell>
                           <Chip 
                             label={getMethodDisplay(tag.method)} 
-                            color={getMethodColor(tag.method)} 
+                            color={getMethodColor(tag.method)}
                             size="small"
                           />
                         </TableCell>
@@ -2007,34 +2050,34 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           
           {/* Guard Seal Tags - For completed sessions only */}
           {session.status === SessionStatus.COMPLETED && session.guardSealTags && session.guardSealTags.length > 0 && (
-            <Paper elevation={1} sx={{ mb: 3 }}>
-              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
                 <Typography variant="h6">Guard Seal Tags</Typography>
-              </Box>
-              
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
+            </Box>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
                       <TableCell>Barcode</TableCell>
                       <TableCell>Method</TableCell>
                       <TableCell>Image</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Scanned By</TableCell>
                       <TableCell>Timestamp</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                     {session.guardSealTags.map((tag: any) => (
                       <TableRow key={tag.id}>
                         <TableCell>{tag.barcode}</TableCell>
-                        <TableCell>
+                      <TableCell>
                           <Chip 
                             label={getMethodDisplay(tag.method)} 
                             color={getMethodColor(tag.method)} 
                             size="small"
                           />
-                        </TableCell>
+                      </TableCell>
                         <TableCell>
                           {(tag.imageUrl || tag.imageData) ? (
                             <img 
@@ -2050,7 +2093,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             <Typography variant="body2" color="text.secondary">No image</Typography>
                           )}
                         </TableCell>
-                        <TableCell>
+                      <TableCell>
                           <Chip 
                             label={tag.status || 'VERIFIED'} 
                             color={
@@ -2059,16 +2102,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             }
                             size="small"
                           />
-                        </TableCell>
+                      </TableCell>
                         <TableCell>{tag.verifiedBy?.name || tag.scannedByName || 'Unknown'}</TableCell>
-                        <TableCell>
+                      <TableCell>
                           {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
-                        </TableCell>
-                      </TableRow>
+                      </TableCell>
+                    </TableRow>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                </TableBody>
+              </Table>
+            </TableContainer>
             </Paper>
           )}
 
@@ -2083,8 +2126,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
                   <Typography variant="subtitle1">
                     <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
-                  </Typography>
-                </Box>
+                    </Typography>
+              </Box>
                 
                 <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
                   <Typography variant="subtitle1">
@@ -2098,9 +2141,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                   </Typography>
                 </Box>
               </Box>
-            </Paper>
+          </Paper>
           )}
-
+          
           {/* Images Section */}
           {session?.images && Object.keys(session.images).some(key => {
             const value = session.images && session.images[key as keyof typeof session.images];
@@ -2142,7 +2185,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         onClick={() => {
                           setSelectedImage(session.images!.vehicleNumberPlatePicture!);
                           setOpenImageModal(true);
-                        }} 
+                        }}
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture')?.timestamp
@@ -2162,7 +2205,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         onClick={() => {
                           setSelectedImage(session.images!.gpsImeiPicture!);
                           setOpenImageModal(true);
-                        }} 
+                        }}
                       />
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                         {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'gpsImeiPicture')?.timestamp
@@ -2186,7 +2229,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             onClick={() => {
                               setSelectedImage(image);
                               setOpenImageModal(true);
-                            }} 
+                            }}
                           />
                           <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                             {session?.fieldTimestamps?.find((t: any) => t.fieldName === `vehicleImages[${index}]`)?.timestamp
@@ -2212,7 +2255,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             onClick={() => {
                               setSelectedImage(image);
                               setOpenImageModal(true);
-                            }} 
+                            }}
                           />
                           <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                             {session?.fieldTimestamps?.find((t: any) => t.fieldName === `sealingImages[${index}]`)?.timestamp
@@ -2238,7 +2281,7 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             onClick={() => {
                               setSelectedImage(image);
                               setOpenImageModal(true);
-                            }} 
+                            }}
                           />
                           <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                             {session?.fieldTimestamps?.find((t: any) => t.fieldName === `additionalImages[${index}]`)?.timestamp
