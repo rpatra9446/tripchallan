@@ -40,7 +40,7 @@ export const GET = withAuth(
       const userId = session?.user.id;
       const sessionId = context.params.id;
       
-      // Fetch session data
+      // Fetch session data with all related information
       const sessionData = await prisma.session.findUnique({
         where: { id: sessionId },
         include: {
@@ -86,6 +86,9 @@ export const GET = withAuth(
             },
             take: 5,
           },
+          // Fetch seal tags and guard seal tags
+          sealTags: true,
+          guardSealTags: true,
         },
       });
 
@@ -93,24 +96,18 @@ export const GET = withAuth(
         return NextResponse.json({ error: "Session not found" }, { status: 404 });
       }
 
-      // Fetch activity log for trip details
-      const activityLog = await prisma.activityLog.findFirst({
+      // Fetch activity logs to get images and other data
+      const activityLogs = await prisma.activityLog.findMany({
         where: {
           targetResourceId: sessionId,
           targetResourceType: 'session',
-          action: 'CREATE',
         },
         orderBy: {
           createdAt: 'desc',
         },
       });
 
-      console.log('Activity Log Found:', activityLog ? 'Yes' : 'No');
-      if (activityLog) {
-        console.log('Activity Log Details Type:', typeof activityLog.details);
-      }
-      
-      // Extract trip details from activity log
+      // Extract trip details from activity logs
       interface TripDetails {
         freight?: number;
         doNumber?: string;
@@ -119,7 +116,7 @@ export const GET = withAuth(
         loaderName?: string;
         tareWeight?: number;
         grossWeight?: number;
-        materialName?: string;
+        materialName?: number;
         gpsImeiNumber?: string;
         vehicleNumber?: string;
         transporterName?: string;
@@ -128,6 +125,7 @@ export const GET = withAuth(
         qualityOfMaterials?: string;
         driverContactNumber?: string;
         challanRoyaltyNumber?: string;
+        driverLicense?: string;
       }
 
       // Start with sessionData fields for fallback
@@ -139,37 +137,29 @@ export const GET = withAuth(
         transporterName: sessionData.transporterName,
       };
       
-      if (activityLog?.details) {
-        console.log('Raw Activity Log Details:', 
-          typeof activityLog.details === 'string' 
-            ? activityLog.details 
-            : JSON.stringify(activityLog.details, null, 2)
-        );
-
-        let detailsData: any;
-        if (typeof activityLog.details === 'string') {
+      // Extract tripDetails from activity logs
+      for (const log of activityLogs) {
+        if (!log.details) continue;
+        
+        let details: any;
+        if (typeof log.details === 'string') {
           try {
-            detailsData = JSON.parse(activityLog.details);
-            console.log('Parsed Details Data Structure:', Object.keys(detailsData));
+            details = JSON.parse(log.details);
           } catch (e) {
-            console.error("Failed to parse activityLog.details", e);
+            continue;
           }
         } else {
-          detailsData = activityLog.details;
-          console.log('Details Data Structure:', Object.keys(detailsData));
+          details = log.details;
         }
 
-        // Try to extract trip details directly from detailsData or from tripDetails field
-        if (detailsData?.tripDetails) {
-          console.log('Found tripDetails in activity log');
-          tripDetails = { ...tripDetails, ...detailsData.tripDetails };
-        } else if (detailsData?.data?.tripDetails) {
-          console.log('Found data.tripDetails in activity log');
-          tripDetails = { ...tripDetails, ...detailsData.data.tripDetails };
-        } else if (detailsData?.data) {
+        // Try to extract trip details from various possible locations
+        if (details?.tripDetails) {
+          tripDetails = { ...tripDetails, ...details.tripDetails };
+        } else if (details?.data?.tripDetails) {
+          tripDetails = { ...tripDetails, ...details.data.tripDetails };
+        } else if (details?.data) {
           // If tripDetails are directly in the data object
-          const possibleTripData = detailsData.data;
-          console.log('Examining data object for trip details');
+          const possibleTripData = details.data;
           
           // Extract relevant fields if they exist
           const fieldsToCopy = [
@@ -177,7 +167,7 @@ export const GET = withAuth(
             'tareWeight', 'grossWeight', 'materialName', 'gpsImeiNumber', 
             'vehicleNumber', 'transporterName', 'receiverPartyName', 
             'loaderMobileNumber', 'qualityOfMaterials', 'driverContactNumber', 
-            'challanRoyaltyNumber'
+            'challanRoyaltyNumber', 'driverLicense'
           ];
           
           fieldsToCopy.forEach(field => {
@@ -186,8 +176,76 @@ export const GET = withAuth(
             }
           });
         }
+      }
 
-        console.log('Final Trip Details:', JSON.stringify(tripDetails, null, 2));
+      // Extract images from activity logs
+      let images: {
+        driverPicture?: string;
+        vehicleNumberPlatePicture?: string;
+        gpsImeiPicture?: string;
+        sealingImages: string[];
+        vehicleImages: string[];
+        additionalImages: string[];
+      } = {
+        sealingImages: [],
+        vehicleImages: [],
+        additionalImages: []
+      };
+
+      // Extract image data from activity logs
+      for (const log of activityLogs) {
+        if (!log.details) continue;
+        
+        let details: any;
+        if (typeof log.details === 'string') {
+          try {
+            details = JSON.parse(log.details);
+          } catch (e) {
+            continue;
+          }
+        } else {
+          details = log.details;
+        }
+
+        if (details?.imageBase64Data) {
+          const imageData = details.imageBase64Data;
+          
+          // Extract single images
+          ['driverPicture', 'vehicleNumberPlatePicture', 'gpsImeiPicture'].forEach(key => {
+            if (imageData[key]?.data && !images[key as keyof typeof images]) {
+              const contentType = imageData[key].contentType || 'image/jpeg';
+              (images as any)[key] = `data:${contentType};base64,${imageData[key].data}`;
+            }
+          });
+          
+          // Extract image arrays
+          ['sealingImages', 'vehicleImages', 'additionalImages'].forEach(key => {
+            if (Array.isArray(imageData[key])) {
+              imageData[key].forEach((img: any, index: number) => {
+                if (img?.data) {
+                  const contentType = img.contentType || 'image/jpeg';
+                  (images as any)[key][index] = `data:${contentType};base64,${img.data}`;
+                }
+              });
+            }
+          });
+          
+          // Extract seal tag images
+          if (imageData.sealTagImages) {
+            Object.keys(imageData.sealTagImages).forEach(barcode => {
+              const img = imageData.sealTagImages[barcode];
+              if (img?.data) {
+                // Find matching seal tag and add image data
+                const sealTag = sessionData.sealTags?.find(tag => tag.barcode === barcode);
+                if (sealTag) {
+                  const contentType = img.contentType || 'image/jpeg';
+                  // Use type assertion to fix null assignment issue
+                  (sealTag as any).imageData = `data:${contentType};base64,${img.data}`;
+                }
+              }
+            });
+          }
+        }
       }
 
       // Check authorization
@@ -215,16 +273,16 @@ export const GET = withAuth(
 
       // Add title
       doc.text('Session Details', 20, 20);
-          doc.setFontSize(12);
+      doc.setFontSize(12);
       doc.text(`Session ID: ${sessionData.id}`, 20, 30);
       doc.text(`Status: ${sessionData.status.replace(/_/g, ' ')}`, 20, 40);
 
       // Basic Information
       doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('Basic Information', 20, 55);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
 
       const basicInfo = [
         ['Source', sessionData.source || 'N/A'],
@@ -247,7 +305,7 @@ export const GET = withAuth(
 
       // Trip Details
       doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('Trip Details', 20, (doc as any).lastAutoTable.finalY + 10);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -269,72 +327,201 @@ export const GET = withAuth(
         ['Quality Of Materials', tripDetails.qualityOfMaterials ?? 'N/A'],
         ['Driver Contact Number', tripDetails.driverContactNumber ?? 'N/A'],
         ['Challan Royalty Number', tripDetails.challanRoyaltyNumber ?? 'N/A'],
+        ['Driver License', tripDetails.driverLicense ?? 'N/A'],
       ];
-      
 
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 15,
-            head: [],
+        head: [],
         body: tripDetailsRows,
-            theme: 'grid',
+        theme: 'grid',
         styles: { fontSize: 10 },
-            columnStyles: {
+        columnStyles: {
           0: { cellWidth: 60, fontStyle: 'bold' },
           1: { cellWidth: 110 }
         }
       });
 
-      // Seal Information
-      doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
-      doc.text('Seal Information', 20, (doc as any).lastAutoTable.finalY + 10);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
+      // Operator Seal Tags
+      if (sessionData.sealTags && sessionData.sealTags.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Operator Seal Tags', 20, (doc as any).lastAutoTable.finalY + 10);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
 
-      const sealInfo = [
-        ['Barcode', sessionData.seal?.barcode || 'N/A'],
-        ['Status', sessionData.seal?.verified ? 'Verified' : 'Unverified'],
-      ];
+        const sealTagRows = sessionData.sealTags.map(tag => [
+          tag.barcode,
+          tag.method || 'N/A',
+          tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
+        ]);
 
-      autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 15,
-              head: [],
-        body: sealInfo,
-              theme: 'grid',
-        styles: { fontSize: 10 },
-              columnStyles: {
-          0: { cellWidth: 40, fontStyle: 'bold' },
-          1: { cellWidth: 130 }
-        }
-      });
+        autoTable(doc, {
+          startY: (doc as any).lastAutoTable.finalY + 15,
+          head: [['Barcode', 'Method', 'Applied At']],
+          body: sealTagRows,
+          theme: 'grid',
+          styles: { fontSize: 10 },
+          columnStyles: {
+            0: { cellWidth: 60 },
+            1: { cellWidth: 60 },
+            2: { cellWidth: 60 }
+          }
+        });
+      }
+
+      // Guard Seal Tags
+      if (sessionData.guardSealTags && sessionData.guardSealTags.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Guard Seal Tags', 20, (doc as any).lastAutoTable.finalY + 10);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+
+        const guardSealTagRows = sessionData.guardSealTags.map(tag => [
+          tag.barcode,
+          tag.method || 'N/A',
+          tag.status || 'N/A',
+          tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
+        ]);
+
+        autoTable(doc, {
+          startY: (doc as any).lastAutoTable.finalY + 15,
+          head: [['Barcode', 'Method', 'Status', 'Verified At']],
+          body: guardSealTagRows,
+          theme: 'grid',
+          styles: { fontSize: 10 },
+          columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 45 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 45 }
+          }
+        });
+      }
+
+      // Add Images
+      // Helper function to add images to PDF
+      const addImagesToPdf = (imageList: string[], title: string) => {
+        if (!imageList || imageList.length === 0) return;
         
-        // Add footer
+        doc.addPage();
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, 20, 20);
+        
+        const margin = 20;
+        const imgWidth = 80;
+        const imgHeight = 80;
+        const spacing = 10;
+        let xPos = margin;
+        let yPos = 30;
+        
+        imageList.forEach((img, index) => {
+          if (!img) return;
+          
+          try {
+            // Add image to PDF
+            doc.addImage(img, 'AUTO', xPos, yPos, imgWidth, imgHeight);
+            
+            // Add caption
+            doc.setFontSize(8);
+            doc.text(`Image ${index+1}`, xPos + imgWidth/2, yPos + imgHeight + 5, { align: 'center' });
+            
+            // Update position for next image
+            xPos += imgWidth + spacing;
+            
+            // If we're at the end of the row, go to the next row
+            if (xPos + imgWidth > doc.internal.pageSize.width - margin) {
+              xPos = margin;
+              yPos += imgHeight + spacing + 10; // 10 extra for caption
+              
+              // If we're at the bottom of the page, add a new page
+              if (yPos + imgHeight > doc.internal.pageSize.height - margin) {
+                doc.addPage();
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`${title} (continued)`, 20, 20);
+                yPos = 30;
+              }
+            }
+          } catch (error) {
+            console.error(`Error adding image to PDF:`, error);
+          }
+        });
+      };
+
+      // Add seal tag images
+      let sealTagImages: string[] = [];
+      if (sessionData.sealTags) {
+        sealTagImages = sessionData.sealTags
+          .filter(tag => tag.imageData || tag.imageUrl)
+          .map(tag => (tag.imageData || tag.imageUrl || '') as string);
+      }
+      
+      if (sealTagImages.length > 0) {
+        addImagesToPdf(sealTagImages, 'Operator Seal Tag Images');
+      }
+      
+      // Add guard seal tag images
+      let guardSealTagImages: string[] = [];
+      if (sessionData.guardSealTags) {
+        guardSealTagImages = sessionData.guardSealTags
+          .filter(tag => tag.imageData || tag.imageUrl)
+          .map(tag => (tag.imageData || tag.imageUrl || '') as string);
+      }
+      
+      if (guardSealTagImages.length > 0) {
+        addImagesToPdf(guardSealTagImages, 'Guard Seal Tag Images');
+      }
+
+      // Add other session images
+      if (images.driverPicture || images.vehicleNumberPlatePicture || images.gpsImeiPicture) {
+        const singleImages = [
+          images.driverPicture,
+          images.vehicleNumberPlatePicture,
+          images.gpsImeiPicture
+        ].filter(Boolean) as string[];
+        
+        addImagesToPdf(singleImages, 'Session Images');
+      }
+      
+      // Add vehicle images
+      if (images.vehicleImages && images.vehicleImages.length > 0) {
+        addImagesToPdf(images.vehicleImages.filter(Boolean), 'Vehicle Images');
+      }
+      
+      // Add additional images
+      if (images.additionalImages && images.additionalImages.length > 0) {
+        addImagesToPdf(images.additionalImages.filter(Boolean), 'Additional Images');
+      }
+      
+      // Add footer with page numbers
       const pageCount = doc.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-          doc.setPage(i);
-          doc.setFontSize(8);
-          doc.text(
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(
           `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleString()}`,
           doc.internal.pageSize.width / 2,
           doc.internal.pageSize.height - 10,
-            { align: 'center' }
-          );
-        }
-        
+          { align: 'center' }
+        );
+      }
+      
       // Generate PDF buffer
       const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-        
+      
       // Create response
-        const response = new NextResponse(pdfBuffer);
-        response.headers.set('Content-Type', 'application/pdf');
-        response.headers.set('Content-Disposition', `attachment; filename="session-${sessionId}.pdf"`);
-        response.headers.set('Content-Length', pdfBuffer.length.toString());
-        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-        response.headers.set('Pragma', 'no-cache');
-        response.headers.set('Expires', '0');
-        
-        return response;
-
+      const response = new NextResponse(pdfBuffer);
+      response.headers.set('Content-Type', 'application/pdf');
+      response.headers.set('Content-Disposition', `attachment; filename="session-${sessionId}.pdf"`);
+      response.headers.set('Content-Length', pdfBuffer.length.toString());
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      
+      return response;
     } catch (error: unknown) {
       console.error("Error generating PDF report:", error);
       return NextResponse.json(
