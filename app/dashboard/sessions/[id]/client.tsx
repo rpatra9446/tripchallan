@@ -376,8 +376,10 @@ function GuardVerificationTabbedView({
             <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
               <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
               <Box>
-                <Typography variant="body2" color="text.secondary">Created At</Typography>
-                                  <Typography variant="body1">{formatTimestampExact(session.createdAt)}</Typography>
+                <Typography variant="body2" color="text.secondary">Created At:</Typography>
+                <Typography variant="body1">
+                  {formatTimestampExact(session.createdAt)}
+                </Typography>
               </Box>
             </Box>
           </Grid>
@@ -1833,16 +1835,9 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
                 <AccessTime color="primary" sx={{ mr: 1, mt: 0.5 }} />
                 <Box>
-                  <Typography variant="body2" color="text.secondary">Created:</Typography>
+                  <Typography variant="body2" color="text.secondary">Created At:</Typography>
                   <Typography variant="body1">
-                    {new Date(session.createdAt).toLocaleString('en-US', {
-                      year: 'numeric',
-                      month: 'numeric',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: 'numeric',
-                      hour12: true
-                    })}
+                    {formatTimestampExact(session.createdAt)}
                   </Typography>
                 </Box>
               </Box>
