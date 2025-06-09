@@ -1800,16 +1800,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           authSession?.user?.role === UserRole.ADMIN || 
           authSession?.user?.role === UserRole.COMPANY) && (
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button 
-              variant="outlined" 
-              color="success"
-              startIcon={<GridOn />}
+            {/* Excel Icon - No button container */}
+            <Box 
+              sx={{ 
+                width: 30, 
+                height: 36, 
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
               onClick={() => {
                 toast.success("Excel export functionality will be implemented");
               }}
+              title="Export to Excel"
             >
-              Excel
-            </Button>
+              <Box sx={{ 
+                width: '100%', 
+                height: '100%', 
+                backgroundColor: '#4CAF50',
+                borderRadius: '2px',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '25%',
+                  height: '25%',
+                  backgroundColor: '#81C784',
+                  borderBottomLeftRadius: '4px'
+                }
+              }}>
+                <Box sx={{ 
+                  width: '60%', 
+                  height: '60%',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gridTemplateRows: 'repeat(3, 1fr)',
+                  gap: '2px'
+                }}>
+                  {[...Array(9)].map((_, index) => (
+                    <Box key={index} sx={{ backgroundColor: 'white', borderRadius: '1px' }} />
+                  ))}
+                </Box>
+              </Box>
+            </Box>
             <Button 
               variant="outlined" 
               startIcon={<Print />}
