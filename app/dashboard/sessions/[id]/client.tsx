@@ -154,6 +154,18 @@ type SessionType = {
       };
     };
   }[];
+  fieldTimestamps?: {
+    id: string;
+    sessionId: string;
+    fieldName: string;
+    timestamp: string;
+    updatedById: string;
+    updatedBy: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  }[];
   sealTags?: { 
     id: string; 
     barcode: string; 
@@ -1471,11 +1483,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         setOpenImageModal(true);
                       }} 
                     />
-                    {session.timestamps?.imagesForm?.driverPicture && (
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        {new Date(session.timestamps.imagesForm.driverPicture).toLocaleString()}
-                      </Typography>
-                    )}
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'driverPicture')?.timestamp
+                        ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'driverPicture').timestamp).toLocaleString()
+                        : formatTimestampExact(session.createdAt)}
+                    </Typography>
                   </Box>
                 )}
                 
@@ -1491,11 +1503,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         setOpenImageModal(true);
                       }} 
                     />
-                    {session.timestamps?.imagesForm?.vehicleNumberPlatePicture && (
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        {new Date(session.timestamps.imagesForm.vehicleNumberPlatePicture).toLocaleString()}
-                      </Typography>
-                    )}
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture')?.timestamp
+                        ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'vehicleNumberPlatePicture').timestamp).toLocaleString()
+                        : formatTimestampExact(session.createdAt)}
+                    </Typography>
                   </Box>
                 )}
                 
@@ -1511,11 +1523,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                         setOpenImageModal(true);
                       }} 
                     />
-                    {session.timestamps?.imagesForm?.gpsImeiPicture && (
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        {new Date(session.timestamps.imagesForm.gpsImeiPicture).toLocaleString()}
-                      </Typography>
-                    )}
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      {session?.fieldTimestamps?.find((t: any) => t.fieldName === 'gpsImeiPicture')?.timestamp
+                        ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === 'gpsImeiPicture').timestamp).toLocaleString()
+                        : formatTimestampExact(session.createdAt)}
+                    </Typography>
                   </Box>
                 )}
                 
@@ -1536,11 +1548,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             setOpenImageModal(true);
                           }} 
                         />
-                        {session.timestamps?.imagesForm?.[`vehicleImages[${index}]`] && (
-                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                            {new Date(session.timestamps.imagesForm[`vehicleImages[${index}]`]).toLocaleString()}
-                          </Typography>
-                        )}
+                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                          {session?.fieldTimestamps?.find((t: any) => t.fieldName === `vehicleImages[${index}]`)?.timestamp
+                            ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `vehicleImages[${index}]`).timestamp).toLocaleString()
+                            : formatTimestampExact(session.createdAt)}
+                        </Typography>
                       </Box>
                     ))}
                   </>
@@ -1563,11 +1575,11 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                             setOpenImageModal(true);
                           }} 
                         />
-                        {session.timestamps?.imagesForm?.[`sealingImages[${index}]`] && (
-                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                            {new Date(session.timestamps.imagesForm[`sealingImages[${index}]`]).toLocaleString()}
-                          </Typography>
-                        )}
+                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                          {session?.fieldTimestamps?.find((t: any) => t.fieldName === `sealingImages[${index}]`)?.timestamp
+                            ? new Date(session.fieldTimestamps.find((t: any) => t.fieldName === `sealingImages[${index}]`).timestamp).toLocaleString()
+                            : formatTimestampExact(session.createdAt)}
+                        </Typography>
                       </Box>
                     ))}
                   </>
