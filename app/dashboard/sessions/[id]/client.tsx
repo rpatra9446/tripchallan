@@ -1820,63 +1820,56 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
             >
               Print
             </Button>
-            <Button 
-              variant="contained" 
-              color="error"
+            {/* PDF Icon - No button container */}
+            <Box 
               sx={{ 
-                minWidth: '48px', 
-                width: '48px', 
-                height: '48px', 
-                p: 0 
-              }}
-              title="Generate PDF Report"
-              startIcon={null}
-              onClick={() => {
-                toast.success("PDF Report generation will be implemented");
-              }}
-            >
-              <Box sx={{ 
                 width: 30, 
                 height: 36, 
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                cursor: 'pointer',
+                ml: 1
+              }}
+              onClick={() => {
+                toast.success("PDF Report generation will be implemented");
+              }}
+              title="Generate PDF Report"
+            >
+              <Box sx={{ 
+                width: '100%', 
+                height: '100%', 
+                backgroundColor: '#f44336',
+                borderRadius: '2px',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '25%',
+                  height: '25%',
+                  backgroundColor: '#e57373',
+                  borderBottomLeftRadius: '4px'
+                }
               }}>
-                <Box sx={{ 
-                  width: '100%', 
-                  height: '100%', 
-                  backgroundColor: '#f44336',
-                  borderRadius: '2px',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    width: '25%',
-                    height: '25%',
-                    backgroundColor: '#e57373',
-                    borderBottomLeftRadius: '4px'
-                  }
-                }}>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      color: 'white', 
-                      fontWeight: 'bold',
-                      fontSize: '12px',
-                      lineHeight: 1
-                    }}
-                  >
-                    PDF
-                  </Typography>
-                </Box>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: 'white', 
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    lineHeight: 1
+                  }}
+                >
+                  PDF
+                </Typography>
               </Box>
-            </Button>
+            </Box>
           </Box>
         )}
       </Box>
