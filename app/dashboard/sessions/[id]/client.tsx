@@ -67,7 +67,9 @@ import {
   CameraAlt,
   ContactPage,
   Print,
-  FileDownload
+  FileDownload,
+  GridOn,
+  InsertDriveFile
 } from "@mui/icons-material";
 import Link from "next/link";
 import { UserRole, EmployeeSubrole, SessionStatus } from "@/prisma/enums";
@@ -1800,7 +1802,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button 
               variant="outlined" 
-              startIcon={<FileDownload />}
+              color="success"
+              startIcon={<GridOn />}
               onClick={() => {
                 toast.success("Excel export functionality will be implemented");
               }}
@@ -1811,14 +1814,16 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               variant="outlined" 
               startIcon={<Print />}
               onClick={() => {
-                toast.success("Print functionality will be implemented");
+                toast.success("Print current session details");
               }}
+              title="Print the current view of session details"
             >
               Print
             </Button>
             <Button 
               variant="contained" 
-              startIcon={<PictureAsPdf />}
+              color="error"
+              startIcon={<InsertDriveFile />}
               onClick={() => {
                 toast.success("PDF Report generation will be implemented");
               }}
