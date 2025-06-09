@@ -1555,228 +1555,66 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
           </Paper>
         )}
 
-        {/* Loading Details Table */}
-        <Paper elevation={1} sx={{ mb: 3 }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-            <Typography variant="h6">Loading Details</Typography>
-          </Box>
-          
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Field</TableCell>
-                  <TableCell>Value</TableCell>
-                  <TableCell>Timestamp</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {/* Display trip details in specified order */}
-                {[
-                  'source',
-                  'destination',
-                  'cargoType',
-                  'materialName',
-                  'qualityOfMaterials',
-                  'transporterName',
-                  'receiverPartyName',
-                  'loadingSite',
-                  'vehicleNumber',
-                  'registrationCertificate',
-                  'gpsImeiNumber',
-                  'driverName',
-                  'driverContactNumber',
-                  'driverLicense',
-                  'loaderName',
-                  'loaderMobileNumber',
-                  'grossWeight',
-                  'tareWeight',
-                  'netMaterialWeight',
-                  'challanRoyaltyNumber',
-                  'doNumber',
-                  'tpNumber',
-                  'numberOfPackages',
-                  'freight',
-                  'createdById'
-                ].map(key => {
-                  const value = session.tripDetails?.[key as keyof typeof session.tripDetails];
-                  
-                  return (
-                    <TableRow key={key}>
-                      <TableCell>{getFieldLabel(key)}</TableCell>
-                      <TableCell>
-                        {value !== undefined && value !== null && value !== '' 
-                          ? (typeof value === 'object' ? JSON.stringify(value) : value.toString())
-                          : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        {session.timestamps?.loadingDetails?.[key] ? 
-                          formatTimestampExact(session.timestamps.loadingDetails[key]) : 
-                          formatTimestampExact(session.createdAt)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-
-        {/* Seal Tags - Operator */}
-        {session.sealTags && session.sealTags.length > 0 && (
+        {/* Image Verification Results - If applicable */}
+        {Object.keys(imageVerificationFields).length > 0 && (
           <Paper elevation={1} sx={{ mb: 3 }}>
             <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-              <Typography variant="h6">Operator Seal Tags</Typography>
+              <Typography variant="h6">Image Verification</Typography>
             </Box>
             
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Barcode</TableCell>
-                    <TableCell>Method</TableCell>
-                    <TableCell>Scanned By</TableCell>
-                    <TableCell>Timestamp</TableCell>
-                    <TableCell>Image</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {session.sealTags.map(tag => (
-                    <TableRow key={tag.id}>
-                      <TableCell>{tag.barcode}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={getMethodDisplay(tag.method)} 
-                          color={getMethodColor(tag.method)} 
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{tag.scannedByName || 'Unknown'}</TableCell>
-                      <TableCell>
-                        {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        {(tag.imageUrl || tag.imageData) ? (
-                          <img 
-                            src={tag.imageUrl || tag.imageData} 
-                            alt={`Seal tag ${tag.barcode}`}
-                            style={{ width: '80px', height: '80px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
-                            onClick={() => {
-                              setSelectedImage(tag.imageUrl || tag.imageData || '');
-                              setOpenImageModal(true);
-                            }}
-                          />
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">No image</Typography>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        )}
-        
-        {/* Guard Seal Tags */}
-        {guardSealTags && guardSealTags.length > 0 && (
-          <Paper elevation={1} sx={{ mb: 3 }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-              <Typography variant="h6">Guard Seal Tags</Typography>
-            </Box>
-            
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Barcode</TableCell>
-                    <TableCell>Method</TableCell>
-                    <TableCell>Scanned By</TableCell>
-                    <TableCell>Timestamp</TableCell>
+                    <TableCell>Image Type</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Image</TableCell>
+                    <TableCell>Comment</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {guardSealTags.map((tag: any) => (
-                    <TableRow key={tag.id}>
-                      <TableCell>{tag.barcode}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={getMethodDisplay(tag.method)} 
-                          color={getMethodColor(tag.method)} 
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{tag.verifiedBy?.name || tag.scannedByName || 'Unknown'}</TableCell>
-                      <TableCell>
-                        {tag.createdAt ? formatTimestampExact(new Date(tag.createdAt)) : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={tag.status || 'VERIFIED'} 
-                          color={
-                            tag.status === 'BROKEN' || tag.status === 'TAMPERED' ? 'error' : 
-                            tag.status === 'MISSING' ? 'warning' : 'success'
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {(tag.imageUrl || tag.imageData) ? (
-                          <img 
-                            src={tag.imageUrl || tag.imageData} 
-                            alt={`Seal tag ${tag.barcode}`}
-                            style={{ width: '80px', height: '80px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
-                            onClick={() => {
-                              setSelectedImage(tag.imageUrl || tag.imageData || '');
-                              setOpenImageModal(true);
-                            }}
-                          />
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">No image</Typography>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {Object.entries(imageVerificationFields).map(([key, field]: [string, any]) => {
+                    // Extract image type name from field key
+                    let imageName = key;
+                    if (key === 'driverPicture') imageName = 'Driver Photo';
+                    else if (key === 'vehicleNumberPlatePicture') imageName = 'Number Plate Photo';
+                    else if (key === 'gpsImeiPicture') imageName = 'GPS/IMEI Photo';
+                    else if (key.startsWith('vehicleImages[')) {
+                      const index = key.match(/\[(\d+)\]/)?.[1] || '0';
+                      imageName = `Vehicle Image ${parseInt(index) + 1}`;
+                    }
+                    else if (key.startsWith('sealingImages[')) {
+                      const index = key.match(/\[(\d+)\]/)?.[1] || '0';
+                      imageName = `Sealing Image ${parseInt(index) + 1}`;
+                    }
+                    
+                    return (
+                      <TableRow key={key}>
+                        <TableCell>{imageName}</TableCell>
+                        <TableCell>
+                          {field.verified ? (
+                            <Chip
+                              size="small"
+                              label="VERIFIED"
+                              color="success"
+                              icon={<CheckCircle fontSize="small" />}
+                            />
+                          ) : (
+                            <Chip
+                              size="small"
+                              label="NOT VERIFIED"
+                              color="default"
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>{field.comment || '-'}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
           </Paper>
         )}
-
-        {/* Driver Details */}
-        <Paper elevation={1} sx={{ mb: 3 }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-            <Typography variant="h6">Driver Details</Typography>
-          </Box>
-          
-          {session?.tripDetails ? (
-            <Box sx={{ p: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
-                <Typography variant="subtitle1">
-                  <Person fontSize="small" /> Driver Name: {session.tripDetails.driverName || 'N/A'}
-                </Typography>
-              </Box>
-              
-              <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
-                <Typography variant="subtitle1">
-                  <Phone fontSize="small" /> Contact: {session.tripDetails.driverContactNumber || 'N/A'}
-                </Typography>
-              </Box>
-              
-              <Box sx={{ width: { xs: '100%', md: '47%' }, p: 1 }}>
-                <Typography variant="subtitle1">
-                  <ContactPage fontSize="small" /> License: {session.tripDetails.driverLicense || 'N/A'}
-                </Typography>
-              </Box>
-            </Box>
-          ) : (
-            <Box sx={{ p: 3 }}>
-              <Alert severity="info">No driver details available</Alert>
-            </Box>
-          )}
-        </Paper>
       </>
     );
   };
