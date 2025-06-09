@@ -22,7 +22,7 @@ export default function Providers({ children }: ProvidersProps) {
   }));
 
   return (
-    <SessionProvider refetchInterval={300}>
+    <SessionProvider refetchInterval={30}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           {children}

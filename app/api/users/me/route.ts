@@ -6,7 +6,7 @@ import { withAuth } from "@/lib/auth";
 import { UserRole } from "@/lib/types";
 
 export const GET = withAuth(
-  async () => {
+  async (req: NextRequest) => {
     try {
       const session = await getServerSession(authOptions);
       
@@ -17,12 +17,21 @@ export const GET = withAuth(
         );
       }
       
-      // Get user details with company info
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: {
-          company: true
-        }
+      // Prevent browser caching of this response
+      const headers = new Headers();
+      headers.append('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      headers.append('Pragma', 'no-cache');
+      headers.append('Expires', '0');
+      
+      // Get user details with company info - using a direct database query
+      // to ensure we're not getting stale data
+      const user = await prisma.$transaction(async (tx) => {
+        return tx.user.findUnique({
+          where: { id: session.user.id },
+          include: {
+            company: true
+          }
+        });
       });
       
       if (!user) {
@@ -35,7 +44,7 @@ export const GET = withAuth(
       // Remove sensitive fields
       const { password, ...userWithoutPassword } = user;
       
-      return NextResponse.json(userWithoutPassword);
+      return NextResponse.json(userWithoutPassword, { headers });
     } catch (error) {
       console.error("Error fetching user details:", error);
       return NextResponse.json(

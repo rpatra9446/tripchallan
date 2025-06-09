@@ -124,12 +124,17 @@ export default function DashboardLayout({
   // Function to refresh the user session data
   const refreshUserSession = async () => {
     try {
+      // Add small delay to ensure database transaction has fully committed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // First, fetch updated user data directly from API using cache: 'no-store' to ensure fresh data
       const response = await fetch('/api/users/me', { 
         cache: 'no-store',
         headers: {
           'pragma': 'no-cache',
-          'cache-control': 'no-cache'
+          'cache-control': 'no-cache',
+          // Add a timestamp to ensure no caching occurs
+          'x-refresh-timestamp': Date.now().toString()
         }
       });
       

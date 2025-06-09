@@ -141,6 +141,16 @@ async function handler(req: NextRequest) {
         receiver: updatedReceiver,
         transaction: coinTransaction,
       };
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable, // Ensures transaction isolation
+      maxWait: 5000, // 5 seconds max wait time
+      timeout: 10000, // 10 seconds timeout
+    });
+
+    // After transaction, double-check the actual user balance to ensure consistency
+    const verifiedSenderData = await prisma.user.findUnique({
+      where: { id: fromUserId },
+      select: { id: true, coins: true }
     });
 
     // Prepare the details object for activity logging

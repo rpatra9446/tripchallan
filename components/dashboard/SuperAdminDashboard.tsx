@@ -384,18 +384,39 @@ export default function SuperAdminDashboard({ user: initialUser }: SuperAdminDas
 
   // Handle successful coin transfer
   const handleTransferSuccess = async () => {
-    // Increment to trigger a refresh of the transaction history
-    setRefreshTransactions(prev => prev + 1);
-    // Fetch updated user data to get the new coin balance
-    await fetchCurrentUser();
-    
-    // Force update session to ensure latest coin balance
-    if (updateSession) {
-      try {
-        await updateSession();
-      } catch (err) {
-        console.error("Error updating session after coin transfer:", err);
+    try {
+      // Add small delay to ensure database transaction has fully committed
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Increment to trigger a refresh of the transaction history
+      setRefreshTransactions(prev => prev + 1);
+      
+      // Fetch updated user data to get the new coin balance
+      await fetchCurrentUser();
+      
+      // Force update session to ensure latest coin balance
+      if (updateSession) {
+        try {
+          // Create a full session update with the latest user data
+          await updateSession({
+            ...session,
+            user: {
+              ...session?.user,
+              coins: currentUser.coins,
+            }
+          });
+          
+          // Force a context-level refresh as well
+          await refreshUserSession();
+        } catch (err) {
+          console.error("Error updating session after coin transfer:", err);
+        }
       }
+      
+      // Fetch stats to update the system-wide coins value
+      fetchStats();
+    } catch (error) {
+      console.error("Error in handleTransferSuccess:", error);
     }
   };
 
