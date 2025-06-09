@@ -1201,12 +1201,6 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
     const completedAt = verificationDetails.hasOwnProperty('completedAt') ? 
       (verificationDetails as any).completedAt : '';
 
-    // Calculate verification statistics
-    const totalFields = Object.keys(fieldVerifications).length;
-    const verifiedFields = Object.values(fieldVerifications as Record<string, any>)
-      .filter((field: any) => field.verified).length;
-    const matchPercentage = totalFields > 0 ? Math.round((verifiedFields / totalFields) * 100) : 0;
-
     // Group verification fields by category
     const loadingDetailsFields: Record<string, any> = {};
     const driverDetailsFields: Record<string, any> = {};
@@ -1265,6 +1259,20 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
         }
       });
     }
+    
+    // Calculate overall verification statistics based on all components
+    const loadingDetailsVerified = Object.values(loadingDetailsFields).filter((f: any) => f.verified).length;
+    const loadingDetailsTotal = Object.keys(loadingDetailsFields).length;
+    
+    const driverDetailsVerified = Object.values(driverDetailsFields).filter((f: any) => f.verified).length;
+    const driverDetailsTotal = Object.keys(driverDetailsFields).length;
+    
+    // Total verified fields and total fields across all categories
+    const totalVerifiedFields = loadingDetailsVerified + driverDetailsVerified + sealTagStats.verified;
+    const totalFieldsCount = loadingDetailsTotal + driverDetailsTotal + sealTagStats.total;
+    
+    // Calculate the overall match percentage
+    const overallMatchPercentage = totalFieldsCount > 0 ? Math.round((totalVerifiedFields / totalFieldsCount) * 100) : 0;
 
     return (
       <>
@@ -1291,8 +1299,8 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
               
               <Box>
                 <Typography variant="body2" color="text.secondary">Overall match rate:</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 'medium', color: matchPercentage > 80 ? 'success.main' : matchPercentage > 60 ? 'warning.main' : 'error.main' }}>
-                  {matchPercentage}% ({verifiedFields} of {totalFields} fields)
+                <Typography variant="body1" sx={{ fontWeight: 'medium', color: overallMatchPercentage > 80 ? 'success.main' : overallMatchPercentage > 60 ? 'warning.main' : 'error.main' }}>
+                  {overallMatchPercentage}% ({totalVerifiedFields} of {totalFieldsCount} fields)
                 </Typography>
               </Box>
             </Box>
@@ -1305,18 +1313,18 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h5">
-                      {Object.values(loadingDetailsFields).filter((f: any) => f.verified).length}/{Object.keys(loadingDetailsFields).length}
+                      {loadingDetailsVerified}/{loadingDetailsTotal}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">fields verified</Typography>
                   </Box>
-                  {Object.keys(loadingDetailsFields).length > 0 && (
+                  {loadingDetailsTotal > 0 && (
                     <Box>
                       <Chip 
-                        label={`${Math.round((Object.values(loadingDetailsFields).filter((f: any) => f.verified).length / Object.keys(loadingDetailsFields).length) * 100)}%`}
+                        label={`${Math.round((loadingDetailsVerified / loadingDetailsTotal) * 100)}%`}
                         color={
-                          Object.values(loadingDetailsFields).filter((f: any) => f.verified).length / Object.keys(loadingDetailsFields).length > 0.8
+                          loadingDetailsVerified / loadingDetailsTotal > 0.8
                             ? 'success'
-                            : Object.values(loadingDetailsFields).filter((f: any) => f.verified).length / Object.keys(loadingDetailsFields).length > 0.6
+                            : loadingDetailsVerified / loadingDetailsTotal > 0.6
                               ? 'warning'
                               : 'error'
                         }
@@ -1332,18 +1340,18 @@ export default function SessionDetailClient({ sessionId }: { sessionId: string }
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h5">
-                      {Object.values(driverDetailsFields).filter((f: any) => f.verified).length}/{Object.keys(driverDetailsFields).length}
+                      {driverDetailsVerified}/{driverDetailsTotal}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">fields verified</Typography>
                   </Box>
-                  {Object.keys(driverDetailsFields).length > 0 && (
+                  {driverDetailsTotal > 0 && (
                     <Box>
                       <Chip 
-                        label={`${Math.round((Object.values(driverDetailsFields).filter((f: any) => f.verified).length / Object.keys(driverDetailsFields).length) * 100)}%`}
+                        label={`${Math.round((driverDetailsVerified / driverDetailsTotal) * 100)}%`}
                         color={
-                          Object.values(driverDetailsFields).filter((f: any) => f.verified).length / Object.keys(driverDetailsFields).length > 0.8
+                          driverDetailsVerified / driverDetailsTotal > 0.8
                             ? 'success'
-                            : Object.values(driverDetailsFields).filter((f: any) => f.verified).length / Object.keys(driverDetailsFields).length > 0.6
+                            : driverDetailsVerified / driverDetailsTotal > 0.6
                               ? 'warning'
                               : 'error'
                         }
