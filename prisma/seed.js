@@ -17,18 +17,17 @@ async function main() {
     });
     
     if (existingSuperadmin) {
-      console.log('Superadmin user already exists, updating...');
+      console.log('Superadmin user already exists, updating without changing coin balance...');
       
-      // Update superadmin with correct values
+      // Update superadmin with correct values but preserve coins
       const updatedSuperadmin = await prisma.user.update({
         where: { email: superadminEmail },
         data: {
-          coins: 1000000,
           updatedAt: new Date()
         }
       });
       
-      console.log(`Superadmin updated with email: ${superadminEmail} and coins: ${updatedSuperadmin.coins}`);
+      console.log(`Superadmin updated with email: ${superadminEmail} and preserved coin balance: ${updatedSuperadmin.coins}`);
     } else {
       // Hash password
       const hashedPassword = await bcrypt.hash('superadmin123', 10);

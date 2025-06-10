@@ -16,19 +16,18 @@ async function updateSuperadmin() {
     if (existingSuperadmin) {
       console.log(`Found existing superadmin: ${existingSuperadmin.email} with ${existingSuperadmin.coins} coins`);
       
-      // Update the superadmin with correct values
+      // Update the superadmin but preserve the coin balance
       const updatedSuperadmin = await prisma.user.update({
         where: { id: existingSuperadmin.id },
         data: {
           email: 'superadmin@cbums.com',
-          coins: 1000000,
           updatedAt: new Date()
         }
       });
       
       console.log('Superadmin updated successfully:');
       console.log(`- Email: ${updatedSuperadmin.email}`);
-      console.log(`- Coins: ${updatedSuperadmin.coins}`);
+      console.log(`- Coins: ${updatedSuperadmin.coins} (preserved from existing balance)`);
     } else {
       console.log('No superadmin found. Creating new superadmin...');
       
