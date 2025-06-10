@@ -1218,25 +1218,6 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.12)' : 'rgba(0, 0, 0, 0.04)',
                   }
                 }}
-                onClick={() => {
-                  // Some devices need a direct click handler to properly trigger file selection
-                  console.log('Take Photo button clicked');
-                  
-                  // Check if the browser supports getUserMedia
-                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    // Request camera access to prepare it
-                    navigator.mediaDevices.getUserMedia({ video: true })
-                      .then(stream => {
-                        // Stop the stream immediately, we just wanted to trigger permission request
-                        stream.getTracks().forEach(track => track.stop());
-                        console.log('Camera permission granted');
-                      })
-                      .catch(err => {
-                        console.error('Camera permission denied:', err);
-                        toast.error('Camera access denied. Please allow camera access to take photos.');
-                      });
-                  }
-                }}
               >
                 {sealTagImage ? 'Image Captured' : 'Take Photo'}
                 <input
@@ -1256,20 +1237,34 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                         const file = e.target.files[0];
                         console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
                         
-                        // Use FileReader to ensure the image is fully loaded before setting it
+                        // Create a new FileReader to properly read the file data
                         const reader = new FileReader();
-                        reader.onload = () => {
-                          console.log('FileReader onload event triggered');
-                          // Now that image is fully loaded, set it to state
-                          setSealTagImage(file);
+                        
+                        // Set up onload handler that will run when file is successfully read
+                        reader.onload = function(fileEvent) {
+                          console.log('File successfully loaded');
+                          
+                          // Create a new "stable" File object that won't be affected by browser garbage collection
+                          const stableFile = new File(
+                            [file], 
+                            file.name, 
+                            { type: file.type, lastModified: file.lastModified }
+                          );
+                          
+                          // Set the stable file to state
+                          setSealTagImage(stableFile);
+                          
                           // Show feedback to user
-                          toast.success(`Image captured successfully: ${file.name}`);
+                          toast.success(`Image captured successfully`);
                         };
-                        reader.onerror = () => {
-                          console.error('Error reading file:', reader.error);
+                        
+                        // Set up error handler
+                        reader.onerror = function(error) {
+                          console.error('Error reading file:', error);
                           toast.error('Failed to process image. Please try again.');
                         };
-                        // Start reading the file
+                        
+                        // Start reading the file as data URL to load it into memory
                         reader.readAsDataURL(file);
                       } catch (error) {
                         console.error('Error capturing image:', error);
@@ -1307,20 +1302,34 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                         const file = e.target.files[0];
                         console.log(`File uploaded: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
                         
-                        // Use FileReader to ensure the image is fully loaded before setting it
+                        // Create a new FileReader to properly read the file data
                         const reader = new FileReader();
-                        reader.onload = () => {
-                          console.log('FileReader onload event triggered');
-                          // Now that image is fully loaded, set it to state
-                          setSealTagImage(file);
+                        
+                        // Set up onload handler that will run when file is successfully read
+                        reader.onload = function(fileEvent) {
+                          console.log('File successfully loaded');
+                          
+                          // Create a new "stable" File object that won't be affected by browser garbage collection
+                          const stableFile = new File(
+                            [file], 
+                            file.name, 
+                            { type: file.type, lastModified: file.lastModified }
+                          );
+                          
+                          // Set the stable file to state
+                          setSealTagImage(stableFile);
+                          
                           // Show feedback to user
-                          toast.success(`Image uploaded successfully: ${file.name}`);
+                          toast.success(`Image uploaded successfully`);
                         };
-                        reader.onerror = () => {
-                          console.error('Error reading file:', reader.error);
+                        
+                        // Set up error handler
+                        reader.onerror = function(error) {
+                          console.error('Error reading file:', error);
                           toast.error('Failed to process image. Please try again.');
                         };
-                        // Start reading the file
+                        
+                        // Start reading the file as data URL to load it into memory
                         reader.readAsDataURL(file);
                       } catch (error) {
                         console.error('Error uploading image:', error);
