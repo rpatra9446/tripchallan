@@ -140,7 +140,7 @@ export const GET = withAuth(
       // Extract tripDetails from activity logs
       for (const log of activityLogs) {
         if (!log.details) continue;
-        
+
         let details: any;
         if (typeof log.details === 'string') {
           try {
@@ -310,15 +310,18 @@ export const GET = withAuth(
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
+      // Move Session ID to left column and adjust position
       doc.text(`Session ID: ${sessionData.id}`, margin + 5, yPos + 20);
       doc.text(`Status: ${sessionData.status}`, margin + 5, yPos + 30);
 
-      // Company info on the right
+      // Company info on the right - adjust position to avoid overlap
       doc.setFont('helvetica', 'bold');
-      doc.text('Company:', pageWidth - margin - 100, yPos + 10);
+      // Move the Company section to the right and ensure clear separation
+      const companyLabelX = pageWidth - margin - 60;  // Moved further right
+      doc.text('Company:', companyLabelX, yPos + 10);
       doc.setFont('helvetica', 'normal');
-      doc.text(sessionData.company?.name || 'N/A', pageWidth - margin - 100, yPos + 20);
-      doc.text(`Created: ${formatDate(sessionData.createdAt)}`, pageWidth - margin - 100, yPos + 30);
+      doc.text(sessionData.company?.name || 'N/A', companyLabelX, yPos + 20);
+      doc.text(`Created: ${formatDate(sessionData.createdAt)}`, companyLabelX, yPos + 30);
 
       yPos += 50;
 
@@ -339,16 +342,16 @@ export const GET = withAuth(
       doc.setFillColor(255, 255, 255);
       doc.rect(margin, yPos, pageWidth - (margin * 2), 25, 'FD');
 
-      doc.setFont('helvetica', 'bold');
+          doc.setFont('helvetica', 'bold');
       doc.setTextColor(...grayColor);
-      doc.setFontSize(10);
+            doc.setFontSize(10);
       doc.text('Source:', margin + 5, yPos + 10);
       doc.setFont('helvetica', 'normal');
       doc.text(sessionData.source || 'N/A', margin + 50, yPos + 10);
 
       doc.setFont('helvetica', 'bold');
       doc.text('Destination:', margin + 5, yPos + 20);
-      doc.setFont('helvetica', 'normal');
+            doc.setFont('helvetica', 'normal');
       doc.text(sessionData.destination || 'N/A', margin + 50, yPos + 20);
 
       yPos += 35;
@@ -373,9 +376,9 @@ export const GET = withAuth(
         if (tripDetails.netMaterialWeight) detailsArray.push(['Net Weight', `${tripDetails.netMaterialWeight} kg`]);
         
         // Create table
-        autoTable(doc, {
+      autoTable(doc, {
           startY: yPos,
-          head: [],
+        head: [],
           body: detailsArray,
           theme: 'striped',
           styles: { fontSize: 10 },
@@ -450,17 +453,17 @@ export const GET = withAuth(
           startY: yPos,
           head: [['Barcode', 'Method', 'Applied At']],
           body: sealTagRows,
-          theme: 'grid',
-          styles: { fontSize: 10 },
-          columnStyles: {
+        theme: 'grid',
+        styles: { fontSize: 10 },
+        columnStyles: {
             0: { cellWidth: 60 },
             1: { cellWidth: 60 },
             2: { cellWidth: 60 }
           },
           headStyles: {
             fillColor: primaryColor
-          }
-        });
+        }
+      });
 
         // After the table, add operator seal images in a grid layout
         console.log(`Processing ${sessionData.sealTags.length} operator seal tags`);
@@ -481,11 +484,11 @@ export const GET = withAuth(
           doc.text('Operator Seal Images:', margin, yPos);
           yPos += 8;
           
-          // Set up image grid
-          const imgWidth = 80;
-          const imgHeight = 80;
-          const imgsPerRow = 2;
-          const spacing = 15;
+          // Update image grid with 200x200 dimensions
+          const imgWidth = 200;
+          const imgHeight = 200;
+          const imgsPerRow = 1; // One large image per row for better visibility
+          const spacing = 20;
           let xPos = margin;
           
           let successfulImages = 0;
@@ -521,7 +524,7 @@ export const GET = withAuth(
                 successfulImages++;
                 
                 // Add caption with barcode
-                doc.setFontSize(9);
+                doc.setFontSize(10);
                 doc.setTextColor(...grayColor);
                 doc.text(
                   `Seal: ${tag.barcode} (${tag.method || 'N/A'})`,
@@ -535,7 +538,7 @@ export const GET = withAuth(
                 doc.setFillColor(...lightGray);
                 doc.rect(xPos + 5, yPos + 5, imgWidth - 10, imgHeight - 10, 'F');
                 doc.setTextColor(...grayColor);
-                doc.setFontSize(9);
+      doc.setFontSize(10);
                 doc.text('Image not available', xPos + imgWidth/2, yPos + imgHeight/2, { align: 'center' });
                 
                 // Still add the caption
@@ -547,14 +550,9 @@ export const GET = withAuth(
                 );
               }
               
-              // Move to next position
-              xPos += imgWidth + spacing;
-              
-              // If end of row, move to next row
-              if ((index + 1) % imgsPerRow === 0) {
-                xPos = margin;
-                yPos += imgHeight + spacing + 10;
-              }
+              // Move to next position - always to next row since we're using 1 image per row
+              xPos = margin;
+              yPos += imgHeight + spacing + 15;
               
               // If near bottom of page, add new page
               if (yPos > doc.internal.pageSize.height - 40) {
@@ -574,11 +572,6 @@ export const GET = withAuth(
           });
           
           console.log(`Successfully added ${successfulImages} of ${sealTagsWithImages.length} operator seal images`);
-          
-          // Ensure we have space after the images
-          if (xPos !== margin) {
-            yPos += imgHeight + spacing;
-          }
         }
       }
 
@@ -595,13 +588,13 @@ export const GET = withAuth(
           tag.createdAt ? formatDate(tag.createdAt) : 'N/A'
         ]);
 
-        autoTable(doc, {
+      autoTable(doc, {
           startY: yPos,
           head: [['Barcode', 'Method', 'Status', 'Verified At']],
           body: guardSealTagRows,
-          theme: 'grid',
-          styles: { fontSize: 10 },
-          columnStyles: {
+            theme: 'grid',
+        styles: { fontSize: 10 },
+            columnStyles: {
             0: { cellWidth: 50 },
             1: { cellWidth: 40 },
             2: { cellWidth: 40 },
@@ -609,8 +602,8 @@ export const GET = withAuth(
           },
           headStyles: {
             fillColor: primaryColor
-          }
-        });
+        }
+      });
 
         // After the table, add guard seal images in a grid layout
         console.log(`Processing ${sessionData.guardSealTags.length} guard seal tags`);
@@ -631,11 +624,11 @@ export const GET = withAuth(
           doc.text('Guard Seal Images:', margin, yPos);
           yPos += 8;
           
-          // Set up image grid
-          const imgWidth = 80;
-          const imgHeight = 80;
-          const imgsPerRow = 2;
-          const spacing = 15;
+          // Update image grid with 200x200 dimensions
+          const imgWidth = 200;
+          const imgHeight = 200;
+          const imgsPerRow = 1; // One large image per row for better visibility
+          const spacing = 20;
           let xPos = margin;
           
           let successfulImages = 0;
@@ -671,7 +664,7 @@ export const GET = withAuth(
                 successfulImages++;
                 
                 // Add caption with barcode and status
-                doc.setFontSize(9);
+                doc.setFontSize(10);
                 doc.setTextColor(...grayColor);
                 doc.text(
                   `Seal: ${tag.barcode} (${tag.method || 'N/A'})`,
@@ -708,7 +701,7 @@ export const GET = withAuth(
                 doc.setFillColor(...lightGray);
                 doc.rect(xPos + 5, yPos + 5, imgWidth - 10, imgHeight - 10, 'F');
                 doc.setTextColor(...grayColor);
-                doc.setFontSize(9);
+      doc.setFontSize(10);
                 doc.text('Image not available', xPos + imgWidth/2, yPos + imgHeight/2, { align: 'center' });
                 
                 // Still add the caption
@@ -729,14 +722,9 @@ export const GET = withAuth(
                 }
               }
               
-              // Move to next position
-              xPos += imgWidth + spacing;
-              
-              // If end of row, move to next row
-              if ((index + 1) % imgsPerRow === 0) {
-                xPos = margin;
-                yPos += imgHeight + spacing + 10;
-              }
+              // Move to next position - always to next row since we're using 1 image per row
+              xPos = margin;
+              yPos += imgHeight + spacing + 15;
               
               // If near bottom of page, add new page
               if (yPos > doc.internal.pageSize.height - 40) {
@@ -756,11 +744,6 @@ export const GET = withAuth(
           });
           
           console.log(`Successfully added ${successfulImages} of ${guardSealTagsWithImages.length} guard seal images`);
-          
-          // Ensure we have space after the images
-          if (xPos !== margin) {
-            yPos += imgHeight + spacing;
-          }
         }
       }
 
@@ -779,12 +762,12 @@ export const GET = withAuth(
         doc.setFontSize(12);
         doc.text(title, pageWidth / 2, 10, { align: 'center' });
         
-        // Set up image grid layout
+        // Set up image grid layout with 200x200 dimensions
         const margin = 20;
-        const imgWidth = 160;  // Larger images for better visibility
-        const imgHeight = 160;
+        const imgWidth = 200;  // Set to 200 as requested
+        const imgHeight = 200; // Set to 200 as requested
         const spacing = 20;
-        const imgsPerRow = 1;  // One large image per row for clarity
+        const imgsPerRow = 1;  // One image per row for better visibility
         let xPos = margin;
         let yPos = 25;
         
@@ -837,17 +820,13 @@ export const GET = withAuth(
               doc.setFillColor(...lightGray);
               doc.rect(xPos + 5, yPos + 15, imgWidth - 10, imgHeight - 10, 'F');
               doc.setTextColor(...grayColor);
-              doc.setFontSize(9);
+              doc.setFontSize(10);
               doc.text('Image not available', xPos + imgWidth/2, yPos + imgHeight/2, { align: 'center' });
             }
             
-            // Update position for next image
-            xPos += imgWidth + spacing;
-            
-            // If at end of row, go to next row
-            if ((index + 1) % imgsPerRow === 0) {
-              xPos = margin;
-              yPos += imgHeight + spacing + 15;
+            // Always move to next row since we're displaying one image per row
+            xPos = margin;
+                          yPos += imgHeight + spacing + 15;
               
               // If near bottom of page, add a new page
               if (yPos + imgHeight + 20 > doc.internal.pageSize.height - margin) {
@@ -863,8 +842,7 @@ export const GET = withAuth(
                 
                 yPos = 25;
               }
-            }
-          } catch (error) {
+            } catch (error) {
             console.error(`Error processing image in PDF for ${title}:`, error);
           }
         });
@@ -920,33 +898,33 @@ export const GET = withAuth(
 
       // Add footer with page numbers
       const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
         doc.setFillColor(...lightGray);
         doc.rect(0, doc.internal.pageSize.height - 15, pageWidth, 15, 'F');
-        doc.setFontSize(8);
+          doc.setFontSize(8);
         doc.setTextColor(...grayColor);
-        doc.text(
+          doc.text(
           `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleString()}`,
           pageWidth / 2,
           doc.internal.pageSize.height - 6,
-          { align: 'center' }
-        );
-      }
-
+            { align: 'center' }
+          );
+        }
+        
       // Generate PDF buffer
       const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-      
+        
       // Create response
-      const response = new NextResponse(pdfBuffer);
-      response.headers.set('Content-Type', 'application/pdf');
-      response.headers.set('Content-Disposition', `attachment; filename="session-${sessionId}.pdf"`);
-      response.headers.set('Content-Length', pdfBuffer.length.toString());
-      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      response.headers.set('Pragma', 'no-cache');
-      response.headers.set('Expires', '0');
-      
-      return response;
+        const response = new NextResponse(pdfBuffer);
+        response.headers.set('Content-Type', 'application/pdf');
+        response.headers.set('Content-Disposition', `attachment; filename="session-${sessionId}.pdf"`);
+        response.headers.set('Content-Length', pdfBuffer.length.toString());
+        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        
+        return response;
     } catch (error: unknown) {
       console.error("Error generating PDF report:", error);
       return NextResponse.json(
