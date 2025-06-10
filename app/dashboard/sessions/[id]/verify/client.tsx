@@ -3,22 +3,22 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signIn } from 'next-auth/react';
-import toast from 'react-hot-toast';
 import {
   Box, Button, Container, Paper, Typography, Tab, Tabs, 
   Grid, TextField, Chip, IconButton, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Alert,
   FormControlLabel, Radio, Table, TableHead, TableBody, TableRow, TableCell,
-  InputAdornment, TableContainer, Collapse
+  InputAdornment, TableContainer, Collapse, Card, CardContent
 } from '@mui/material';
 import {
   ArrowBack, CheckCircle, Lock, QrCodeScanner, Camera, 
   AddAPhoto, FileUpload, Close, LocationOn, AccessTime,
   Business, Person, DirectionsCar, Info, PhotoCamera,
-  Delete, CloudUpload, ExpandLess, ExpandMore, Warning, Create
+  Delete, CloudUpload, ExpandLess, ExpandMore, Warning, Done, Create, Cameraswitch
 } from '@mui/icons-material';
-import { EmployeeSubrole, SessionStatus } from '@/prisma/enums';
 import ClientSideQrScanner from '@/app/components/ClientSideQrScanner';
+import { toast } from 'react-hot-toast';
+import { EmployeeSubrole, SessionStatus } from '@/prisma/enums';
 
 // Define types
 type SealType = {
@@ -146,6 +146,201 @@ function TabPanel(props: TabPanelProps) {
     </div>
   );
 }
+
+// Add this new camera capture component above the SealTagsTab component
+const CameraCapture = ({ onCapture, onClose }: { onCapture: (file: File) => void, onClose: () => void }) => {
+  const [error, setError] = useState<string | null>(null);
+  const [capturing, setCapturing] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  
+  const initCamera = useCallback(async () => {
+    try {
+      setError(null);
+      console.log('Initializing camera...');
+      
+      // Request camera access with environment facing camera preferred
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } }
+      });
+      
+      // Save stream reference for cleanup
+      streamRef.current = stream;
+      
+      // Connect stream to video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        console.log('Camera initialized successfully');
+      } else {
+        console.error('Video element not available');
+        setError('Camera initialization failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setError('Could not access camera. Please ensure camera permissions are granted.');
+    }
+  }, []);
+  
+  // Start camera when component mounts
+  useEffect(() => {
+    initCamera();
+    
+    // Cleanup function to stop camera when component unmounts
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        console.log('Camera stream stopped');
+      }
+    };
+  }, [initCamera]);
+  
+  const captureImage = useCallback(() => {
+    setCapturing(true);
+    
+    try {
+      if (!videoRef.current || !canvasRef.current) {
+        console.error('Video or canvas element not available');
+        setError('Could not capture image. Please try again.');
+        setCapturing(false);
+        return;
+      }
+      
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      // Make sure video is playing and has dimensions
+      if (video.readyState !== video.HAVE_ENOUGH_DATA || !video.videoWidth) {
+        console.log('Video not ready yet, retrying in 100ms');
+        setTimeout(captureImage, 100);
+        return;
+      }
+      
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw current video frame to canvas
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        setError('Could not initialize canvas context');
+        setCapturing(false);
+        return;
+      }
+      
+      // Draw the video frame
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert to blob/file
+      canvas.toBlob((blob) => {
+        if (blob) {
+          // Create file from blob
+          const file = new File(
+            [blob], 
+            `seal-tag-photo-${Date.now()}.jpg`, 
+            { type: 'image/jpeg' }
+          );
+          
+          console.log(`Captured image: ${file.size} bytes`);
+          
+          // Call the callback with the captured image
+          onCapture(file);
+          
+          // Close camera
+          onClose();
+        } else {
+          setError('Failed to create image. Please try again.');
+        }
+        setCapturing(false);
+      }, 'image/jpeg', 0.85); // Use 85% JPEG quality for good balance
+    } catch (error) {
+      console.error('Error capturing image:', error);
+      setError('An error occurred while capturing the image');
+      setCapturing(false);
+    }
+  }, [onCapture, onClose]);
+  
+  const handleRetry = () => {
+    setError(null);
+    initCamera();
+  };
+  
+  return (
+    <>
+      <DialogTitle>
+        Take Photo of Seal Tag
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+          }}
+        >
+          <Close />
+        </IconButton>
+      </DialogTitle>
+      
+      <DialogContent>
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={handleRetry}>
+                Try again
+              </Button>
+            }
+          >
+            {error}
+          </Alert>
+        )}
+        
+        <Box sx={{ position: 'relative', width: '100%' }}>
+          <Box
+            component="video"
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            sx={{
+              width: '100%',
+              maxHeight: '70vh',
+              borderRadius: 1,
+              bgcolor: 'black'
+            }}
+          />
+          
+          <Box
+            component="canvas"
+            ref={canvasRef}
+            sx={{ display: 'none' }}
+          />
+        </Box>
+        
+        <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            Position the seal tag in the center of the frame
+          </Typography>
+        </Box>
+      </DialogContent>
+      
+      <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={captureImage}
+          disabled={capturing || !!error}
+          startIcon={<PhotoCamera />}
+        >
+          {capturing ? 'Capturing...' : 'Capture Photo'}
+        </Button>
+      </DialogActions>
+    </>
+  );
+};
 
 export default function VerifyClient({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -1010,6 +1205,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     const [error, setError] = useState("");
     // Create a ref for the text input to manage focus
     const inputRef = useRef<HTMLInputElement>(null);
+    // Add state for camera dialog
+    const [cameraDialogOpen, setCameraDialogOpen] = useState(false);
 
     // Add useEffect to help maintain focus on the input field
     useEffect(() => {
@@ -1085,6 +1282,17 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       const allSealsVerified = operatorIds.every(id => guardIds.includes(id));
       setSealTagsVerified(allSealsVerified);
     }, [operatorSeals, guardScannedSeals, setSealTagsVerified]);
+
+    // Handler for camera capture
+    const handleImageCapture = useCallback((file: File) => {
+      console.log('Image captured:', file.name, file.size, 'bytes');
+      
+      // Set the captured image to state
+      setSealTagImage(file);
+      
+      // Show feedback to user
+      toast.success('Image captured successfully');
+    }, []);
 
     return (
       <Box>
@@ -1211,6 +1419,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 variant="outlined"
                 component="label"
                 startIcon={<PhotoCamera />}
+                onClick={() => setCameraDialogOpen(true)}
                 sx={{ 
                   bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
                   borderColor: sealTagImage ? 'success.main' : 'inherit',
@@ -1220,70 +1429,12 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 }}
               >
                 {sealTagImage ? 'Image Captured' : 'Take Photo'}
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  capture="environment"
-                  onClick={(e) => {
-                    // Reset the input value to ensure onChange is always triggered
-                    e.currentTarget.value = '';
-                    console.log('Camera input clicked');
-                  }}
-                  onChange={(e) => {
-                    console.log('Camera input onChange triggered');
-                    if (e.target.files && e.target.files[0]) {
-                      try {
-                        const file = e.target.files[0];
-                        console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                        
-                        // Create a new FileReader to properly read the file data
-                        const reader = new FileReader();
-                        
-                        // Set up onload handler that will run when file is successfully read
-                        reader.onload = function(fileEvent) {
-                          console.log('File successfully loaded');
-                          
-                          // Create a new "stable" File object that won't be affected by browser garbage collection
-                          const stableFile = new File(
-                            [file], 
-                            file.name, 
-                            { type: file.type, lastModified: file.lastModified }
-                          );
-                          
-                          // Set the stable file to state
-                          setSealTagImage(stableFile);
-                          
-                          // Show feedback to user
-                          toast.success(`Image captured successfully`);
-                        };
-                        
-                        // Set up error handler
-                        reader.onerror = function(error) {
-                          console.error('Error reading file:', error);
-                          toast.error('Failed to process image. Please try again.');
-                        };
-                        
-                        // Start reading the file as data URL to load it into memory
-                        reader.readAsDataURL(file);
-                      } catch (error) {
-                        console.error('Error capturing image:', error);
-                        toast.error('Failed to capture image. Please try again.');
-                      }
-                    } else {
-                      console.log('No file selected from camera');
-                    }
-                  }}
-                />
               </Button>
+
               <Button
                 variant="outlined"
                 component="label"
                 startIcon={<CloudUpload />}
-                onClick={() => {
-                  // Some devices need a direct click handler to properly trigger file selection
-                  console.log('Upload button clicked');
-                }}
               >
                 Upload
                 <input
@@ -1350,6 +1501,19 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
             )}
           </Box>
         </Box>
+        
+        {/* Camera Dialog */}
+        <Dialog
+          open={cameraDialogOpen}
+          onClose={() => setCameraDialogOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <CameraCapture
+            onCapture={handleImageCapture}
+            onClose={() => setCameraDialogOpen(false)}
+          />
+        </Dialog>
         
         {/* Verification Progress */}
         <Box sx={{ mb: 3 }}>
