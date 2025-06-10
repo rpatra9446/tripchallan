@@ -405,7 +405,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
   };
 
   // Handle scanned barcode
-  const handleScanComplete = async (barcodeData: string, method: string, imageFile?: File | null) => {
+  const handleScanComplete = async (barcodeData: string, method: string = 'digital', imageFile?: File) => {
     if (!sessionId || !barcodeData.trim()) {
       setScanError("Please enter a valid seal tag barcode");
       return;
@@ -1001,7 +1001,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     scanInput: string;
     setScanInput: React.Dispatch<React.SetStateAction<string>>;
     scanError: string;
-    handleScanComplete: (barcodeData: string, method: string, imageFile?: File | null) => Promise<void>;
+    handleScanComplete: (barcodeData: string, method: string, imageFile?: File) => Promise<void>;
     setSealTagsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
     const [sealTagImage, setSealTagImage] = useState<File | null>(null);
@@ -1011,6 +1011,14 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
     // Create a ref for the text input to manage focus
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Add useEffect to help maintain focus on the input field
+    useEffect(() => {
+      // Focus input on component mount
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, []); // Empty dependency array means this runs once on mount
+
     // Toggle expanded seal details
     const toggleSealDetails = (sealId: string) => {
       if (expandedSeals[sealId]) {
@@ -1018,6 +1026,14 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
       } else {
         setExpandedSeals({ ...expandedSeals, [sealId]: true });
       }
+    };
+
+    // Handle input change without losing focus
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setScanInput(newValue);
+      if (error) setError("");
+      // No need to explicitly refocus here, as React should maintain focus on the input
     };
 
     // Render image preview
@@ -1105,11 +1121,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               fullWidth
               label="Seal Tag ID"
               value={scanInput}
-              onChange={(e) => {
-                const newValue = e.target.value;
-                setScanInput(newValue);
-                if (error) setError("");
-              }}
+              onChange={handleInputChange}
               error={!!scanError || !!error}
               helperText={scanError || error}
               inputRef={inputRef}
@@ -1117,41 +1129,49 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 autoCapitalize: "off",
                 autoCorrect: "off",
                 spellCheck: "false",
-                autoComplete: "off",
+                autoComplete: "off"
               }}
-              // Removed automatic refocus on blur to prevent focus cycling issues
+              // Add onFocus to ensure input gets and stays focused
+              onFocus={(e) => {
+                // Prevent default behavior that might cause focus loss
+                e.preventDefault();
+              }}
+              // Add onBlur to bring focus back to the input unless user explicitly clicks elsewhere
+              onBlur={(e) => {
+                // Check if related target is not a button or another interactive element
+                const relatedTarget = e.relatedTarget as HTMLElement;
+                if (!relatedTarget || 
+                    (relatedTarget.tagName !== 'BUTTON' && 
+                     !relatedTarget.classList.contains('MuiButton-root'))) {
+                  // Small delay to allow other click handlers to execute first
+                  setTimeout(() => {
+                    if (inputRef.current) {
+                      inputRef.current.focus();
+                    }
+                  }, 10);
+                }
+              }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <Button 
                       onClick={() => {
-                        if (scanInput.trim() === "") {
-                          setError("Please enter a seal tag ID");
-                          // Refocus on input after showing error
-                          setTimeout(() => {
-                            if (inputRef.current) {
-                              inputRef.current.focus();
-                            }
-                          }, 100);
-                          return;
-                        }
                         if (sealTagImage) {
                           handleScanComplete(scanInput, 'manual', sealTagImage);
                           setSealTagImage(null);
-                          // Keep focus on the input field after submission
                           setTimeout(() => {
                             if (inputRef.current) {
                               inputRef.current.focus();
                             }
-                          }, 100);
+                          }, 0);
                         } else {
                           setError("Please attach an image of the seal tag");
-                          // Keep focus on the input field even when showing error
+                          // Ensure focus returns to input field even when showing error
                           setTimeout(() => {
                             if (inputRef.current) {
                               inputRef.current.focus();
                             }
-                          }, 100);
+                          }, 0);
                         }
                       }}
                       disabled={!scanInput}
@@ -1165,27 +1185,22 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  if (scanInput.trim() === "") {
-                    setError("Please enter a seal tag ID");
-                    return;
-                  }
                   if (scanInput && sealTagImage) {
                     handleScanComplete(scanInput, 'manual', sealTagImage);
                     setSealTagImage(null);
-                    // Keep focus on the input field after submission
                     setTimeout(() => {
                       if (inputRef.current) {
                         inputRef.current.focus();
                       }
-                    }, 100);
+                    }, 0);
                   } else if (!sealTagImage) {
                     setError("Please attach an image of the seal tag");
-                    // Keep focus on the input field even when showing error
+                    // Ensure focus returns to input field even when showing error
                     setTimeout(() => {
                       if (inputRef.current) {
                         inputRef.current.focus();
                       }
-                    }, 100);
+                    }, 0);
                   }
                 }
               }}
@@ -1209,6 +1224,7 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                   type="file"
                   hidden
                   accept="image/*"
+                  capture="environment"
                   onClick={(e) => {
                     // Reset the input value to ensure onChange is always triggered
                     e.currentTarget.value = '';
@@ -1218,24 +1234,11 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Camera input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                        const file = e.target.files[0];
+                      const file = e.target.files[0];
                         console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                        
-                        // Create a new FileReader to read the image file
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          console.log('FileReader onload event triggered');
-                          // Set the image to state to ensure it's retained
-                          setSealTagImage(file);
-                          // Show feedback to user
-                          toast.success(`Image captured successfully: ${file.name}`);
-                        };
-                        reader.onerror = () => {
-                          console.error('Error reading file:', reader.error);
-                          toast.error('Failed to process image. Please try again.');
-                        };
-                        // Start reading the file
-                        reader.readAsDataURL(file);
+                      setSealTagImage(file);
+                        // Show feedback to user
+                        toast.success(`Image captured successfully: ${file.name}`);
                       } catch (error) {
                         console.error('Error capturing image:', error);
                         toast.error('Failed to capture image. Please try again.');
@@ -1265,24 +1268,11 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Upload input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                        const file = e.target.files[0];
+                      const file = e.target.files[0];
                         console.log(`File uploaded: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                        
-                        // Create a new FileReader to read the image file
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          console.log('FileReader onload event triggered');
-                          // Set the image to state to ensure it's retained
-                          setSealTagImage(file);
-                          // Show feedback to user
-                          toast.success(`Image uploaded successfully: ${file.name}`);
-                        };
-                        reader.onerror = () => {
-                          console.error('Error reading file:', reader.error);
-                          toast.error('Failed to process image. Please try again.');
-                        };
-                        // Start reading the file
-                        reader.readAsDataURL(file);
+                      setSealTagImage(file);
+                        // Show feedback to user
+                        toast.success(`Image uploaded successfully: ${file.name}`);
                       } catch (error) {
                         console.error('Error uploading image:', error);
                         toast.error('Failed to upload image. Please try again.');
@@ -1447,11 +1437,11 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                                           <Box sx={{ mt: 1 }}>
                                             <Typography variant="body2">Image:</Typography>
                                             <img 
-                                              src={operatorSeal.imageUrl || operatorSeal.imageData} 
+                                              src={(operatorSeal.imageUrl || operatorSeal.imageData || '')} 
                                               alt="Seal tag" 
                                               style={{ maxWidth: '100%', maxHeight: '100px', marginTop: '8px', cursor: 'pointer' }}
                                               onClick={() => {
-                                                setSelectedImage(operatorSeal.imageUrl || operatorSeal.imageData || '');
+                                                setSelectedImage((operatorSeal.imageUrl || operatorSeal.imageData || ''));
                                                 setOpenImageModal(true);
                                               }}
                                             />
@@ -1757,8 +1747,8 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                               onChange={() => verifyImage(`vehicleImage-${index}`)}
                             color="success"
                               size="small"
-                          />
-                        }
+                        />
+                      }
                           label={<Typography variant="body2">Verified</Typography>}
                         sx={{ m: 0 }}
                       />
