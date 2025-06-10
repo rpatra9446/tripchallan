@@ -1218,6 +1218,25 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     bgcolor: sealTagImage ? 'rgba(76, 175, 80, 0.12)' : 'rgba(0, 0, 0, 0.04)',
                   }
                 }}
+                onClick={() => {
+                  // Some devices need a direct click handler to properly trigger file selection
+                  console.log('Take Photo button clicked');
+                  
+                  // Check if the browser supports getUserMedia
+                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    // Request camera access to prepare it
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                      .then(stream => {
+                        // Stop the stream immediately, we just wanted to trigger permission request
+                        stream.getTracks().forEach(track => track.stop());
+                        console.log('Camera permission granted');
+                      })
+                      .catch(err => {
+                        console.error('Camera permission denied:', err);
+                        toast.error('Camera access denied. Please allow camera access to take photos.');
+                      });
+                  }
+                }}
               >
                 {sealTagImage ? 'Image Captured' : 'Take Photo'}
                 <input
@@ -1234,11 +1253,24 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Camera input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                      const file = e.target.files[0];
+                        const file = e.target.files[0];
                         console.log(`File selected: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                      setSealTagImage(file);
-                        // Show feedback to user
-                        toast.success(`Image captured successfully: ${file.name}`);
+                        
+                        // Use FileReader to ensure the image is fully loaded before setting it
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          console.log('FileReader onload event triggered');
+                          // Now that image is fully loaded, set it to state
+                          setSealTagImage(file);
+                          // Show feedback to user
+                          toast.success(`Image captured successfully: ${file.name}`);
+                        };
+                        reader.onerror = () => {
+                          console.error('Error reading file:', reader.error);
+                          toast.error('Failed to process image. Please try again.');
+                        };
+                        // Start reading the file
+                        reader.readAsDataURL(file);
                       } catch (error) {
                         console.error('Error capturing image:', error);
                         toast.error('Failed to capture image. Please try again.');
@@ -1253,6 +1285,10 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                 variant="outlined"
                 component="label"
                 startIcon={<CloudUpload />}
+                onClick={() => {
+                  // Some devices need a direct click handler to properly trigger file selection
+                  console.log('Upload button clicked');
+                }}
               >
                 Upload
                 <input
@@ -1268,11 +1304,24 @@ export default function VerifyClient({ sessionId }: { sessionId: string }) {
                     console.log('Upload input onChange triggered');
                     if (e.target.files && e.target.files[0]) {
                       try {
-                      const file = e.target.files[0];
+                        const file = e.target.files[0];
                         console.log(`File uploaded: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-                      setSealTagImage(file);
-                        // Show feedback to user
-                        toast.success(`Image uploaded successfully: ${file.name}`);
+                        
+                        // Use FileReader to ensure the image is fully loaded before setting it
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          console.log('FileReader onload event triggered');
+                          // Now that image is fully loaded, set it to state
+                          setSealTagImage(file);
+                          // Show feedback to user
+                          toast.success(`Image uploaded successfully: ${file.name}`);
+                        };
+                        reader.onerror = () => {
+                          console.error('Error reading file:', reader.error);
+                          toast.error('Failed to process image. Please try again.');
+                        };
+                        // Start reading the file
+                        reader.readAsDataURL(file);
                       } catch (error) {
                         console.error('Error uploading image:', error);
                         toast.error('Failed to upload image. Please try again.');
